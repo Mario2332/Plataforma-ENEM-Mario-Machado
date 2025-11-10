@@ -2,10 +2,10 @@ import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, GraduationCap, TrendingUp } from "lucide-react";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import { useAuth } from "@/_core/hooks/useAuth";
+import { useAuthContext } from "@/contexts/AuthContext";
 
 export default function GestorHome() {
-  const { user } = useAuth();
+  const { user } = useAuthContext();
   const { data: totalAlunos, isLoading: loadingAlunos } = trpc.gestor.getTotalAlunos.useQuery();
   const { data: mentores, isLoading: loadingMentores } = trpc.gestor.getMentores.useQuery();
   const { data: alunos } = trpc.gestor.getAllAlunos.useQuery();

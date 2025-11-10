@@ -1,26 +1,6 @@
 {
   "indexes": [
     {
-      "collectionGroup": "estudos",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "data",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "simulados",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "data",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "horarios",
       "queryScope": "COLLECTION",
       "fields": [

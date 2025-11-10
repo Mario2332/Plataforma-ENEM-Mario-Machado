@@ -27,14 +27,14 @@ service cloud.firestore {
     // ============================================
     match /users/{userId} {
       // Qualquer usuário autenticado pode ler seu próprio documento
-      allow read: if isOwner(userId);
+      allow read: if isAuthenticated() && request.auth.uid == userId;
       
       // Apenas o próprio usuário pode atualizar seus dados básicos
       allow update: if isOwner(userId) && 
                        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'uid']);
       
-      // Criação automática via Cloud Function no primeiro login
-      allow create: if false;
+      // Permitir criação durante cadastro de aluno
+      allow create: if isAuthenticated() && request.auth.uid == userId;
       allow delete: if false;
     }
     

@@ -1,0 +1,6 @@
+# pack-refs with: peeled fully-peeled sorted 
+e9e7b404a2a7a1c98dd8a9f60b7947b6b79a0eb2 refs/heads/master
+f7e0573532306510317feed9a041896be35884ef refs/remotes/github/master
+90b13d14f12457b2bf99e315282d96cab62ae34b refs/remotes/mentoria/master
+7e50d801de779de20f038b355b7921a5cbd9e544 refs/remotes/origin/main
+d62d4ff31cc3bb8eeae411add54aea6a05a54384 refs/remotes/origin/master

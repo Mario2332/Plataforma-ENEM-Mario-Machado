@@ -1,0 +1,153 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Função auxiliar para verificar autenticação
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Função auxiliar para obter dados do usuário
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    // Função auxiliar para verificar role
+    function hasRole(role) {
+      return isAuthenticated() && getUserData().role == role;
+    }
+    
+    // Função auxiliar para verificar se é o próprio usuário
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // ============================================
+    // USERS
+    // ============================================
+    match /users/{userId} {
+      // Qualquer usuário autenticado pode ler seu próprio documento
+      allow read: if isOwner(userId);
+      
+      // Apenas o próprio usuário pode atualizar seus dados básicos
+      allow update: if isOwner(userId) && 
+                       !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'uid']);
+      
+      // Criação automática via Cloud Function no primeiro login
+      allow create: if false;
+      allow delete: if false;
+    }
+    
+    // ============================================
+    // GESTORES
+    // ============================================
+    match /gestores/{gestorId} {
+      allow read: if hasRole('gestor') && isOwner(gestorId);
+      allow write: if false; // Apenas via Cloud Functions
+    }
+    
+    // ============================================
+    // MENTORES
+    // ============================================
+    match /mentores/{mentorId} {
+      // Gestor pode ler todos os mentores
+      allow read: if hasRole('gestor');
+      
+      // Mentor pode ler seus próprios dados
+      allow read: if hasRole('mentor') && isOwner(mentorId);
+      
+      // Apenas gestor pode criar/atualizar/deletar mentores (via Cloud Functions)
+      allow write: if false;
+      
+      // Anotações do mentor sobre alunos
+      match /anotacoes/{anotacaoId} {
+        allow read, write: if hasRole('mentor') && isOwner(mentorId);
+      }
+    }
+    
+    // ============================================
+    // ALUNOS
+    // ============================================
+    match /alunos/{alunoId} {
+      // Gestor pode ler todos os alunos
+      allow read: if hasRole('gestor');
+      
+      // Mentor pode ler alunos vinculados a ele
+      allow read: if hasRole('mentor') && 
+                     get(/databases/$(database)/documents/alunos/$(alunoId)).data.mentorId == request.auth.uid;
+      
+      // Aluno pode ler seus próprios dados
+      allow read: if hasRole('aluno') && isOwner(alunoId);
+      
+      // Aluno pode atualizar seu perfil (exceto campos críticos)
+      allow update: if hasRole('aluno') && 
+                       isOwner(alunoId) && 
+                       !request.resource.data.diff(resource.data).affectedKeys().hasAny(['userId', 'mentorId', 'ativo']);
+      
+      // Criação e deleção apenas via Cloud Functions
+      allow create, delete: if false;
+      
+      // ============================================
+      // ESTUDOS (subcoleção)
+      // ============================================
+      match /estudos/{estudoId} {
+        // Aluno pode ler, criar, atualizar e deletar seus próprios estudos
+        allow read, create, update, delete: if hasRole('aluno') && isOwner(alunoId);
+        
+        // Mentor pode ler estudos dos seus alunos
+        allow read: if hasRole('mentor') && 
+                       get(/databases/$(database)/documents/alunos/$(alunoId)).data.mentorId == request.auth.uid;
+        
+        // Gestor pode ler todos os estudos
+        allow read: if hasRole('gestor');
+      }
+      
+      // ============================================
+      // SIMULADOS (subcoleção)
+      // ============================================
+      match /simulados/{simuladoId} {
+        // Aluno pode ler, criar, atualizar e deletar seus próprios simulados
+        allow read, create, update, delete: if hasRole('aluno') && isOwner(alunoId);
+        
+        // Mentor pode ler simulados dos seus alunos
+        allow read: if hasRole('mentor') && 
+                       get(/databases/$(database)/documents/alunos/$(alunoId)).data.mentorId == request.auth.uid;
+        
+        // Gestor pode ler todos os simulados
+        allow read: if hasRole('gestor');
+      }
+      
+      // ============================================
+      // HORÁRIOS (subcoleção)
+      // ============================================
+      match /horarios/{horarioId} {
+        // Aluno pode gerenciar seu cronograma
+        allow read, create, update, delete: if hasRole('aluno') && isOwner(alunoId);
+        
+        // Mentor pode visualizar cronograma dos seus alunos
+        allow read: if hasRole('mentor') && 
+                       get(/databases/$(database)/documents/alunos/$(alunoId)).data.mentorId == request.auth.uid;
+      }
+      
+      // ============================================
+      // CONTEÚDOS (subcoleção)
+      // ============================================
+      match /conteudos/{conteudoId} {
+        // Aluno pode gerenciar seu progresso de conteúdos
+        allow read, create, update: if hasRole('aluno') && isOwner(alunoId);
+        
+        // Mentor pode visualizar progresso dos seus alunos
+        allow read: if hasRole('mentor') && 
+                       get(/databases/$(database)/documents/alunos/$(alunoId)).data.mentorId == request.auth.uid;
+      }
+      
+      // ============================================
+      // TEMPLATES (subcoleção)
+      // ============================================
+      match /templates/{templateId} {
+        // Aluno pode gerenciar seus templates de cronograma
+        allow read, create, update, delete: if hasRole('aluno') && isOwner(alunoId);
+      }
+    }
+  }
+}

@@ -1,0 +1,92 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Função auxiliar para verificar autenticação
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Função auxiliar para verificar role
+    function hasRole(role) {
+      return isAuthenticated() && 
+             firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == role;
+    }
+    
+    // Função auxiliar para verificar se é o próprio usuário
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Validar tipo de arquivo de imagem
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+    
+    // Validar tamanho máximo (5MB)
+    function isValidSize() {
+      return request.resource.size < 5 * 1024 * 1024;
+    }
+    
+    // ============================================
+    // LOGOS DE MENTORES
+    // ============================================
+    match /mentores/{mentorId}/logo/{fileName} {
+      // Gestor pode fazer upload de logos para mentores
+      allow write: if hasRole('gestor') && isImage() && isValidSize();
+      
+      // Qualquer usuário autenticado pode ler logos (para white-label)
+      allow read: if isAuthenticated();
+    }
+    
+    // ============================================
+    // FOTOS DE PERFIL DE ALUNOS
+    // ============================================
+    match /alunos/{alunoId}/profile/{fileName} {
+      // Aluno pode fazer upload de sua própria foto
+      allow write: if hasRole('aluno') && isOwner(alunoId) && isImage() && isValidSize();
+      
+      // Aluno, seu mentor e gestor podem ler a foto
+      allow read: if isAuthenticated() && (
+        isOwner(alunoId) ||
+        hasRole('mentor') ||
+        hasRole('gestor')
+      );
+    }
+    
+    // ============================================
+    // ANEXOS DE ESTUDOS (futuro)
+    // ============================================
+    match /alunos/{alunoId}/estudos/{estudoId}/{fileName} {
+      // Aluno pode fazer upload de anexos aos seus estudos
+      allow write: if hasRole('aluno') && isOwner(alunoId) && isValidSize();
+      
+      // Aluno, seu mentor e gestor podem ler
+      allow read: if isAuthenticated() && (
+        isOwner(alunoId) ||
+        hasRole('mentor') ||
+        hasRole('gestor')
+      );
+    }
+    
+    // ============================================
+    // REDAÇÕES (futuro)
+    // ============================================
+    match /alunos/{alunoId}/redacoes/{redacaoId}/{fileName} {
+      // Aluno pode fazer upload de redações
+      allow write: if hasRole('aluno') && isOwner(alunoId) && isValidSize();
+      
+      // Aluno, seu mentor e gestor podem ler
+      allow read: if isAuthenticated() && (
+        isOwner(alunoId) ||
+        hasRole('mentor') ||
+        hasRole('gestor')
+      );
+    }
+    
+    // Negar acesso a qualquer outro caminho
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

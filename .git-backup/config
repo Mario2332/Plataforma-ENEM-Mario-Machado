@@ -1,0 +1,18 @@
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = false
+	logallrefupdates = true
+[user]
+	email = sandbox@manus.ai
+	name = Manus Sandbox
+[remote "origin"]
+	url = s3://vida-prod-gitrepo/webdev-git/310519663161665215/Ec2QKvLw83Ef3kZxtBqeEU
+	fetch = +refs/heads/*:refs/remotes/origin/*
+	pushurl = https://github.com/Mario2332/Plataforma-2026-Mentoria-Mario-Machado.git
+[remote "github"]
+	url = https://github.com/Mario2332/Plataforma-Orbita.git
+	fetch = +refs/heads/*:refs/remotes/github/*
+[remote "mentoria"]
+	url = https://github.com/Mario2332/Plataforma-2026-Mentoria-Mario-Machado.git
+	fetch = +refs/heads/*:refs/remotes/mentoria/*

@@ -1,0 +1,16 @@
+# Arquivos do backend antigo (tRPC/Express/Drizzle)
+server/
+drizzle/
+api/
+
+# Arquivos de configuração do Drizzle
+drizzle.config.ts
+
+# Arquivos relacionados ao Manus OAuth
+client/src/_core/
+
+# Arquivo de verificação de deploy antigo
+check-deploy.sh
+
+# Configuração do Vercel (não mais necessária)
+vercel.json

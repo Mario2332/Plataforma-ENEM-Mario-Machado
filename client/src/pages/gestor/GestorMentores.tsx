@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { trpc } from "@/lib/trpc";
+import { useState, useEffect } from "react";
+import { gestorApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,9 @@ import { Users, Plus, Mail, Building, Palette, Image, Trash2, Edit } from "lucid
 export default function GestorMentores() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingMentor, setEditingMentor] = useState<any>(null);
+  const [mentores, setMentores] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     nome: "",
     email: "",
@@ -19,41 +22,21 @@ export default function GestorMentores() {
     corPrincipal: "#3b82f6",
   });
 
-  const { data: mentores, isLoading, refetch } = trpc.gestor.getMentores.useQuery();
-  const createMentor = trpc.gestor.createMentor.useMutation({
-    onSuccess: () => {
-      toast.success("Mentor adicionado com sucesso!");
-      setDialogOpen(false);
-      resetForm();
-      refetch();
-    },
-    onError: (error: any) => {
-      toast.error(error.message || "Erro ao adicionar mentor");
-    },
-  });
+  const loadMentores = async () => {
+    try {
+      setIsLoading(true);
+      const data = await gestorApi.getMentores();
+      setMentores(data as any[]);
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao carregar mentores");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  const updateMentor = trpc.gestor.updateMentor.useMutation({
-    onSuccess: () => {
-      toast.success("Mentor atualizado com sucesso!");
-      setDialogOpen(false);
-      setEditingMentor(null);
-      resetForm();
-      refetch();
-    },
-    onError: (error: any) => {
-      toast.error(error.message || "Erro ao atualizar mentor");
-    },
-  });
-
-  const deleteMentor = trpc.gestor.deleteMentor.useMutation({
-    onSuccess: () => {
-      toast.success("Mentor removido com sucesso!");
-      refetch();
-    },
-    onError: (error: any) => {
-      toast.error(error.message || "Erro ao remover mentor");
-    },
-  });
+  useEffect(() => {
+    loadMentores();
+  }, []);
 
   const resetForm = () => {
     setFormData({
@@ -82,7 +65,7 @@ export default function GestorMentores() {
     setDialogOpen(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.nome || !formData.email || !formData.nomePlataforma) {
@@ -90,19 +73,40 @@ export default function GestorMentores() {
       return;
     }
 
-    if (editingMentor) {
-      updateMentor.mutate({
-        id: editingMentor.id,
-        ...formData,
-      });
-    } else {
-      createMentor.mutate(formData);
+    try {
+      setIsSaving(true);
+      
+      if (editingMentor) {
+        await gestorApi.updateMentor({
+          mentorId: editingMentor.id,
+          ...formData,
+        });
+        toast.success("Mentor atualizado com sucesso!");
+      } else {
+        await gestorApi.createMentor(formData);
+        toast.success("Mentor adicionado com sucesso!");
+      }
+      
+      setDialogOpen(false);
+      setEditingMentor(null);
+      resetForm();
+      await loadMentores();
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao salvar mentor");
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleDelete = (id: number, nome: string) => {
+  const handleDelete = async (id: string, nome: string) => {
     if (window.confirm(`Tem certeza que deseja remover o mentor "${nome}"?`)) {
-      deleteMentor.mutate({ id });
+      try {
+        await gestorApi.deleteMentor(id);
+        toast.success("Mentor removido com sucesso!");
+        await loadMentores();
+      } catch (error: any) {
+        toast.error(error.message || "Erro ao remover mentor");
+      }
     }
   };
 
@@ -310,9 +314,9 @@ export default function GestorMentores() {
               </Button>
               <Button
                 type="submit"
-                disabled={createMentor.isPending || updateMentor.isPending}
+                disabled={isSaving}
               >
-                {createMentor.isPending || updateMentor.isPending
+                {isSaving
                   ? "Salvando..."
                   : editingMentor
                   ? "Atualizar"

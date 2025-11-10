@@ -1,39 +1,14 @@
 # Cloud Functions - Plataforma Mentoria
 
-## 📋 Configuração Necessária
+## 📋 Configuração
 
-Antes de fazer deploy das Cloud Functions, você precisa adicionar o arquivo de credenciais do Firebase Admin SDK.
+As Cloud Functions estão configuradas para usar as credenciais padrão do Firebase automaticamente.
 
-### Como obter o arquivo `serviceAccountKey.json`:
+**Em produção:** O Firebase fornece as credenciais automaticamente. Nenhuma configuração adicional é necessária.
 
-1. Acesse o [Firebase Console](https://console.firebase.google.com/)
-2. Selecione seu projeto: **plataforma-mentoria-mario**
-3. Clique no ícone de engrenagem (⚙️) > **Configurações do projeto**
-4. Vá para a aba **Contas de serviço**
-5. Clique em **Gerar nova chave privada**
-6. Confirme clicando em **Gerar chave**
-7. Um arquivo `.json` será baixado
-
-### Como usar:
-
-1. Renomeie o arquivo baixado para `serviceAccountKey.json`
-2. Coloque este arquivo nesta pasta (`functions/`)
-3. **NUNCA faça commit deste arquivo no Git!** (já está no .gitignore)
-
-### Estrutura esperada:
-
-```
-functions/
-├── src/
-├── package.json
-├── tsconfig.json
-├── serviceAccountKey.json  ← Adicione este arquivo aqui
-└── README.md (este arquivo)
-```
+**Em desenvolvimento local:** Use os emuladores do Firebase (não precisa de credenciais).
 
 ## 🚀 Deploy
-
-Após adicionar o `serviceAccountKey.json`:
 
 ```bash
 # Instalar dependências
@@ -49,11 +24,9 @@ firebase deploy --only functions
 
 ## ⚠️ Segurança
 
-- ❌ **NUNCA** compartilhe o arquivo `serviceAccountKey.json`
-- ❌ **NUNCA** faça commit dele no Git
-- ❌ **NUNCA** o envie por email ou mensagens
-- ✅ Mantenha-o apenas no seu ambiente local/Codespaces
-- ✅ Use variáveis de ambiente em produção
+- ✅ As credenciais são gerenciadas automaticamente pelo Firebase em produção
+- ✅ Não é necessário armazenar chaves de serviço no código
+- ✅ Use os emuladores para desenvolvimento local
 
 ## 📁 Estrutura das Functions
 

@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { trpc } from "@/lib/trpc";
+import { useState, useMemo, useEffect } from "react";
+import { alunoApi } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -25,15 +25,24 @@ export default function MateriaPage({ materiaKey }: MateriaPageProps) {
   const materia = (studyData as any)[materiaKey];
   const topics: Topic[] = materia?.topics || [];
 
-  const { data: progressoMap, isLoading } = trpc.conteudos.getProgresso.useQuery();
-  const updateMutation = trpc.conteudos.updateProgresso.useMutation({
-    onSuccess: () => {
-      trpc.useUtils().conteudos.getProgresso.invalidate();
-    },
-    onError: (error) => {
-      toast.error(`Erro: ${error.message}`);
+  const [progressoMap, setProgressoMap] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadProgresso = async () => {
+    try {
+      setIsLoading(true);
+      const data = await alunoApi.getProgresso(materiaKey);
+      setProgressoMap(data);
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao carregar progresso");
+    } finally {
+      setIsLoading(false);
     }
-  });
+  };
+
+  useEffect(() => {
+    loadProgresso();
+  }, [materiaKey]);
 
   // Estados de ordenação
   const [sortColumn, setSortColumn] = useState<"name" | "incidence" | "questoes" | "acertos" | "performance">("name");
@@ -62,22 +71,18 @@ export default function MateriaPage({ materiaKey }: MateriaPageProps) {
   };
 
   const filteredAndSortedTopics = useMemo(() => {
-    // Primeiro, aplicar filtros
     let filtered = [...topics];
 
-    // Filtro por incidência
     if (filterIncidence !== "todos") {
       filtered = filtered.filter(topic => topic.incidenceLevel === filterIncidence);
     }
 
-    // Filtro por status de estudo
     if (filterStatus === "estudados") {
       filtered = filtered.filter(topic => progressoMap?.[topic.id]?.estudado);
     } else if (filterStatus === "nao-estudados") {
       filtered = filtered.filter(topic => !progressoMap?.[topic.id]?.estudado);
     }
 
-    // Depois, aplicar ordenação
     filtered.sort((a, b) => {
       let comparison = 0;
       
@@ -122,12 +127,13 @@ export default function MateriaPage({ materiaKey }: MateriaPageProps) {
     }
   };
 
-  const handleCheckboxChange = (topicoId: string, checked: boolean) => {
-    updateMutation.mutate({ topicoId, estudado: checked });
-  };
-
-  const handleQuestoesChange = (topicoId: string, questoesFeitas: number, questoesAcertos: number) => {
-    updateMutation.mutate({ topicoId, questoesFeitas, questoesAcertos });
+  const handleUpdateProgresso = async (topicoId: string, data: any) => {
+    try {
+      await alunoApi.updateProgresso({ topicoId, ...data });
+      await loadProgresso();
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao atualizar progresso");
+    }
   };
 
   if (isLoading) {
@@ -293,7 +299,7 @@ export default function MateriaPage({ materiaKey }: MateriaPageProps) {
                             <Checkbox
                               checked={progresso?.estudado || false}
                               onCheckedChange={(checked) =>
-                                handleCheckboxChange(topic.id, checked as boolean)
+                                handleUpdateProgresso(topic.id, { estudado: checked as boolean })
                               }
                             />
                           </div>
@@ -305,7 +311,7 @@ export default function MateriaPage({ materiaKey }: MateriaPageProps) {
                             value={questoesFeitas}
                             onChange={(e) => {
                               const novoValor = parseInt(e.target.value) || 0;
-                              handleQuestoesChange(topic.id, novoValor, questoesAcertos);
+                              handleUpdateProgresso(topic.id, { questoesFeitas: novoValor, questoesAcertos });
                             }}
                             className="w-20 mx-auto text-center"
                           />
@@ -321,7 +327,7 @@ export default function MateriaPage({ materiaKey }: MateriaPageProps) {
                                 parseInt(e.target.value) || 0,
                                 questoesFeitas
                               );
-                              handleQuestoesChange(topic.id, questoesFeitas, novoValor);
+                              handleUpdateProgresso(topic.id, { questoesFeitas, questoesAcertos: novoValor });
                             }}
                             className="w-20 mx-auto text-center"
                           />

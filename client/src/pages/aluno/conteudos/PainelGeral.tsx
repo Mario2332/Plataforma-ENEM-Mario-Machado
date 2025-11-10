@@ -1,14 +1,32 @@
-import { useMemo } from "react";
-import { trpc } from "@/lib/trpc";
+import { useMemo, useState, useEffect } from "react";
+import { alunoApi } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, BookOpen, CheckCircle2, TrendingUp } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import studyData from "@shared/study-content-data.json";
+import { toast } from "sonner";
 
 const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6", "#f97316", "#6366f1"];
 
 export default function PainelGeral() {
-  const { data: progressoMap, isLoading } = trpc.conteudos.getProgresso.useQuery();
+  const [progressoMap, setProgressoMap] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadProgresso = async () => {
+    try {
+      setIsLoading(true);
+      const data = await alunoApi.getProgresso();
+      setProgressoMap(data);
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao carregar progresso");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadProgresso();
+  }, []);
 
   const stats = useMemo(() => {
     if (!progressoMap) return null;

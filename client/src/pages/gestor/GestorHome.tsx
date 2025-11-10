@@ -1,14 +1,36 @@
-import { trpc } from "@/lib/trpc";
+import { useState, useEffect } from "react";
+import { gestorApi } from "@/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, GraduationCap, TrendingUp } from "lucide-react";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { useAuthContext } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 export default function GestorHome() {
   const { user } = useAuthContext();
-  const { data: totalAlunos, isLoading: loadingAlunos } = trpc.gestor.getTotalAlunos.useQuery();
-  const { data: mentores, isLoading: loadingMentores } = trpc.gestor.getMentores.useQuery();
-  const { data: alunos } = trpc.gestor.getAllAlunos.useQuery();
+  const [mentores, setMentores] = useState<any[]>([]);
+  const [alunos, setAlunos] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadData = async () => {
+    try {
+      setIsLoading(true);
+      const [mentoresData, alunosData] = await Promise.all([
+        gestorApi.getMentores(),
+        gestorApi.getAllAlunos(),
+      ]);
+      setMentores(mentoresData as any[]);
+      setAlunos(alunosData as any[]);
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao carregar dados");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
   
   // Calcular crescimento de alunos por mês
   const getAlunosGrowthData = () => {
@@ -69,7 +91,7 @@ export default function GestorHome() {
   const getAlunosPorMentor = () => {
     if (!alunos || !mentores) return [];
     
-    const mentorCount: Record<number, number> = {};
+    const mentorCount: Record<string, number> = {};
     
     alunos.forEach((aluno: any) => {
       mentorCount[aluno.mentorId] = (mentorCount[aluno.mentorId] || 0) + 1;
@@ -97,7 +119,7 @@ export default function GestorHome() {
   const crescimentoAlunos = calcularCrescimento(alunosGrowthData);
   const crescimentoMentores = calcularCrescimento(mentoresGrowthData);
 
-  if (loadingAlunos || loadingMentores) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -135,7 +157,7 @@ export default function GestorHome() {
             <GraduationCap className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalAlunos || 0}</div>
+            <div className="text-2xl font-bold">{alunos?.length || 0}</div>
             <p className="text-xs text-muted-foreground">
               Em toda a plataforma
             </p>

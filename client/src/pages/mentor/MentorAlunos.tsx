@@ -1,29 +1,19 @@
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { trpc } from "@/lib/trpc";
+import { mentorApi } from "@/lib/api";
 import { Plus, Users } from "lucide-react";
-import { useState } from "react";
 import { toast } from "sonner";
 
 export default function MentorAlunos() {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const { data: alunos, isLoading, refetch } = trpc.mentor.getAlunos.useQuery();
-
-  const createMutation = trpc.mentor.createAluno.useMutation({
-    onSuccess: () => {
-      toast.success("Aluno adicionado!");
-      refetch();
-      setDialogOpen(false);
-    },
-    onError: (error) => {
-      toast.error("Erro: " + error.message);
-    },
-  });
-
+  const [alunos, setAlunos] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     nome: "",
     email: "",
@@ -31,9 +21,42 @@ export default function MentorAlunos() {
     plano: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const loadAlunos = async () => {
+    try {
+      setIsLoading(true);
+      const data = await mentorApi.getAlunos();
+      setAlunos(data as any[]);
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao carregar alunos");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadAlunos();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    createMutation.mutate(formData);
+    
+    try {
+      setIsSaving(true);
+      await mentorApi.createAluno(formData);
+      toast.success("Aluno adicionado!");
+      setDialogOpen(false);
+      setFormData({
+        nome: "",
+        email: "",
+        celular: "",
+        plano: "",
+      });
+      await loadAlunos();
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao adicionar aluno");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (isLoading) {
@@ -78,8 +101,8 @@ export default function MentorAlunos() {
                 </div>
               </div>
               <DialogFooter>
-                <Button type="submit" disabled={createMutation.isPending}>
-                  {createMutation.isPending ? "Salvando..." : "Salvar"}
+                <Button type="submit" disabled={isSaving}>
+                  {isSaving ? "Salvando..." : "Salvar"}
                 </Button>
               </DialogFooter>
             </form>

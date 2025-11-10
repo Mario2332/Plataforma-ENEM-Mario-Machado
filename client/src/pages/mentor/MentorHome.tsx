@@ -1,19 +1,47 @@
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { trpc } from "@/lib/trpc";
+import { mentorApi } from "@/lib/api";
 import { Users, TrendingUp, Activity } from "lucide-react";
+import { toast } from "sonner";
+import { useAuthContext } from "@/contexts/AuthContext";
 
 export default function MentorHome() {
-  const { data: mentor } = trpc.mentor.me.useQuery();
-  const { data: alunos } = trpc.mentor.getAlunos.useQuery();
+  const { userData } = useAuthContext();
+  const [alunos, setAlunos] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadData = async () => {
+    try {
+      setIsLoading(true);
+      const alunosData = await mentorApi.getAlunos();
+      setAlunos(alunosData as any[]);
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao carregar dados");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const alunosAtivos = alunos?.filter(a => a.ativo).length || 0;
   const alunosTotal = alunos?.length || 0;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Dashboard do Mentor</h1>
-        <p className="text-muted-foreground mt-2">Bem-vindo, {mentor?.nome}!</p>
+        <p className="text-muted-foreground mt-2">Bem-vindo, {userData?.name}!</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -36,7 +64,7 @@ export default function MentorHome() {
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mentor?.nomePlataforma}</div>
+            <div className="text-2xl font-bold">{userData?.nomePlataforma || "Mentoria"}</div>
             <p className="text-xs text-muted-foreground mt-1">
               Seu espaço personalizado
             </p>

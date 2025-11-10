@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { trpc } from "@/lib/trpc";
+import { useState, useEffect } from "react";
+import { gestorApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,43 +15,41 @@ export default function GestorAlunos() {
   const [editingAluno, setEditingAluno] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedMentorId, setSelectedMentorId] = useState<string>("all");
+  const [alunos, setAlunos] = useState<any[]>([]);
+  const [mentores, setMentores] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     nome: "",
     email: "",
-    mentorId: 0,
+    mentorId: "",
   });
 
-  const { data: alunos, isLoading: loadingAlunos, refetch: refetchAlunos } = trpc.gestor.getAllAlunos.useQuery();
-  const { data: mentores, isLoading: loadingMentores } = trpc.gestor.getMentores.useQuery();
+  const loadData = async () => {
+    try {
+      setIsLoading(true);
+      const [alunosData, mentoresData] = await Promise.all([
+        gestorApi.getAllAlunos(),
+        gestorApi.getMentores(),
+      ]);
+      setAlunos(alunosData as any[]);
+      setMentores(mentoresData as any[]);
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao carregar dados");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  const updateAluno = trpc.gestor.updateAluno.useMutation({
-    onSuccess: () => {
-      toast.success("Aluno atualizado com sucesso!");
-      setDialogOpen(false);
-      setEditingAluno(null);
-      resetForm();
-      refetchAlunos();
-    },
-    onError: (error: any) => {
-      toast.error(error.message || "Erro ao atualizar aluno");
-    },
-  });
-
-  const deleteAluno = trpc.gestor.deleteAluno.useMutation({
-    onSuccess: () => {
-      toast.success("Aluno removido com sucesso!");
-      refetchAlunos();
-    },
-    onError: (error: any) => {
-      toast.error(error.message || "Erro ao remover aluno");
-    },
-  });
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const resetForm = () => {
     setFormData({
       nome: "",
       email: "",
-      mentorId: 0,
+      mentorId: "",
     });
   };
 
@@ -65,7 +63,7 @@ export default function GestorAlunos() {
     setDialogOpen(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.nome || !formData.email || !formData.mentorId) {
@@ -73,19 +71,37 @@ export default function GestorAlunos() {
       return;
     }
 
-    updateAluno.mutate({
-      id: editingAluno.id,
-      ...formData,
-    });
-  };
-
-  const handleDelete = (id: number, nome: string) => {
-    if (window.confirm(`Tem certeza que deseja remover o aluno "${nome}"?`)) {
-      deleteAluno.mutate({ id });
+    try {
+      setIsSaving(true);
+      await gestorApi.updateAluno({
+        alunoId: editingAluno.id,
+        ...formData,
+      });
+      toast.success("Aluno atualizado com sucesso!");
+      setDialogOpen(false);
+      setEditingAluno(null);
+      resetForm();
+      await loadData();
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao atualizar aluno");
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const getMentorNome = (mentorId: number) => {
+  const handleDelete = async (id: string, nome: string) => {
+    if (window.confirm(`Tem certeza que deseja remover o aluno "${nome}"?`)) {
+      try {
+        await gestorApi.deleteAluno(id);
+        toast.success("Aluno removido com sucesso!");
+        await loadData();
+      } catch (error: any) {
+        toast.error(error.message || "Erro ao remover aluno");
+      }
+    }
+  };
+
+  const getMentorNome = (mentorId: string) => {
     const mentor = mentores?.find((m) => m.id === mentorId);
     return mentor?.nome || "Sem mentor";
   };
@@ -93,11 +109,11 @@ export default function GestorAlunos() {
   const filteredAlunos = alunos?.filter((aluno: any) => {
     const matchesSearch = aluno.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
       aluno.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesMentor = selectedMentorId === "all" || aluno.mentorId === parseInt(selectedMentorId);
+    const matchesMentor = selectedMentorId === "all" || aluno.mentorId === selectedMentorId;
     return matchesSearch && matchesMentor;
   });
 
-  if (loadingAlunos || loadingMentores) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -135,7 +151,7 @@ export default function GestorAlunos() {
               <SelectContent>
                 <SelectItem value="all">Todos os mentores</SelectItem>
                 {mentores?.map((mentor: any) => (
-                  <SelectItem key={mentor.id} value={mentor.id.toString()}>
+                  <SelectItem key={mentor.id} value={mentor.id}>
                     {mentor.nome} - {mentor.nomePlataforma}
                   </SelectItem>
                 ))}
@@ -241,9 +257,9 @@ export default function GestorAlunos() {
               <div className="space-y-2">
                 <Label htmlFor="mentorId">Mentor *</Label>
                 <Select
-                  value={formData.mentorId.toString()}
+                  value={formData.mentorId}
                   onValueChange={(value) =>
-                    setFormData({ ...formData, mentorId: parseInt(value) })
+                    setFormData({ ...formData, mentorId: value })
                   }
                 >
                   <SelectTrigger>
@@ -251,7 +267,7 @@ export default function GestorAlunos() {
                   </SelectTrigger>
                   <SelectContent>
                     {mentores?.map((mentor) => (
-                      <SelectItem key={mentor.id} value={mentor.id.toString()}>
+                      <SelectItem key={mentor.id} value={mentor.id}>
                         {mentor.nome} - {mentor.nomePlataforma}
                       </SelectItem>
                     ))}
@@ -275,8 +291,8 @@ export default function GestorAlunos() {
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={updateAluno.isPending}>
-                {updateAluno.isPending ? "Salvando..." : "Atualizar"}
+              <Button type="submit" disabled={isSaving}>
+                {isSaving ? "Salvando..." : "Atualizar"}
               </Button>
             </DialogFooter>
           </form>

@@ -1,6 +1,7 @@
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { trpc } from "@/lib/trpc";
+import { alunoApi } from "@/lib/api";
 import { 
   Activity, 
   BookOpen, 
@@ -16,14 +17,37 @@ import {
   ArrowRight
 } from "lucide-react";
 import { useLocation } from "wouter";
+import { useAuthContext } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 export default function AlunoHome() {
   const [, setLocation] = useLocation();
-  const { data: aluno, isLoading: loadingAluno } = trpc.aluno.me.useQuery();
-  const { data: estudos, isLoading: loadingEstudos } = trpc.aluno.getEstudos.useQuery();
-  const { data: simulados, isLoading: loadingSimulados } = trpc.aluno.getSimulados.useQuery();
+  const { userData } = useAuthContext();
+  const [estudos, setEstudos] = useState<any[]>([]);
+  const [simulados, setSimulados] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  if (loadingAluno || loadingEstudos || loadingSimulados) {
+  const loadData = async () => {
+    try {
+      setIsLoading(true);
+      const [estudosData, simuladosData] = await Promise.all([
+        alunoApi.getEstudos(),
+        alunoApi.getSimulados(),
+      ]);
+      setEstudos(estudosData as any[]);
+      setSimulados(simuladosData as any[]);
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao carregar dados");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -84,7 +108,7 @@ export default function AlunoHome() {
       {/* Header */}
       <div className="space-y-2">
         <h1 className="text-3xl font-bold tracking-tight">
-          Bem-vindo de volta, {aluno?.nome || "Aluno"}! 👋
+          Bem-vindo de volta, {userData?.name || "Aluno"}! 👋
         </h1>
         <p className="text-muted-foreground">
           Aqui está um resumo do seu progresso nos estudos

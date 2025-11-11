@@ -1,7 +1,5 @@
-import { getFunctions, httpsCallable } from "firebase/functions";
-import { app } from "./firebase";
-
-const functions = getFunctions(app);
+import { httpsCallable } from "firebase/functions";
+import { functions } from "./firebase";
 
 // Helper para chamar Cloud Functions
 async function callFunction<T = any, R = any>(functionName: string, data?: T): Promise<R> {
@@ -16,14 +14,14 @@ async function callFunction<T = any, R = any>(functionName: string, data?: T): P
 
 export const gestorApi = {
   // Mentores
-  getMentores: () => callFunction("gestor_getMentores"),
+  getMentores: () => callFunction("gestorFunctions-getMentores"),
   createMentor: (data: {
     nome: string;
     email: string;
     nomePlataforma: string;
     logoUrl?: string;
     corPrincipal?: string;
-  }) => callFunction("gestor_createMentor", data),
+  }) => callFunction("gestorFunctions-createMentor", data),
   
   updateMentor: (data: {
     mentorId: string;
@@ -32,21 +30,21 @@ export const gestorApi = {
     nomePlataforma?: string;
     logoUrl?: string;
     corPrincipal?: string;
-  }) => callFunction("gestor_updateMentor", data),
+  }) => callFunction("gestorFunctions-updateMentor", data),
   
-  deleteMentor: (mentorId: string) => callFunction("gestor_deleteMentor", { mentorId }),
+  deleteMentor: (mentorId: string) => callFunction("gestorFunctions-deleteMentor", { mentorId }),
   
-  toggleMentorStatus: (mentorId: string) => callFunction("gestor_toggleMentorStatus", { mentorId }),
+  toggleMentorStatus: (mentorId: string) => callFunction("gestorFunctions-toggleMentorStatus", { mentorId }),
 
   // Alunos
-  getAllAlunos: () => callFunction("gestor_getAllAlunos"),
+  getAllAlunos: () => callFunction("gestorFunctions-getAllAlunos"),
   updateAluno: (data: {
     alunoId: string;
     nome?: string;
     email?: string;
     mentorId?: string;
-  }) => callFunction("gestor_updateAluno", data),
-  deleteAluno: (alunoId: string) => callFunction("gestor_deleteAluno", { alunoId }),
+  }) => callFunction("gestorFunctions-updateAluno", data),
+  deleteAluno: (alunoId: string) => callFunction("gestorFunctions-deleteAluno", { alunoId }),
 };
 
 // ============================================

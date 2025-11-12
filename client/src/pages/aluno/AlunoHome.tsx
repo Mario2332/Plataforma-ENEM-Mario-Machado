@@ -435,7 +435,7 @@ export default function AlunoHome() {
             {analisePorMateria.pontosFortes.length > 0 && (
               <div className="p-4 bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 rounded-lg">
                 <p className="text-sm font-medium text-emerald-900 dark:text-emerald-100 mb-2">
-                  ⭐ Pontos Fortes (Desempenho ≥ 80%)
+                  ⭐ Pontos Fortes (Desempenho &ge; 80%)
                 </p>
                 <div className="space-y-1">
                   {analisePorMateria.pontosFortes.map(m => (
@@ -452,7 +452,7 @@ export default function AlunoHome() {
             {analisePorMateria.pontosFracos.length > 0 && (
               <div className="p-4 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg">
                 <p className="text-sm font-medium text-red-900 dark:text-red-100 mb-2">
-                  ⚠️ Pontos Fracos (Desempenho < 60%)
+                  ⚠️ Pontos Fracos (Desempenho &lt; 60%)
                 </p>
                 <div className="space-y-1">
                   {analisePorMateria.pontosFracos.map(m => (

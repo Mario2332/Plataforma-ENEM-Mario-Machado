@@ -190,6 +190,70 @@ const createEstudo = functions
   });
 
 /**
+ * Atualizar estudo existente
+ */
+const updateEstudo = functions
+  .region("southamerica-east1")
+  .https.onCall(async (data, context) => {
+    const auth = await getAuthContext(context);
+    requireRole(auth, "aluno");
+
+    const {
+      estudoId,
+      data: dataEstudo,
+      materia,
+      conteudo,
+      tempoMinutos,
+      questoesFeitas,
+      questoesAcertadas,
+      flashcardsRevisados,
+    } = data;
+
+    if (!estudoId) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "ID do estudo é obrigatório"
+      );
+    }
+
+    try {
+      const estudoRef = db
+        .collection("alunos")
+        .doc(auth.uid)
+        .collection("estudos")
+        .doc(estudoId);
+
+      // Verificar se o estudo existe
+      const estudoDoc = await estudoRef.get();
+      if (!estudoDoc.exists) {
+        throw new functions.https.HttpsError("not-found", "Estudo não encontrado");
+      }
+
+      // Preparar dados para atualização (apenas campos fornecidos)
+      const updateData: any = {
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      };
+
+      if (dataEstudo !== undefined) {
+        updateData.data = admin.firestore.Timestamp.fromDate(new Date(dataEstudo));
+      }
+      if (materia !== undefined) updateData.materia = materia;
+      if (conteudo !== undefined) updateData.conteudo = conteudo;
+      if (tempoMinutos !== undefined) updateData.tempoMinutos = tempoMinutos;
+      if (questoesFeitas !== undefined) updateData.questoesFeitas = questoesFeitas;
+      if (questoesAcertadas !== undefined) updateData.questoesAcertadas = questoesAcertadas;
+      if (flashcardsRevisados !== undefined) updateData.flashcardsRevisados = flashcardsRevisados;
+
+      await estudoRef.update(updateData);
+
+      return { success: true, estudoId };
+    } catch (error: any) {
+      functions.logger.error("Erro ao atualizar estudo:", error);
+      throw new functions.https.HttpsError("internal", error.message);
+    }
+  });
+
+/**
  * Deletar estudo
  */
 const deleteEstudo = functions
@@ -422,6 +486,7 @@ export const alunoFunctions = {
   getDashboardData,
   getEstudos,
   createEstudo,
+  updateEstudo,
   deleteEstudo,
   getSimulados,
   createSimulado,

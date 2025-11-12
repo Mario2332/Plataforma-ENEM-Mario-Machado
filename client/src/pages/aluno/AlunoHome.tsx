@@ -19,6 +19,20 @@ import {
 import { useLocation } from "wouter";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { useState, useEffect, useMemo } from "react";
+
+// Matérias padronizadas do ENEM
+const MATERIAS_ENEM = [
+  "Matemática",
+  "Biologia",
+  "Física",
+  "Química",
+  "História",
+  "Geografia",
+  "Filosofia",
+  "Sociologia",
+  "Linguagens",
+] as const;
 
 export default function AlunoHome() {
   const [, setLocation] = useLocation();
@@ -192,6 +206,41 @@ export default function AlunoHome() {
   };
   
   const mapaCalor = gerarMapaCalor();
+  
+  // Análise por matéria (pontos fortes e fracos)
+  const analisePorMateria = useMemo(() => {
+    const porMateria: Record<string, { questoes: number; acertos: number; tempo: number }> = {};
+    
+    // Inicializar todas as matérias
+    MATERIAS_ENEM.forEach(materia => {
+      porMateria[materia] = { questoes: 0, acertos: 0, tempo: 0 };
+    });
+    
+    // Agregar dados dos estudos
+    estudos.forEach(estudo => {
+      const materia = estudo.materia;
+      if (!porMateria[materia]) {
+        porMateria[materia] = { questoes: 0, acertos: 0, tempo: 0 };
+      }
+      porMateria[materia].questoes += estudo.questoesFeitas || 0;
+      porMateria[materia].acertos += estudo.questoesAcertadas || 0;
+      porMateria[materia].tempo += estudo.tempoMinutos || 0;
+    });
+    
+    // Calcular percentuais e classificar
+    const materias = Object.entries(porMateria)
+      .map(([materia, dados]) => ({
+        materia,
+        ...dados,
+        percentual: dados.questoes > 0 ? Math.round((dados.acertos / dados.questoes) * 100) : null,
+      }))
+      .filter(m => m.questoes >= 5); // Apenas matérias com pelo menos 5 questões
+    
+    const pontosFortes = materias.filter(m => m.percentual !== null && m.percentual >= 80);
+    const pontosFracos = materias.filter(m => m.percentual !== null && m.percentual < 60);
+    
+    return { pontosFortes, pontosFracos, todasMaterias: materias };
+  }, [estudos]);
   
   // Função para determinar a cor baseada na contagem
   const getCorIntensidade = (count: number) => {
@@ -382,6 +431,44 @@ export default function AlunoHome() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Pontos Fortes */}
+            {analisePorMateria.pontosFortes.length > 0 && (
+              <div className="p-4 bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 rounded-lg">
+                <p className="text-sm font-medium text-emerald-900 dark:text-emerald-100 mb-2">
+                  ⭐ Pontos Fortes (Desempenho ≥ 80%)
+                </p>
+                <div className="space-y-1">
+                  {analisePorMateria.pontosFortes.map(m => (
+                    <div key={m.materia} className="flex justify-between items-center text-xs">
+                      <span className="text-emerald-700 dark:text-emerald-300 font-medium">{m.materia}</span>
+                      <span className="text-emerald-600 dark:text-emerald-400">{m.percentual}% ({m.acertos}/{m.questoes})</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Pontos Fracos */}
+            {analisePorMateria.pontosFracos.length > 0 && (
+              <div className="p-4 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg">
+                <p className="text-sm font-medium text-red-900 dark:text-red-100 mb-2">
+                  ⚠️ Pontos Fracos (Desempenho < 60%)
+                </p>
+                <div className="space-y-1">
+                  {analisePorMateria.pontosFracos.map(m => (
+                    <div key={m.materia} className="flex justify-between items-center text-xs">
+                      <span className="text-red-700 dark:text-red-300 font-medium">{m.materia}</span>
+                      <span className="text-red-600 dark:text-red-400">{m.percentual}% ({m.acertos}/{m.questoes})</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-red-600 dark:text-red-400 mt-2">
+                  💡 Dica: Revise os conteúdos e faça mais exercícios dessas matérias
+                </p>
+              </div>
+            )}
+            
+            {/* Sequência de estudos */}
             {streak === 0 && (
               <div className="p-4 bg-orange-50 dark:bg-orange-950 border border-orange-200 dark:border-orange-800 rounded-lg">
                 <p className="text-sm font-medium text-orange-900 dark:text-orange-100">
@@ -396,10 +483,10 @@ export default function AlunoHome() {
             {streak > 0 && streak < 7 && (
               <div className="p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
                 <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                  🔥 Você está no caminho certo!
+                  🔥 {streak} dias de sequência!
                 </p>
                 <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
-                  {streak} dias de sequência. Continue para formar o hábito!
+                  Continue para formar o hábito de estudar todos os dias
                 </p>
               </div>
             )}
@@ -407,32 +494,22 @@ export default function AlunoHome() {
             {streak >= 7 && (
               <div className="p-4 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
                 <p className="text-sm font-medium text-green-900 dark:text-green-100">
-                  🏆 Excelente consistência!
+                  🏆 {streak} dias consecutivos!
                 </p>
                 <p className="text-xs text-green-700 dark:text-green-300 mt-1">
-                  {streak} dias consecutivos! Você está desenvolvendo um ótimo hábito.
+                  Excelente consistência! Você está no caminho certo.
                 </p>
               </div>
             )}
-
-            {percentualAcerto > 0 && percentualAcerto < 50 && (
-              <div className="p-4 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg">
-                <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
-                  📚 Foque na qualidade
+            
+            {/* Mensagem quando não há dados suficientes */}
+            {analisePorMateria.pontosFortes.length === 0 && analisePorMateria.pontosFracos.length === 0 && (
+              <div className="p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                  📊 Dados insuficientes
                 </p>
-                <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                  Sua taxa de acerto está em {percentualAcerto}%. Revise os conteúdos com mais atenção.
-                </p>
-              </div>
-            )}
-
-            {percentualAcerto >= 80 && (
-              <div className="p-4 bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 rounded-lg">
-                <p className="text-sm font-medium text-emerald-900 dark:text-emerald-100">
-                  ⭐ Ótimo desempenho!
-                </p>
-                <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-1">
-                  {percentualAcerto}% de acerto! Continue praticando para manter.
+                <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                  Faça pelo menos 5 questões de cada matéria para ver sua análise detalhada
                 </p>
               </div>
             )}

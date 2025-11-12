@@ -135,16 +135,24 @@ export default function AlunoEstudos() {
       
       if (editandoId) {
         // Modo de edição
+        // Criar data no timezone local (evita problema de um dia anterior)
+        const [ano, mes, dia] = formData.data.split('-').map(Number);
+        const dataLocal = new Date(ano, mes - 1, dia, 12, 0, 0); // Meio-dia para evitar problemas de timezone
+        
         await alunoApi.updateEstudo(editandoId, {
           ...formData,
-          data: new Date(formData.data),
+          data: dataLocal,
         });
         toast.success("Estudo atualizado com sucesso!");
       } else {
         // Modo de criação
+        // Criar data no timezone local (evita problema de um dia anterior)
+        const [ano, mes, dia] = formData.data.split('-').map(Number);
+        const dataLocal = new Date(ano, mes - 1, dia, 12, 0, 0); // Meio-dia para evitar problemas de timezone
+        
         await alunoApi.createEstudo({
           ...formData,
-          data: new Date(formData.data),
+          data: dataLocal,
         });
         toast.success("Estudo registrado com sucesso!");
       }

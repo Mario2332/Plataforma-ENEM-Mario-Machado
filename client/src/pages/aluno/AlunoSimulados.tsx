@@ -50,9 +50,14 @@ export default function AlunoSimulados() {
     e.preventDefault();
     try {
       setIsSaving(true);
+      
+      // Criar data no timezone local (evita problema de um dia anterior)
+      const [ano, mes, dia] = formData.data.split('-').map(Number);
+      const dataLocal = new Date(ano, mes - 1, dia, 12, 0, 0); // Meio-dia para evitar problemas de timezone
+      
       await alunoApi.createSimulado({
         ...formData,
-        data: new Date(formData.data),
+        data: dataLocal,
       });
       toast.success("Simulado registrado!");
       setDialogOpen(false);

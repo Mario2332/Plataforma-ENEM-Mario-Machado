@@ -53,13 +53,13 @@ export const gestorApi = {
 
 export const mentorApi = {
   // Alunos
-  getAlunos: () => callFunction("mentor_getAlunos"),
+  getAlunos: () => callFunction("mentorFunctions-getAlunos"),
   createAluno: (data: {
     nome: string;
     email: string;
     celular?: string;
     plano?: string;
-  }) => callFunction("mentor_createAluno", data),
+  }) => callFunction("mentorFunctions-createAluno", data),
   
   updateAluno: (data: {
     alunoId: string;
@@ -67,19 +67,19 @@ export const mentorApi = {
     email?: string;
     celular?: string;
     plano?: string;
-  }) => callFunction("mentor_updateAluno", data),
+  }) => callFunction("mentorFunctions-updateAluno", data),
   
-  deleteAluno: (alunoId: string) => callFunction("mentor_deleteAluno", { alunoId }),
+  deleteAluno: (alunoId: string) => callFunction("mentorFunctions-deleteAluno", { alunoId }),
   
-  toggleAlunoStatus: (alunoId: string) => callFunction("mentor_toggleAlunoStatus", { alunoId }),
+  toggleAlunoStatus: (alunoId: string) => callFunction("mentorFunctions-toggleAlunoStatus", { alunoId }),
 
   // Configurações
-  getConfig: () => callFunction("mentor_getConfig"),
+  getConfig: () => callFunction("mentorFunctions-getConfig"),
   updateConfig: (data: {
     nomePlataforma?: string;
     logoUrl?: string;
     corPrincipal?: string;
-  }) => callFunction("mentor_updateConfig", data),
+  }) => callFunction("mentorFunctions-updateConfig", data),
 };
 
 // ============================================
@@ -88,19 +88,19 @@ export const mentorApi = {
 
 export const alunoApi = {
   // Profile
-  getMe: () => callFunction("aluno_getMe"),
+  getMe: () => callFunction("alunoFunctions-getMe"),
   updateProfile: (data: {
     nome?: string;
     celular?: string;
-  }) => callFunction("aluno_updateProfile", data),
+  }) => callFunction("alunoFunctions-updateProfile", data),
   // Estudos
-  getEstudos: () => callFunction("aluno_getEstudos"),
+  getEstudos: () => callFunction("alunoFunctions-getEstudos"),
   createEstudo: (data: {
     materia: string;
     topico: string;
     tempoMinutos: number;
     observacoes?: string;
-  }) => callFunction("aluno_createEstudo", data),
+  }) => callFunction("alunoFunctions-createEstudo", data),
   
   updateEstudo: (data: {
     estudoId: string;
@@ -108,12 +108,12 @@ export const alunoApi = {
     topico?: string;
     tempoMinutos?: number;
     observacoes?: string;
-  }) => callFunction("aluno_updateEstudo", data),
+  }) => callFunction("alunoFunctions-updateEstudo", data),
   
-  deleteEstudo: (estudoId: string) => callFunction("aluno_deleteEstudo", { estudoId }),
+  deleteEstudo: (estudoId: string) => callFunction("alunoFunctions-deleteEstudo", { estudoId }),
 
   // Simulados
-  getSimulados: () => callFunction("aluno_getSimulados"),
+  getSimulados: () => callFunction("alunoFunctions-getSimulados"),
   createSimulado: (data: {
     nome: string;
     data: Date;
@@ -124,7 +124,7 @@ export const alunoApi = {
     notaCienciasNatureza?: number;
     notaCienciasHumanas?: number;
     observacoes?: string;
-  }) => callFunction("aluno_createSimulado", data),
+  }) => callFunction("alunoFunctions-createSimulado", data),
   
   updateSimulado: (data: {
     simuladoId: string;
@@ -137,22 +137,22 @@ export const alunoApi = {
     notaCienciasNatureza?: number;
     notaCienciasHumanas?: number;
     observacoes?: string;
-  }) => callFunction("aluno_updateSimulado", data),
+  }) => callFunction("alunoFunctions-updateSimulado", data),
   
-  deleteSimulado: (simuladoId: string) => callFunction("aluno_deleteSimulado", { simuladoId }),
+  deleteSimulado: (simuladoId: string) => callFunction("alunoFunctions-deleteSimulado", { simuladoId }),
 
   // Métricas
-  getMetricas: () => callFunction("aluno_getMetricas"),
+  getMetricas: () => callFunction("alunoFunctions-getMetricas"),
 
   // Cronograma
-  getCronograma: () => callFunction("aluno_getCronograma"),
+  getCronograma: () => callFunction("alunoFunctions-getCronograma"),
   createCronograma: (data: {
     nome: string;
     descricao?: string;
     dataInicio: Date;
     dataFim: Date;
     templateId?: string;
-  }) => callFunction("aluno_createCronograma", data),
+  }) => callFunction("alunoFunctions-createCronograma", data),
   
   updateCronograma: (data: {
     cronogramaId: string;
@@ -160,19 +160,19 @@ export const alunoApi = {
     descricao?: string;
     dataInicio?: Date;
     dataFim?: Date;
-  }) => callFunction("aluno_updateCronograma", data),
+  }) => callFunction("alunoFunctions-updateCronograma", data),
   
-  deleteCronograma: (cronogramaId: string) => callFunction("aluno_deleteCronograma", { cronogramaId }),
+  deleteCronograma: (cronogramaId: string) => callFunction("alunoFunctions-deleteCronograma", { cronogramaId }),
 
   // Tarefas do Cronograma
-  getTarefas: (cronogramaId: string) => callFunction("aluno_getTarefas", { cronogramaId }),
+  getTarefas: (cronogramaId: string) => callFunction("alunoFunctions-getTarefas", { cronogramaId }),
   createTarefa: (data: {
     cronogramaId: string;
     titulo: string;
     descricao?: string;
     data: Date;
     materia?: string;
-  }) => callFunction("aluno_createTarefa", data),
+  }) => callFunction("alunoFunctions-createTarefa", data),
   
   updateTarefa: (data: {
     tarefaId: string;
@@ -181,15 +181,15 @@ export const alunoApi = {
     data?: Date;
     materia?: string;
     concluida?: boolean;
-  }) => callFunction("aluno_updateTarefa", data),
+  }) => callFunction("alunoFunctions-updateTarefa", data),
   
-  deleteTarefa: (tarefaId: string) => callFunction("aluno_deleteTarefa", { tarefaId }),
+  deleteTarefa: (tarefaId: string) => callFunction("alunoFunctions-deleteTarefa", { tarefaId }),
 
   // Conteúdos ENEM
-  getProgresso: (materia?: string) => callFunction("aluno_getProgresso", { materia }),
+  getProgresso: (materia?: string) => callFunction("getProgresso", { materia }),
   updateProgresso: (data: {
     materia: string;
     topico: string;
     concluido: boolean;
-  }) => callFunction("aluno_updateProgresso", data),
+  }) => callFunction("updateProgresso", data),
 };

@@ -126,7 +126,7 @@ export function useAuth() {
       await updateProfile(user, { displayName: name });
 
       // Aguardar um momento para o trigger onUserCreated criar o documento users
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 1500));
 
       // Criar documento do aluno
       const alunoDocRef = doc(db, "alunos", user.uid);
@@ -141,6 +141,9 @@ export function useAuth() {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
+
+      // Forçar reload do userData após cadastro
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       return user;
     } catch (error: any) {

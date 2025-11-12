@@ -21,18 +21,25 @@ export const onUserCreated = functions
         return;
       }
 
+      // Aguardar um momento para o displayName ser atualizado pelo frontend
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Buscar dados atualizados do usuário
+      const updatedUser = await admin.auth().getUser(user.uid);
+      const displayName = updatedUser.displayName || user.displayName || "Usuário";
+
       // Criar documento do usuário no Firestore apenas se não existir
       await userDocRef.set({
         uid: user.uid,
         email: user.email || "",
-        name: user.displayName || "Usuário",
+        name: displayName,
         role: "aluno", // Role padrão apenas para novos usuários
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         lastSignedIn: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      functions.logger.info(`Documento de usuário criado para: ${user.uid}`);
+      functions.logger.info(`Documento de usuário criado para: ${user.uid} com nome: ${displayName}`);
     } catch (error) {
       functions.logger.error("Erro ao criar documento de usuário:", error);
       throw error;

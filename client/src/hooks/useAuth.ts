@@ -122,20 +122,11 @@ export function useAuth() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Atualizar perfil com nome
+      // Atualizar perfil com nome (antes do trigger disparar)
       await updateProfile(user, { displayName: name });
 
-      // Criar documento do usuário no Firestore
-      const userDocRef = doc(db, "users", user.uid);
-      await setDoc(userDocRef, {
-        uid: user.uid,
-        email: email,
-        name: name,
-        role: "aluno",
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        lastSignedIn: serverTimestamp(),
-      });
+      // Aguardar um momento para o trigger onUserCreated criar o documento users
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       // Criar documento do aluno
       const alunoDocRef = doc(db, "alunos", user.uid);

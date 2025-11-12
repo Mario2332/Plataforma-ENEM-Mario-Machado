@@ -72,6 +72,7 @@ export default function AlunoCronograma() {
     try {
       setIsLoading(true);
       const horarios = await alunoApi.getHorarios();
+      console.log('Horários carregados do backend:', horarios);
       
       // Converter horários do backend para TimeSlots
       const slots: TimeSlot[] = [];
@@ -267,31 +268,40 @@ export default function AlunoCronograma() {
     try {
       setIsSaving(true);
       
-      // Agrupar slots consecutivos do mesmo dia, atividade e cor
-      const groupedSlots: Map<string, { day: number; startHour: number; startMinute: number; endHour: number; endMinute: number; activity: string; color: string }> = new Map();
+      // Ordenar slots por dia, hora e minuto
+      const sortedSchedule = [...schedule]
+        .filter(s => s.activity) // Apenas slots com atividade
+        .sort((a, b) => {
+          if (a.day !== b.day) return a.day - b.day;
+          if (a.hour !== b.hour) return a.hour - b.hour;
+          return a.minute - b.minute;
+        });
       
-      schedule.forEach(slot => {
-        if (!slot.activity) return; // Ignorar slots vazios
+      // Agrupar slots consecutivos do mesmo dia, atividade e cor
+      const groupedSlots: Array<{ day: number; startHour: number; startMinute: number; endHour: number; endMinute: number; activity: string; color: string }> = [];
+      
+      sortedSchedule.forEach(slot => {
+        const lastGroup = groupedSlots[groupedSlots.length - 1];
         
-        const key = `${slot.day}-${slot.activity}-${slot.color}`;
-        const existing = groupedSlots.get(key);
-        
-        if (existing) {
-          // Atualizar hora final se for consecutivo
-          const currentTime = slot.hour * 60 + slot.minute;
-          const existingEndTime = existing.endHour * 60 + existing.endMinute;
-          
-          if (currentTime === existingEndTime) {
-            existing.endHour = slot.hour;
-            existing.endMinute = slot.minute + 30;
-            if (existing.endMinute >= 60) {
-              existing.endMinute = 0;
-              existing.endHour++;
-            }
+        // Verificar se pode agrupar com o grupo anterior
+        if (
+          lastGroup &&
+          lastGroup.day === slot.day &&
+          lastGroup.activity === slot.activity &&
+          lastGroup.color === slot.color &&
+          lastGroup.endHour === slot.hour &&
+          lastGroup.endMinute === slot.minute
+        ) {
+          // Estender o grupo existente
+          lastGroup.endHour = slot.hour;
+          lastGroup.endMinute = slot.minute + 30;
+          if (lastGroup.endMinute >= 60) {
+            lastGroup.endMinute = 0;
+            lastGroup.endHour++;
           }
         } else {
-          // Novo grupo
-          groupedSlots.set(key, {
+          // Criar novo grupo
+          groupedSlots.push({
             day: slot.day,
             startHour: slot.hour,
             startMinute: slot.minute,
@@ -301,9 +311,10 @@ export default function AlunoCronograma() {
             color: slot.color,
           });
           
-          if (groupedSlots.get(key)!.endMinute >= 60) {
-            groupedSlots.get(key)!.endMinute = 0;
-            groupedSlots.get(key)!.endHour++;
+          const currentGroup = groupedSlots[groupedSlots.length - 1];
+          if (currentGroup.endMinute >= 60) {
+            currentGroup.endMinute = 0;
+            currentGroup.endHour++;
           }
         }
       });
@@ -313,16 +324,18 @@ export default function AlunoCronograma() {
       await Promise.all(existingHorarios.map((h: any) => alunoApi.deleteHorario(h.id)));
       
       // Criar novos horários
-      const promises = Array.from(groupedSlots.values()).map(group => {
+      const promises = groupedSlots.map(group => {
         const [materia, ...descricaoParts] = group.activity.split(' - ');
-        return alunoApi.createHorario({
+        const horarioData = {
           diaSemana: group.day,
           horaInicio: `${String(group.startHour).padStart(2, '0')}:${String(group.startMinute).padStart(2, '0')}`,
           horaFim: `${String(group.endHour).padStart(2, '0')}:${String(group.endMinute).padStart(2, '0')}`,
           materia: materia.trim(),
           descricao: descricaoParts.join(' - ').trim() || undefined,
           cor: group.color,
-        });
+        };
+        console.log('Salvando horário:', horarioData);
+        return alunoApi.createHorario(horarioData);
       });
       
       await Promise.all(promises);

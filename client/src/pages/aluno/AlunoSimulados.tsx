@@ -112,33 +112,40 @@ export default function AlunoSimulados() {
         
         let valor: number;
         let label: string;
+        let maxValor: number;
         
         switch (areaFiltro) {
           case "linguagens":
-            valor = Math.round((s.linguagensAcertos / 45) * 100);
+            valor = s.linguagensAcertos;
             label = "Linguagens";
+            maxValor = 45;
             break;
           case "humanas":
-            valor = Math.round((s.humanasAcertos / 45) * 100);
+            valor = s.humanasAcertos;
             label = "Humanas";
+            maxValor = 45;
             break;
           case "natureza":
-            valor = Math.round((s.naturezaAcertos / 45) * 100);
+            valor = s.naturezaAcertos;
             label = "Natureza";
+            maxValor = 45;
             break;
           case "matematica":
-            valor = Math.round((s.matematicaAcertos / 45) * 100);
+            valor = s.matematicaAcertos;
             label = "Matemática";
+            maxValor = 45;
             break;
           default: // geral
-            valor = Math.round((total / 180) * 100);
+            valor = total;
             label = "Geral";
+            maxValor = 180;
         }
         
         return {
           data: dataFormatada,
           [label]: valor,
           nome: s.nome,
+          maxValor,
         };
       })
       .filter(Boolean)
@@ -150,6 +157,7 @@ export default function AlunoSimulados() {
                        areaFiltro === "linguagens" ? "Linguagens" :
                        areaFiltro === "humanas" ? "Humanas" :
                        areaFiltro === "natureza" ? "Natureza" : "Matemática";
+  const maxValorGrafico = areaFiltro === "geral" ? 180 : 45;
 
   if (isLoading) {
     return <div className="flex items-center justify-center min-h-[400px]">
@@ -281,9 +289,9 @@ export default function AlunoSimulados() {
                   style={{ fontSize: '12px' }}
                 />
                 <YAxis 
-                  domain={[0, 100]}
+                  domain={[0, maxValorGrafico]}
                   style={{ fontSize: '12px' }}
-                  label={{ value: 'Percentual (%)', angle: -90, position: 'insideLeft' }}
+                  label={{ value: 'Acertos', angle: -90, position: 'insideLeft' }}
                 />
                 <Tooltip 
                   content={({ active, payload }) => {
@@ -293,7 +301,7 @@ export default function AlunoSimulados() {
                           <p className="font-medium">{payload[0].payload.nome}</p>
                           <p className="text-sm text-muted-foreground">{payload[0].payload.data}</p>
                           <p className="text-sm font-semibold text-primary mt-1">
-                            {labelGrafico}: {payload[0].value}%
+                            {labelGrafico}: {payload[0].value}/{payload[0].payload.maxValor} acertos
                           </p>
                         </div>
                       );

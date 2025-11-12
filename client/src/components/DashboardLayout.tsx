@@ -160,7 +160,11 @@ export default function DashboardLayout({
         } as CSSProperties
       }
     >
-      <DashboardLayoutContent setSidebarWidth={setSidebarWidth}>
+      <DashboardLayoutContent 
+        setSidebarWidth={setSidebarWidth}
+        theme={theme}
+        toggleTheme={toggleTheme}
+      >
         {children}
       </DashboardLayoutContent>
     </SidebarProvider>
@@ -170,11 +174,15 @@ export default function DashboardLayout({
 type DashboardLayoutContentProps = {
   children: React.ReactNode;
   setSidebarWidth: (width: number) => void;
+  theme: string;
+  toggleTheme: () => void;
 };
 
 function DashboardLayoutContent({
   children,
   setSidebarWidth,
+  theme,
+  toggleTheme,
 }: DashboardLayoutContentProps) {
   const { user, userData, signOut } = useAuthContext();
   const [location, setLocation] = useLocation();

@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { alunoApi } from "@/lib/api";
-import { BookOpen, Clock, Edit, Play, Plus, Trash2, Pause, RotateCcw, Save } from "lucide-react";
+import { BookOpen, Clock, Edit, Play, Plus, Trash2, Pause, RotateCcw, Save, ArrowUpDown } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 
@@ -31,6 +31,9 @@ interface CronometroEstado {
   tempoAcumulado: number;
 }
 
+type OrdenacaoColuna = "data" | "materia" | "tempo" | "questoes" | "acertos" | null;
+type DirecaoOrdenacao = "asc" | "desc";
+
 export default function AlunoEstudos() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [cronometroAtivo, setCronometroAtivo] = useState(false);
@@ -39,6 +42,8 @@ export default function AlunoEstudos() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [colunaOrdenacao, setColunaOrdenacao] = useState<OrdenacaoColuna>(null);
+  const [direcaoOrdenacao, setDirecaoOrdenacao] = useState<DirecaoOrdenacao>("desc");
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const [formData, setFormData] = useState({
@@ -260,6 +265,62 @@ export default function AlunoEstudos() {
     const segs = segundos % 60;
     return `${String(horas).padStart(2, "0")}:${String(minutos).padStart(2, "0")}:${String(segs).padStart(2, "0")}`;
   };
+  
+  // Função para ordenar estudos
+  const handleOrdenar = (coluna: OrdenacaoColuna) => {
+    if (colunaOrdenacao === coluna) {
+      // Inverte a direção se clicar na mesma coluna
+      setDirecaoOrdenacao(direcaoOrdenacao === "asc" ? "desc" : "asc");
+    } else {
+      // Nova coluna, começa com descendente
+      setColunaOrdenacao(coluna);
+      setDirecaoOrdenacao("desc");
+    }
+  };
+  
+  // Estudos ordenados
+  const estudosOrdenados = [...estudos].sort((a, b) => {
+    if (!colunaOrdenacao) return 0;
+    
+    let valorA: any;
+    let valorB: any;
+    
+    switch (colunaOrdenacao) {
+      case "data":
+        // Converter datas para timestamp
+        try {
+          const dataA = a.data?.seconds || a.data?._seconds ? new Date((a.data.seconds || a.data._seconds) * 1000) : new Date(a.data);
+          const dataB = b.data?.seconds || b.data?._seconds ? new Date((b.data.seconds || b.data._seconds) * 1000) : new Date(b.data);
+          valorA = dataA.getTime();
+          valorB = dataB.getTime();
+        } catch {
+          return 0;
+        }
+        break;
+      case "materia":
+        valorA = a.materia?.toLowerCase() || "";
+        valorB = b.materia?.toLowerCase() || "";
+        break;
+      case "tempo":
+        valorA = a.tempoMinutos || 0;
+        valorB = b.tempoMinutos || 0;
+        break;
+      case "questoes":
+        valorA = a.questoesFeitas || 0;
+        valorB = b.questoesFeitas || 0;
+        break;
+      case "acertos":
+        valorA = a.questoesAcertadas || 0;
+        valorB = b.questoesAcertadas || 0;
+        break;
+      default:
+        return 0;
+    }
+    
+    if (valorA < valorB) return direcaoOrdenacao === "asc" ? -1 : 1;
+    if (valorA > valorB) return direcaoOrdenacao === "asc" ? 1 : -1;
+    return 0;
+  });
 
   if (isLoading) {
     return (
@@ -465,18 +526,43 @@ export default function AlunoEstudos() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Matéria</TableHead>
+                    <TableHead>
+                      <Button variant="ghost" size="sm" onClick={() => handleOrdenar("data")} className="-ml-3 h-8">
+                        Data
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button variant="ghost" size="sm" onClick={() => handleOrdenar("materia")} className="-ml-3 h-8">
+                        Matéria
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </TableHead>
                     <TableHead>Conteúdo</TableHead>
-                    <TableHead>Tempo</TableHead>
-                    <TableHead>Questões</TableHead>
-                    <TableHead>Acertos</TableHead>
+                    <TableHead>
+                      <Button variant="ghost" size="sm" onClick={() => handleOrdenar("tempo")} className="-ml-3 h-8">
+                        Tempo
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button variant="ghost" size="sm" onClick={() => handleOrdenar("questoes")} className="-ml-3 h-8">
+                        Questões
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button variant="ghost" size="sm" onClick={() => handleOrdenar("acertos")} className="-ml-3 h-8">
+                        Acertos
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </TableHead>
                     <TableHead>Flashcards</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {estudos.map((estudo) => {
+                  {estudosOrdenados.map((estudo) => {
                     // Lidar com diferentes formatos de data
                     let dataFormatada = "Data inválida";
                     

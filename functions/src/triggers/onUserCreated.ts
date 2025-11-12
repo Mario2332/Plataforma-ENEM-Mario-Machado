@@ -3,7 +3,7 @@ import * as admin from "firebase-admin";
 
 /**
  * Trigger executado quando um novo usuário é criado no Firebase Auth
- * Cria o documento correspondente no Firestore
+ * Cria o documento correspondente no Firestore APENAS se não existir
  */
 export const onUserCreated = functions
   .region("southamerica-east1")
@@ -12,12 +12,21 @@ export const onUserCreated = functions
     const db = admin.firestore();
 
     try {
-      // Criar documento do usuário no Firestore
-      await db.collection("users").doc(user.uid).set({
+      const userDocRef = db.collection("users").doc(user.uid);
+      const userDoc = await userDocRef.get();
+
+      // Verificar se o documento já existe
+      if (userDoc.exists) {
+        functions.logger.info(`Documento de usuário já existe para: ${user.uid}. Pulando criação.`);
+        return;
+      }
+
+      // Criar documento do usuário no Firestore apenas se não existir
+      await userDocRef.set({
         uid: user.uid,
         email: user.email || "",
         name: user.displayName || "Usuário",
-        role: "aluno", // Role padrão
+        role: "aluno", // Role padrão apenas para novos usuários
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         lastSignedIn: admin.firestore.FieldValue.serverTimestamp(),

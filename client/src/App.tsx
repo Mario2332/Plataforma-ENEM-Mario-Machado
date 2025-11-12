@@ -12,6 +12,7 @@ import AlunoSimulados from "./pages/aluno/AlunoSimulados";
 import AlunoMetricas from "./pages/aluno/AlunoMetricas";
 import AlunoCronograma from "./pages/aluno/AlunoCronograma";
 import AlunoConfiguracoes from "./pages/aluno/AlunoConfiguracoes";
+import AlunoDiario from "./pages/aluno/AlunoDiario";
 import PainelGeral from "./pages/aluno/conteudos/PainelGeral";
 import Matematica from "./pages/aluno/conteudos/Matematica";
 import Biologia from "./pages/aluno/conteudos/Biologia";
@@ -68,6 +69,11 @@ function Router() {
       <Route path="/aluno/cronograma">
         <DashboardLayout>
           <AlunoCronograma />
+        </DashboardLayout>
+      </Route>
+      <Route path="/aluno/diario">
+        <DashboardLayout>
+          <AlunoDiario />
         </DashboardLayout>
       </Route>
       <Route path="/aluno/configuracoes">

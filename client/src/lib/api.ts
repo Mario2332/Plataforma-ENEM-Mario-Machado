@@ -225,4 +225,17 @@ export const alunoApi = {
     topico: string;
     concluido: boolean;
   }) => callFunction("updateProgresso", data),
+
+  // Diário Emocional
+  createDiarioEmocional: (data: {
+    data: string;
+    estadoEmocional: string;
+    nivelCansaco: string;
+    observacoes?: string;
+  }) => callFunction("createDiarioEmocional", data),
+  getDiarioEmocional: (data?: {
+    dataInicio?: string;
+    dataFim?: string;
+  }) => callFunction("getDiarioEmocional", data || {}),
+  deleteDiarioEmocional: (registroId: string) => callFunction("deleteDiarioEmocional", { registroId }),
 };

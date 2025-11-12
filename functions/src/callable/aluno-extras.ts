@@ -384,3 +384,142 @@ export const updateProgresso = functions
       throw new functions.https.HttpsError("internal", error.message);
     }
   });
+
+/**
+ * Criar registro no diário emocional
+ */
+export const createDiarioEmocional = functions
+  .region("southamerica-east1")
+  .https.onCall(async (data, context) => {
+    const auth = await getAuthContext(context);
+    requireRole(auth, "aluno");
+
+    const { data: dataRegistro, estadoEmocional, nivelCansaco, observacoes } = data;
+
+    if (!dataRegistro || !estadoEmocional || !nivelCansaco) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "Data, estado emocional e nível de cansaço são obrigatórios"
+      );
+    }
+
+    // Validar valores permitidos
+    const estadosValidos = ["otimo", "bom", "neutro", "ruim", "pessimo"];
+    const cansacoValido = ["descansado", "normal", "cansado", "muito_cansado", "exausto"];
+
+    if (!estadosValidos.includes(estadoEmocional) || !cansacoValido.includes(nivelCansaco)) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "Estado emocional ou nível de cansaço inválido"
+      );
+    }
+
+    try {
+      // Verificar se já existe registro para esta data
+      const existingQuery = await db
+        .collection("alunos")
+        .doc(auth.uid)
+        .collection("diario_emocional")
+        .where("data", "==", admin.firestore.Timestamp.fromDate(new Date(dataRegistro)))
+        .limit(1)
+        .get();
+
+      if (!existingQuery.empty) {
+        // Atualizar registro existente
+        await existingQuery.docs[0].ref.update({
+          estadoEmocional,
+          nivelCansaco,
+          observacoes: observacoes || null,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        return { success: true, id: existingQuery.docs[0].id };
+      }
+
+      // Criar novo registro
+      const docRef = await db
+        .collection("alunos")
+        .doc(auth.uid)
+        .collection("diario_emocional")
+        .add({
+          data: admin.firestore.Timestamp.fromDate(new Date(dataRegistro)),
+          estadoEmocional,
+          nivelCansaco,
+          observacoes: observacoes || null,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+      return { success: true, id: docRef.id };
+    } catch (error: any) {
+      functions.logger.error("Erro ao criar registro emocional:", error);
+      throw new functions.https.HttpsError("internal", error.message);
+    }
+  });
+
+/**
+ * Obter registros do diário emocional
+ */
+export const getDiarioEmocional = functions
+  .region("southamerica-east1")
+  .https.onCall(async (data, context) => {
+    const auth = await getAuthContext(context);
+    requireRole(auth, "aluno");
+
+    const { dataInicio, dataFim } = data;
+
+    try {
+      let query = db
+        .collection("alunos")
+        .doc(auth.uid)
+        .collection("diario_emocional")
+        .orderBy("data", "desc");
+
+      // Filtrar por período se fornecido
+      if (dataInicio) {
+        query = query.where("data", ">=", admin.firestore.Timestamp.fromDate(new Date(dataInicio)));
+      }
+      if (dataFim) {
+        query = query.where("data", "<=", admin.firestore.Timestamp.fromDate(new Date(dataFim)));
+      }
+
+      const snapshot = await query.get();
+
+      return snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+    } catch (error: any) {
+      functions.logger.error("Erro ao buscar diário emocional:", error);
+      throw new functions.https.HttpsError("internal", error.message);
+    }
+  });
+
+/**
+ * Deletar registro do diário emocional
+ */
+export const deleteDiarioEmocional = functions
+  .region("southamerica-east1")
+  .https.onCall(async (data, context) => {
+    const auth = await getAuthContext(context);
+    requireRole(auth, "aluno");
+
+    const { registroId } = data;
+
+    if (!registroId) {
+      throw new functions.https.HttpsError("invalid-argument", "ID do registro é obrigatório");
+    }
+
+    try {
+      await db
+        .collection("alunos")
+        .doc(auth.uid)
+        .collection("diario_emocional")
+        .doc(registroId)
+        .delete();
+
+      return { success: true };
+    } catch (error: any) {
+      functions.logger.error("Erro ao deletar registro emocional:", error);
+      throw new functions.https.HttpsError("internal", error.message);
+    }
+  });

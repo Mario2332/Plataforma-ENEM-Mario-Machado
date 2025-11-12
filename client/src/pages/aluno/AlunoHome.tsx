@@ -79,23 +79,33 @@ export default function AlunoHome() {
     
     const datasEstudo = estudos
       .map(e => {
-        let data: Date;
-        
-        // Lidar com diferentes formatos de data
-        if (e.data?.seconds) {
-          // Timestamp do Firestore
-          data = new Date(e.data.seconds * 1000);
-        } else if (e.data?.toDate) {
-          // Timestamp do Firestore (método toDate)
-          data = e.data.toDate();
-        } else {
-          // String ou Date
-          data = new Date(e.data);
+        try {
+          let data: Date;
+          
+          // Lidar com diferentes formatos de data
+          if (e.data?.seconds) {
+            // Timestamp do Firestore
+            data = new Date(e.data.seconds * 1000);
+          } else if (e.data?.toDate) {
+            // Timestamp do Firestore (método toDate)
+            data = e.data.toDate();
+          } else {
+            // String ou Date
+            data = new Date(e.data);
+          }
+          
+          // Validar se a data é válida
+          if (isNaN(data.getTime())) {
+            return null;
+          }
+          
+          data.setHours(0, 0, 0, 0);
+          return data.getTime();
+        } catch (error) {
+          return null;
         }
-        
-        data.setHours(0, 0, 0, 0);
-        return data.getTime();
       })
+      .filter((v): v is number => v !== null) // Remover datas inválidas
       .filter((v, i, a) => a.indexOf(v) === i) // Remover duplicatas
       .sort((a, b) => b - a); // Ordenar do mais recente para o mais antigo
     
@@ -140,18 +150,28 @@ export default function AlunoHome() {
     const contagemPorDia = new Map<string, number>();
     
     estudos.forEach(e => {
-      let data: Date;
-      
-      if (e.data?.seconds) {
-        data = new Date(e.data.seconds * 1000);
-      } else if (e.data?.toDate) {
-        data = e.data.toDate();
-      } else {
-        data = new Date(e.data);
+      try {
+        let data: Date;
+        
+        if (e.data?.seconds) {
+          data = new Date(e.data.seconds * 1000);
+        } else if (e.data?.toDate) {
+          data = e.data.toDate();
+        } else {
+          data = new Date(e.data);
+        }
+        
+        // Validar se a data é válida
+        if (isNaN(data.getTime())) {
+          console.warn('Data inválida ignorada no mapa de calor:', e.data);
+          return;
+        }
+        
+        const dataStr = data.toISOString().split('T')[0];
+        contagemPorDia.set(dataStr, (contagemPorDia.get(dataStr) || 0) + 1);
+      } catch (error) {
+        console.error('Erro ao processar data no mapa de calor:', error);
       }
-      
-      const dataStr = data.toISOString().split('T')[0];
-      contagemPorDia.set(dataStr, (contagemPorDia.get(dataStr) || 0) + 1);
     });
     
     // Gerar últimos 150 dias

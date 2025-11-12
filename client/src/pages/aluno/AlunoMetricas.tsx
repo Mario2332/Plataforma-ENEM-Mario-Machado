@@ -145,19 +145,30 @@ export default function AlunoMetricas() {
     
     // Calcular dias únicos de estudo (lidar com Timestamps do Firestore)
     const diasUnicos = new Set(
-      estudosFiltrados.map(e => {
-        let data: Date;
-        
-        if (e.data?.seconds) {
-          data = new Date(e.data.seconds * 1000);
-        } else if (e.data?.toDate) {
-          data = e.data.toDate();
-        } else {
-          data = new Date(e.data);
-        }
-        
-        return data.toISOString().split('T')[0]; // Formato YYYY-MM-DD
-      })
+      estudosFiltrados
+        .map(e => {
+          try {
+            let data: Date;
+            
+            if (e.data?.seconds) {
+              data = new Date(e.data.seconds * 1000);
+            } else if (e.data?.toDate) {
+              data = e.data.toDate();
+            } else {
+              data = new Date(e.data);
+            }
+            
+            // Validar se a data é válida
+            if (isNaN(data.getTime())) {
+              return null;
+            }
+            
+            return data.toISOString().split('T')[0]; // Formato YYYY-MM-DD
+          } catch (error) {
+            return null;
+          }
+        })
+        .filter((v): v is string => v !== null) // Remover datas inválidas
     );
     
     return {

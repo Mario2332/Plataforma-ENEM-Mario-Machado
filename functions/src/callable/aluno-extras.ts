@@ -268,6 +268,36 @@ export const loadTemplate = functions
   });
 
 /**
+ * Deletar template de cronograma
+ */
+export const deleteTemplate = functions
+  .region("southamerica-east1")
+  .https.onCall(async (data, context) => {
+    const auth = await getAuthContext(context);
+    requireRole(auth, "aluno");
+
+    const { templateId } = data;
+
+    if (!templateId) {
+      throw new functions.https.HttpsError("invalid-argument", "ID do template é obrigatório");
+    }
+
+    try {
+      await db
+        .collection("alunos")
+        .doc(auth.uid)
+        .collection("templates")
+        .doc(templateId)
+        .delete();
+
+      return { success: true };
+    } catch (error: any) {
+      functions.logger.error("Erro ao deletar template:", error);
+      throw new functions.https.HttpsError("internal", error.message);
+    }
+  });
+
+/**
  * Obter progresso de conteúdos ENEM
  */
 export const getProgresso = functions

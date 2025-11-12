@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar, Save, Copy, Palette, Download, Upload, Trash2, FolderOpen } from "lucide-react";
 import { toast } from "sonner";
+import { alunoApi } from "@/lib/api";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Dialog,
@@ -51,12 +52,77 @@ export default function AlunoCronograma() {
   const [copiedCell, setCopiedCell] = useState<TimeSlot | null>(null);
   const [editingCell, setEditingCell] = useState<string | null>(null);
   const [draggedCell, setDraggedCell] = useState<{ day: number; hour: number; minute: number } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   
   // Templates
   const [templates, setTemplates] = useState<Template[]>([]);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showLoadDialog, setShowLoadDialog] = useState(false);
   const [templateName, setTemplateName] = useState("");
+
+  // Carregar dados ao montar componente
+  useEffect(() => {
+    loadSchedule();
+    loadTemplates();
+  }, []);
+
+  // Carregar cronograma do backend
+  const loadSchedule = async () => {
+    try {
+      setIsLoading(true);
+      const horarios = await alunoApi.getHorarios();
+      
+      // Converter horários do backend para TimeSlots
+      const slots: TimeSlot[] = [];
+      horarios.forEach((h: any) => {
+        const [horaInicio, minutoInicio] = h.horaInicio.split(':').map(Number);
+        const [horaFim, minutoFim] = h.horaFim.split(':').map(Number);
+        
+        // Criar slots para cada período de 30 minutos
+        let currentHour = horaInicio;
+        let currentMinute = minutoInicio;
+        
+        while (currentHour < horaFim || (currentHour === horaFim && currentMinute < minutoFim)) {
+          slots.push({
+            day: h.diaSemana,
+            hour: currentHour,
+            minute: currentMinute,
+            activity: h.materia + (h.descricao ? ` - ${h.descricao}` : ''),
+            color: COLORS[Math.floor(Math.random() * COLORS.length)].value, // Cor aleatória por enquanto
+          });
+          
+          // Avançar 30 minutos
+          currentMinute += 30;
+          if (currentMinute >= 60) {
+            currentMinute = 0;
+            currentHour++;
+          }
+        }
+      });
+      
+      setSchedule(slots);
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao carregar cronograma");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Carregar templates
+  const loadTemplates = async () => {
+    try {
+      const data = await alunoApi.getTemplates();
+      setTemplates(data.map((t: any) => ({
+        id: t.id,
+        name: t.nome,
+        schedule: t.horarios || [],
+        createdAt: t.createdAt?.toDate ? t.createdAt.toDate() : new Date(t.createdAt),
+      })));
+    } catch (error: any) {
+      console.error("Erro ao carregar templates:", error);
+    }
+  };
 
   const getCellKey = (day: number, hour: number, minute: number) => 
     `${day}-${hour}-${minute}`;
@@ -133,48 +199,151 @@ export default function AlunoCronograma() {
   };
 
   // Templates
-  const handleSaveTemplate = () => {
+  const handleSaveTemplate = async () => {
     if (!templateName.trim()) {
       toast.error("Digite um nome para o template");
       return;
     }
 
-    const newTemplate: Template = {
-      id: Date.now().toString(),
-      name: templateName,
-      schedule: [...schedule],
-      createdAt: new Date(),
-    };
-
-    setTemplates([...templates, newTemplate]);
-    setTemplateName("");
-    setShowSaveDialog(false);
-    toast.success(`Template "${templateName}" salvo com sucesso!`);
-  };
-
-  const handleLoadTemplate = (template: Template) => {
-    setSchedule([...template.schedule]);
-    setShowLoadDialog(false);
-    toast.success(`Template "${template.name}" carregado!`);
-  };
-
-  const handleDeleteTemplate = (templateId: string) => {
-    const template = templates.find(t => t.id === templateId);
-    if (confirm(`Deseja realmente excluir o template "${template?.name}"?`)) {
-      setTemplates(templates.filter(t => t.id !== templateId));
-      toast.success("Template excluído!");
+    try {
+      setIsSaving(true);
+      
+      // Converter schedule atual para formato do backend
+      const horarios = schedule
+        .filter(s => s.activity) // Apenas slots com atividade
+        .map(s => ({
+          diaSemana: s.day,
+          horaInicio: `${String(s.hour).padStart(2, '0')}:${String(s.minute).padStart(2, '0')}`,
+          horaFim: `${String(s.hour).padStart(2, '0')}:${String(s.minute + 30).padStart(2, '0')}`,
+          materia: s.activity.split(' - ')[0].trim(),
+          descricao: s.activity.split(' - ').slice(1).join(' - ').trim() || undefined,
+        }));
+      
+      await alunoApi.saveTemplate({
+        nome: templateName,
+        horarios,
+      });
+      
+      setTemplateName("");
+      setShowSaveDialog(false);
+      toast.success(`Template "${templateName}" salvo com sucesso!`);
+      await loadTemplates(); // Recarregar lista de templates
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao salvar template");
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleSave = () => {
-    // TODO: Salvar no backend via tRPC
-    toast.success("Cronograma salvo com sucesso!");
-    console.log("Schedule to save:", schedule);
+  const handleLoadTemplate = async (template: Template) => {
+    try {
+      setIsSaving(true);
+      await alunoApi.loadTemplate(template.id);
+      setShowLoadDialog(false);
+      toast.success(`Template "${template.name}" carregado!`);
+      await loadSchedule(); // Recarregar cronograma
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao carregar template");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteTemplate = async (templateId: string) => {
+    const template = templates.find(t => t.id === templateId);
+    if (confirm(`Deseja realmente excluir o template "${template?.name}"?`)) {
+      try {
+        await alunoApi.deleteTemplate(templateId);
+        toast.success("Template excluído!");
+        await loadTemplates(); // Recarregar lista
+      } catch (error: any) {
+        toast.error(error.message || "Erro ao excluir template");
+      }
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      setIsSaving(true);
+      
+      // Agrupar slots consecutivos do mesmo dia e atividade
+      const groupedSlots: Map<string, { day: number; startHour: number; startMinute: number; endHour: number; endMinute: number; activity: string }> = new Map();
+      
+      schedule.forEach(slot => {
+        if (!slot.activity) return; // Ignorar slots vazios
+        
+        const key = `${slot.day}-${slot.activity}`;
+        const existing = groupedSlots.get(key);
+        
+        if (existing) {
+          // Atualizar hora final se for consecutivo
+          const currentTime = slot.hour * 60 + slot.minute;
+          const existingEndTime = existing.endHour * 60 + existing.endMinute;
+          
+          if (currentTime === existingEndTime) {
+            existing.endHour = slot.hour;
+            existing.endMinute = slot.minute + 30;
+            if (existing.endMinute >= 60) {
+              existing.endMinute = 0;
+              existing.endHour++;
+            }
+          }
+        } else {
+          // Novo grupo
+          groupedSlots.set(key, {
+            day: slot.day,
+            startHour: slot.hour,
+            startMinute: slot.minute,
+            endHour: slot.hour,
+            endMinute: slot.minute + 30,
+            activity: slot.activity,
+          });
+          
+          if (groupedSlots.get(key)!.endMinute >= 60) {
+            groupedSlots.get(key)!.endMinute = 0;
+            groupedSlots.get(key)!.endHour++;
+          }
+        }
+      });
+      
+      // Primeiro, deletar todos os horários existentes
+      const existingHorarios = await alunoApi.getHorarios();
+      await Promise.all(existingHorarios.map((h: any) => alunoApi.deleteHorario(h.id)));
+      
+      // Criar novos horários
+      const promises = Array.from(groupedSlots.values()).map(group => {
+        const [materia, ...descricaoParts] = group.activity.split(' - ');
+        return alunoApi.createHorario({
+          diaSemana: group.day,
+          horaInicio: `${String(group.startHour).padStart(2, '0')}:${String(group.startMinute).padStart(2, '0')}`,
+          horaFim: `${String(group.endHour).padStart(2, '0')}:${String(group.endMinute).padStart(2, '0')}`,
+          materia: materia.trim(),
+          descricao: descricaoParts.join(' - ').trim() || undefined,
+        });
+      });
+      
+      await Promise.all(promises);
+      
+      toast.success("Cronograma salvo com sucesso!");
+      await loadSchedule(); // Recarregar para sincronizar
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao salvar cronograma");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const formatTime = (hour: number, minute: number) => {
     return `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -185,17 +354,17 @@ export default function AlunoCronograma() {
             <h1 className="text-3xl font-bold">Cronograma Semanal</h1>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setShowLoadDialog(true)}>
+            <Button variant="outline" onClick={() => setShowLoadDialog(true)} disabled={isSaving}>
               <FolderOpen className="mr-2 h-4 w-4" />
               Templates
             </Button>
-            <Button variant="outline" onClick={() => setShowSaveDialog(true)}>
+            <Button variant="outline" onClick={() => setShowSaveDialog(true)} disabled={isSaving}>
               <Download className="mr-2 h-4 w-4" />
               Salvar Template
             </Button>
-            <Button onClick={handleSave}>
+            <Button onClick={handleSave} disabled={isSaving}>
               <Save className="mr-2 h-4 w-4" />
-              Salvar
+              {isSaving ? "Salvando..." : "Salvar"}
             </Button>
           </div>
         </div>

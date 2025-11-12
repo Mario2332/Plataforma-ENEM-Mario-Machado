@@ -188,6 +188,34 @@ export const alunoApi = {
   
   deleteTarefa: (tarefaId: string) => callFunction("alunoFunctions-deleteTarefa", { tarefaId }),
 
+  // Horários do Cronograma Semanal
+  getHorarios: () => callFunction("getHorarios"),
+  createHorario: (data: {
+    diaSemana: number;
+    horaInicio: string;
+    horaFim: string;
+    materia: string;
+    descricao?: string;
+  }) => callFunction("createHorario", data),
+  updateHorario: (data: {
+    horarioId: string;
+    diaSemana?: number;
+    horaInicio?: string;
+    horaFim?: string;
+    materia?: string;
+    descricao?: string;
+  }) => callFunction("updateHorario", data),
+  deleteHorario: (horarioId: string) => callFunction("deleteHorario", { horarioId }),
+
+  // Templates de Cronograma
+  getTemplates: () => callFunction("getTemplates"),
+  saveTemplate: (data: {
+    nome: string;
+    horarios: any[];
+  }) => callFunction("saveTemplate", data),
+  loadTemplate: (templateId: string) => callFunction("loadTemplate", { templateId }),
+  deleteTemplate: (templateId: string) => callFunction("deleteTemplate", { templateId }),
+
   // Conteúdos ENEM
   getProgresso: (materia?: string) => callFunction("getProgresso", { materia }),
   updateProgresso: (data: {

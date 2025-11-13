@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { alunoApi } from "@/lib/api";
+import { useAlunoApi } from "@/hooks/useAlunoApi";
 import { BarChart3, Calendar, TrendingUp, PieChart, Activity } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import {
@@ -48,6 +48,7 @@ const CORES_GRAFICOS = [
 ];
 
 export default function AlunoMetricas() {
+  const api = useAlunoApi();
   const [periodo, setPeriodo] = useState<PeriodoFiltro>("30d");
   const [estudos, setEstudos] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -55,7 +56,7 @@ export default function AlunoMetricas() {
   const loadEstudos = async () => {
     try {
       setIsLoading(true);
-      const data = await alunoApi.getEstudos();
+      const data = await api.getEstudos();
       setEstudos(data as any[]);
     } catch (error: any) {
       toast.error(error.message || "Erro ao carregar estudos");

@@ -575,3 +575,251 @@ export const mentorFunctions = {
   getEvolucaoAlunos,
   getAlunoAreaCompleta,
 };
+
+/**
+ * Funções para o mentor gerenciar estudos do aluno
+ */
+const createAlunoEstudo = functions
+  .region("southamerica-east1")
+  .https.onCall(async (data, context) => {
+    const auth = await getAuthContext(context);
+    requireRole(auth, "mentor");
+
+    const { alunoId, ...estudoData } = data;
+
+    if (!alunoId) {
+      throw new functions.https.HttpsError("invalid-argument", "ID do aluno é obrigatório");
+    }
+
+    try {
+      const alunoDoc = await db.collection("alunos").doc(alunoId).get();
+      if (!alunoDoc.exists) {
+        throw new functions.https.HttpsError("not-found", "Aluno não encontrado");
+      }
+
+      const estudoRef = await db
+        .collection("alunos")
+        .doc(alunoId)
+        .collection("estudos")
+        .add({
+          ...estudoData,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+      return { success: true, estudoId: estudoRef.id };
+    } catch (error: any) {
+      functions.logger.error("Erro ao criar estudo do aluno:", error);
+      throw new functions.https.HttpsError("internal", error.message);
+    }
+  });
+
+const updateAlunoEstudo = functions
+  .region("southamerica-east1")
+  .https.onCall(async (data, context) => {
+    const auth = await getAuthContext(context);
+    requireRole(auth, "mentor");
+
+    const { alunoId, estudoId, ...updates } = data;
+
+    if (!alunoId || !estudoId) {
+      throw new functions.https.HttpsError("invalid-argument", "IDs do aluno e estudo são obrigatórios");
+    }
+
+    try {
+      await db
+        .collection("alunos")
+        .doc(alunoId)
+        .collection("estudos")
+        .doc(estudoId)
+        .update({
+          ...updates,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+      return { success: true };
+    } catch (error: any) {
+      functions.logger.error("Erro ao atualizar estudo do aluno:", error);
+      throw new functions.https.HttpsError("internal", error.message);
+    }
+  });
+
+const deleteAlunoEstudo = functions
+  .region("southamerica-east1")
+  .https.onCall(async (data, context) => {
+    const auth = await getAuthContext(context);
+    requireRole(auth, "mentor");
+
+    const { alunoId, estudoId } = data;
+
+    if (!alunoId || !estudoId) {
+      throw new functions.https.HttpsError("invalid-argument", "IDs do aluno e estudo são obrigatórios");
+    }
+
+    try {
+      await db
+        .collection("alunos")
+        .doc(alunoId)
+        .collection("estudos")
+        .doc(estudoId)
+        .delete();
+
+      return { success: true };
+    } catch (error: any) {
+      functions.logger.error("Erro ao deletar estudo do aluno:", error);
+      throw new functions.https.HttpsError("internal", error.message);
+    }
+  });
+
+/**
+ * Funções para o mentor gerenciar simulados do aluno
+ */
+const createAlunoSimulado = functions
+  .region("southamerica-east1")
+  .https.onCall(async (data, context) => {
+    const auth = await getAuthContext(context);
+    requireRole(auth, "mentor");
+
+    const { alunoId, ...simuladoData } = data;
+
+    if (!alunoId) {
+      throw new functions.https.HttpsError("invalid-argument", "ID do aluno é obrigatório");
+    }
+
+    try {
+      const alunoDoc = await db.collection("alunos").doc(alunoId).get();
+      if (!alunoDoc.exists) {
+        throw new functions.https.HttpsError("not-found", "Aluno não encontrado");
+      }
+
+      const simuladoRef = await db
+        .collection("alunos")
+        .doc(alunoId)
+        .collection("simulados")
+        .add({
+          ...simuladoData,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+      return { success: true, simuladoId: simuladoRef.id };
+    } catch (error: any) {
+      functions.logger.error("Erro ao criar simulado do aluno:", error);
+      throw new functions.https.HttpsError("internal", error.message);
+    }
+  });
+
+const updateAlunoSimulado = functions
+  .region("southamerica-east1")
+  .https.onCall(async (data, context) => {
+    const auth = await getAuthContext(context);
+    requireRole(auth, "mentor");
+
+    const { alunoId, simuladoId, ...updates } = data;
+
+    if (!alunoId || !simuladoId) {
+      throw new functions.https.HttpsError("invalid-argument", "IDs do aluno e simulado são obrigatórios");
+    }
+
+    try {
+      await db
+        .collection("alunos")
+        .doc(alunoId)
+        .collection("simulados")
+        .doc(simuladoId)
+        .update({
+          ...updates,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+      return { success: true };
+    } catch (error: any) {
+      functions.logger.error("Erro ao atualizar simulado do aluno:", error);
+      throw new functions.https.HttpsError("internal", error.message);
+    }
+  });
+
+const deleteAlunoSimulado = functions
+  .region("southamerica-east1")
+  .https.onCall(async (data, context) => {
+    const auth = await getAuthContext(context);
+    requireRole(auth, "mentor");
+
+    const { alunoId, simuladoId } = data;
+
+    if (!alunoId || !simuladoId) {
+      throw new functions.https.HttpsError("invalid-argument", "IDs do aluno e simulado são obrigatórios");
+    }
+
+    try {
+      await db
+        .collection("alunos")
+        .doc(alunoId)
+        .collection("simulados")
+        .doc(simuladoId)
+        .delete();
+
+      return { success: true };
+    } catch (error: any) {
+      functions.logger.error("Erro ao deletar simulado do aluno:", error);
+      throw new functions.https.HttpsError("internal", error.message);
+    }
+  });
+
+/**
+ * Obter dados específicos do aluno (estudos, simulados, etc.)
+ */
+const getAlunoData = functions
+  .region("southamerica-east1")
+  .https.onCall(async (data, context) => {
+    const auth = await getAuthContext(context);
+    requireRole(auth, "mentor");
+
+    const { alunoId, collection } = data;
+
+    if (!alunoId || !collection) {
+      throw new functions.https.HttpsError("invalid-argument", "ID do aluno e coleção são obrigatórios");
+    }
+
+    try {
+      const snapshot = await db
+        .collection("alunos")
+        .doc(alunoId)
+        .collection(collection)
+        .get();
+
+      return snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+    } catch (error: any) {
+      functions.logger.error(`Erro ao buscar ${collection} do aluno:`, error);
+      throw new functions.https.HttpsError("internal", error.message);
+    }
+  });
+
+// Atualizar exportação
+export const mentorFunctions = {
+  getMe,
+  getAlunos,
+  getAlunoById,
+  createAluno,
+  updateAluno,
+  deleteAluno,
+  getAlunoEstudos,
+  getAlunoSimulados,
+  getAlunoDashboard,
+  getConfig,
+  updateConfig,
+  getAlunosMetricas,
+  getEvolucaoAlunos,
+  getAlunoAreaCompleta,
+  // Novas funções para gerenciar dados do aluno
+  createAlunoEstudo,
+  updateAlunoEstudo,
+  deleteAlunoEstudo,
+  createAlunoSimulado,
+  updateAlunoSimulado,
+  deleteAlunoSimulado,
+  getAlunoData,
+};

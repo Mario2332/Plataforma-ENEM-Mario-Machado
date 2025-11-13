@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { alunoApi } from "@/lib/api";
+import { useAlunoApi } from "@/hooks/useAlunoApi";
 import { BookOpen, Clock, Edit, Play, Plus, Trash2, Pause, RotateCcw, Save, ArrowUpDown } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
@@ -35,6 +35,7 @@ type OrdenacaoColuna = "data" | "materia" | "tempo" | "questoes" | "acertos" | n
 type DirecaoOrdenacao = "asc" | "desc";
 
 export default function AlunoEstudos() {
+  const api = useAlunoApi();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [cronometroAtivo, setCronometroAtivo] = useState(false);
   const [tempoDecorrido, setTempoDecorrido] = useState(0);
@@ -120,7 +121,7 @@ export default function AlunoEstudos() {
   const loadEstudos = async () => {
     try {
       setIsLoading(true);
-      const data = await alunoApi.getEstudos();
+      const data = await api.getEstudos();
       setEstudos(data as any[]);
     } catch (error: any) {
       toast.error(error.message || "Erro ao carregar estudos");
@@ -144,7 +145,7 @@ export default function AlunoEstudos() {
         const [ano, mes, dia] = formData.data.split('-').map(Number);
         const dataLocal = new Date(ano, mes - 1, dia, 12, 0, 0); // Meio-dia para evitar problemas de timezone
         
-        await alunoApi.updateEstudo(editandoId, {
+        await api.updateEstudo(editandoId, {
           ...formData,
           data: dataLocal,
         });
@@ -155,7 +156,7 @@ export default function AlunoEstudos() {
         const [ano, mes, dia] = formData.data.split('-').map(Number);
         const dataLocal = new Date(ano, mes - 1, dia, 12, 0, 0); // Meio-dia para evitar problemas de timezone
         
-        await alunoApi.createEstudo({
+        await api.createEstudo({
           ...formData,
           data: dataLocal,
         });
@@ -214,7 +215,7 @@ export default function AlunoEstudos() {
   const handleDelete = async (id: string) => {
     if (confirm("Tem certeza que deseja excluir este registro?")) {
       try {
-        await alunoApi.deleteEstudo(id);
+        await api.deleteEstudo(id);
         toast.success("Estudo excluído com sucesso!");
         await loadEstudos();
       } catch (error: any) {

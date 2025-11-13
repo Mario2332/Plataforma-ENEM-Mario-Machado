@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar, Save, Copy, Palette, Download, Upload, Trash2, FolderOpen } from "lucide-react";
 import { toast } from "sonner";
-import { alunoApi } from "@/lib/api";
+import { useAlunoApi } from "@/hooks/useAlunoApi";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Dialog,
@@ -48,6 +48,7 @@ const COLORS = [
 ];
 
 export default function AlunoCronograma() {
+  const api = useAlunoApi();
   const [schedule, setSchedule] = useState<TimeSlot[]>([]);
   const [copiedCell, setCopiedCell] = useState<TimeSlot | null>(null);
   const [editingCell, setEditingCell] = useState<string | null>(null);
@@ -71,7 +72,7 @@ export default function AlunoCronograma() {
   const loadSchedule = async () => {
     try {
       setIsLoading(true);
-      const horarios = await alunoApi.getHorarios();
+      const horarios = await api.getHorarios();
       console.log('Horários carregados do backend:', horarios);
       
       // Converter horários do backend para TimeSlots
@@ -113,7 +114,7 @@ export default function AlunoCronograma() {
   // Carregar templates
   const loadTemplates = async () => {
     try {
-      const data = await alunoApi.getTemplates();
+      const data = await api.getTemplates();
       setTemplates(data.map((t: any) => {
         let createdAtDate: Date;
         if (t.createdAt?.toDate) {
@@ -239,7 +240,7 @@ export default function AlunoCronograma() {
           cor: s.color,
         }));
       
-      await alunoApi.saveTemplate({
+      await api.saveTemplate({
         nome: templateName,
         horarios,
       });
@@ -258,7 +259,7 @@ export default function AlunoCronograma() {
   const handleLoadTemplate = async (template: Template) => {
     try {
       setIsSaving(true);
-      await alunoApi.loadTemplate(template.id);
+      await api.loadTemplate(template.id);
       setShowLoadDialog(false);
       toast.success(`Template "${template.name}" carregado!`);
       await loadSchedule(); // Recarregar cronograma
@@ -273,7 +274,7 @@ export default function AlunoCronograma() {
     const template = templates.find(t => t.id === templateId);
     if (confirm(`Deseja realmente excluir o template "${template?.name}"?`)) {
       try {
-        await alunoApi.deleteTemplate(templateId);
+        await api.deleteTemplate(templateId);
         toast.success("Template excluído!");
         await loadTemplates(); // Recarregar lista
       } catch (error: any) {
@@ -338,8 +339,8 @@ export default function AlunoCronograma() {
       });
       
       // Primeiro, deletar todos os horários existentes
-      const existingHorarios = await alunoApi.getHorarios();
-      await Promise.all(existingHorarios.map((h: any) => alunoApi.deleteHorario(h.id)));
+      const existingHorarios = await api.getHorarios();
+      await Promise.all(existingHorarios.map((h: any) => api.deleteHorario(h.id)));
       
       // Criar novos horários
       const promises = groupedSlots.map(group => {
@@ -353,7 +354,7 @@ export default function AlunoCronograma() {
           cor: group.color,
         };
         console.log('Salvando horário:', horarioData);
-        return alunoApi.createHorario(horarioData);
+        return api.createHorario(horarioData);
       });
       
       await Promise.all(promises);

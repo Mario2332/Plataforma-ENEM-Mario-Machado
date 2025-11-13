@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { alunoApi } from "@/lib/api";
+import { useAlunoApi } from "@/hooks/useAlunoApi";
 import { Heart, Battery, Calendar, Trash2, TrendingUp, TrendingDown, Minus, BarChart3, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from "recharts";
@@ -29,6 +29,7 @@ const NIVEIS_CANSACO = [
 ];
 
 export default function AlunoDiario() {
+  const api = useAlunoApi();
   const [registros, setRegistros] = useState<any[]>([]);
   const [estudos, setEstudos] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -47,8 +48,8 @@ export default function AlunoDiario() {
     try {
       setIsLoading(true);
       const [registrosData, estudosData] = await Promise.all([
-        alunoApi.getDiarioEmocional(),
-        alunoApi.getEstudos()
+        api.getDiarioEmocional(),
+        api.getEstudos()
       ]);
       setRegistros(registrosData as any[]);
       setEstudos(estudosData as any[]);
@@ -311,7 +312,7 @@ export default function AlunoDiario() {
       const [ano, mes, dia] = formData.data.split('-').map(Number);
       const dataLocal = new Date(ano, mes - 1, dia, 12, 0, 0);
       
-      await alunoApi.createDiarioEmocional({
+      await api.createDiarioEmocional({
         ...formData,
         data: dataLocal.toISOString()
       });
@@ -334,7 +335,7 @@ export default function AlunoDiario() {
     if (!confirm("Tem certeza que deseja excluir este registro?")) return;
 
     try {
-      await alunoApi.deleteDiarioEmocional(registroId);
+      await api.deleteDiarioEmocional(registroId);
       toast.success("Registro excluído!");
       await loadRegistros();
     } catch (error: any) {

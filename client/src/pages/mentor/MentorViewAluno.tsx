@@ -1,17 +1,32 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, createContext, useContext } from "react";
 import { useRoute, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { mentorApi } from "@/lib/api";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-// Importar componentes do aluno (vamos criar versões read-only)
-import AlunoHomeReadOnly from "./view-aluno/AlunoHomeReadOnly";
-import AlunoEstudosReadOnly from "./view-aluno/AlunoEstudosReadOnly";
-import AlunoSimuladosReadOnly from "./view-aluno/AlunoSimuladosReadOnly";
-import AlunoDiarioBordoReadOnly from "./view-aluno/AlunoDiarioBordoReadOnly";
+// Importar componentes originais do aluno
+import AlunoHome from "../aluno/AlunoHome";
+import AlunoEstudos from "../aluno/AlunoEstudos";
+import AlunoSimulados from "../aluno/AlunoSimulados";
+import AlunoMetricas from "../aluno/AlunoMetricas";
+import AlunoCronograma from "../aluno/AlunoCronograma";
+import AlunoDiario from "../aluno/AlunoDiario";
+
+// Contexto para passar o alunoId para os componentes filhos
+interface MentorViewContextType {
+  alunoId: string;
+  isMentorView: boolean;
+}
+
+const MentorViewContext = createContext<MentorViewContextType | null>(null);
+
+export const useMentorView = () => {
+  const context = useContext(MentorViewContext);
+  return context;
+};
 
 export default function MentorViewAluno() {
   const [match, params] = useRoute("/mentor/alunos/:alunoId");
@@ -55,7 +70,7 @@ export default function MentorViewAluno() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px]">
         <p className="text-muted-foreground mb-4">Aluno não encontrado</p>
-        <Button onClick={() => navigate("/mentor/alunos")}>
+        <Button onClick={() => setLocation("/mentor/alunos")}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Voltar
         </Button>
@@ -64,62 +79,74 @@ export default function MentorViewAluno() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header com informações do aluno */}
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setLocation("/mentor/alunos")}
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Voltar
-            </Button>
+    <MentorViewContext.Provider value={{ alunoId: alunoId!, isMentorView: true }}>
+      <div className="space-y-6">
+        {/* Header com informações do aluno */}
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setLocation("/mentor/alunos")}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Voltar
+              </Button>
+            </div>
+            <h1 className="text-3xl font-bold">{alunoData.aluno.nome}</h1>
+            <p className="text-muted-foreground mt-1">
+              Visualizando e editando como mentor • {alunoData.aluno.email}
+            </p>
           </div>
-          <h1 className="text-3xl font-bold">{alunoData.aluno.nome}</h1>
-          <p className="text-muted-foreground mt-1">
-            Visualizando como aluno • {alunoData.aluno.email}
-          </p>
         </div>
+
+        {/* Alerta informativo */}
+        <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800">
+          <CardContent className="pt-6">
+            <p className="text-sm text-blue-800 dark:text-blue-200">
+              ℹ️ Você está visualizando e pode editar a área do aluno. 
+              Todas as alterações serão salvas na conta do aluno.
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Tabs com as áreas do aluno */}
+        <Tabs defaultValue="inicio" className="space-y-4">
+          <TabsList className="flex-wrap h-auto">
+            <TabsTrigger value="inicio">Início</TabsTrigger>
+            <TabsTrigger value="estudos">Estudos</TabsTrigger>
+            <TabsTrigger value="cronograma">Cronograma</TabsTrigger>
+            <TabsTrigger value="metricas">Métricas</TabsTrigger>
+            <TabsTrigger value="simulados">Simulados</TabsTrigger>
+            <TabsTrigger value="diario">Diário de Bordo</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="inicio">
+            <AlunoHome />
+          </TabsContent>
+
+          <TabsContent value="estudos">
+            <AlunoEstudos />
+          </TabsContent>
+
+          <TabsContent value="cronograma">
+            <AlunoCronograma />
+          </TabsContent>
+
+          <TabsContent value="metricas">
+            <AlunoMetricas />
+          </TabsContent>
+
+          <TabsContent value="simulados">
+            <AlunoSimulados />
+          </TabsContent>
+
+          <TabsContent value="diario">
+            <AlunoDiario />
+          </TabsContent>
+        </Tabs>
       </div>
-
-      {/* Alerta informativo */}
-      <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800">
-        <CardContent className="pt-6">
-          <p className="text-sm text-blue-800 dark:text-blue-200">
-            ℹ️ Você está visualizando a área do aluno em modo somente leitura. 
-            Todas as informações exibidas são as mesmas que o aluno vê em sua própria área.
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* Tabs com as áreas do aluno */}
-      <Tabs defaultValue="inicio" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="inicio">Início</TabsTrigger>
-          <TabsTrigger value="estudos">Estudos</TabsTrigger>
-          <TabsTrigger value="simulados">Simulados</TabsTrigger>
-          <TabsTrigger value="diario">Diário de Bordo</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="inicio">
-          <AlunoHomeReadOnly data={alunoData} />
-        </TabsContent>
-
-        <TabsContent value="estudos">
-          <AlunoEstudosReadOnly data={alunoData} />
-        </TabsContent>
-
-        <TabsContent value="simulados">
-          <AlunoSimuladosReadOnly data={alunoData} />
-        </TabsContent>
-
-        <TabsContent value="diario">
-          <AlunoDiarioBordoReadOnly data={alunoData} />
-        </TabsContent>
-      </Tabs>
-    </div>
+    </MentorViewContext.Provider>
   );
 }

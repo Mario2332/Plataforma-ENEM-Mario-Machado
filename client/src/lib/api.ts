@@ -88,6 +88,69 @@ export const mentorApi = {
   
   // Visualização da área do aluno
   getAlunoAreaCompleta: (alunoId: string) => callFunction("mentorFunctions-getAlunoAreaCompleta", { alunoId }),
+  
+  // Funções para mentor gerenciar dados do aluno
+  createAlunoEstudo: (data: {
+    alunoId: string;
+    materia: string;
+    topico: string;
+    tempoMinutos: number;
+    observacoes?: string;
+  }) => callFunction("mentorFunctions-createAlunoEstudo", data),
+  
+  updateAlunoEstudo: (data: {
+    alunoId: string;
+    estudoId: string;
+    data?: Date;
+    materia?: string;
+    conteudo?: string;
+    tempoMinutos?: number;
+    questoesFeitas?: number;
+    questoesAcertadas?: number;
+    flashcardsRevisados?: number;
+  }) => callFunction("mentorFunctions-updateAlunoEstudo", data),
+  
+  deleteAlunoEstudo: (data: {
+    alunoId: string;
+    estudoId: string;
+  }) => callFunction("mentorFunctions-deleteAlunoEstudo", data),
+  
+  createAlunoSimulado: (data: {
+    alunoId: string;
+    nome: string;
+    data: Date;
+    notaTotal: number;
+    notaRedacao?: number;
+    notaMatematica?: number;
+    notaLinguagens?: number;
+    notaCienciasNatureza?: number;
+    notaCienciasHumanas?: number;
+    observacoes?: string;
+  }) => callFunction("mentorFunctions-createAlunoSimulado", data),
+  
+  updateAlunoSimulado: (data: {
+    alunoId: string;
+    simuladoId: string;
+    nome?: string;
+    data?: Date;
+    notaTotal?: number;
+    notaRedacao?: number;
+    notaMatematica?: number;
+    notaLinguagens?: number;
+    notaCienciasNatureza?: number;
+    notaCienciasHumanas?: number;
+    observacoes?: string;
+  }) => callFunction("mentorFunctions-updateAlunoSimulado", data),
+  
+  deleteAlunoSimulado: (data: {
+    alunoId: string;
+    simuladoId: string;
+  }) => callFunction("mentorFunctions-deleteAlunoSimulado", data),
+  
+  getAlunoData: (data: {
+    alunoId: string;
+    collection: string;
+  }) => callFunction("mentorFunctions-getAlunoData", data),
 };
 
 // ============================================

@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { alunoApi } from "@/lib/api";
+import { useAlunoApi } from "@/hooks/useAlunoApi";
 import { 
   Activity, 
   BookOpen, 
@@ -34,6 +34,7 @@ const MATERIAS_ENEM = [
 ] as const;
 
 export default function AlunoHome() {
+  const api = useAlunoApi();
   const [, setLocation] = useLocation();
   const { userData } = useAuthContext();
   const [estudos, setEstudos] = useState<any[]>([]);
@@ -44,8 +45,8 @@ export default function AlunoHome() {
     try {
       setIsLoading(true);
       const [estudosData, simuladosData] = await Promise.all([
-        alunoApi.getEstudos(),
-        alunoApi.getSimulados(),
+        api.getEstudos(),
+        api.getSimulados(),
       ]);
       setEstudos(estudosData as any[]);
       setSimulados(simuladosData as any[]);

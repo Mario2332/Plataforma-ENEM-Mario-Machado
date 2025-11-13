@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { alunoApi } from "@/lib/api";
+import { useAlunoApi } from "@/hooks/useAlunoApi";
 import { FileText, Plus, Trash2, TrendingUp } from "lucide-react";
 import { useState, useEffect } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
@@ -16,6 +16,7 @@ import AlunoAutodiagnostico from "./AlunoAutodiagnostico";
 type AreaFiltro = "geral" | "linguagens" | "humanas" | "natureza" | "matematica";
 
 export default function AlunoSimulados() {
+  const api = useAlunoApi();
   const [activeTab, setActiveTab] = useState("simulados");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [simulados, setSimulados] = useState<any[]>([]);
@@ -41,7 +42,7 @@ export default function AlunoSimulados() {
   const loadSimulados = async () => {
     try {
       setIsLoading(true);
-      const data = await alunoApi.getSimulados();
+      const data = await api.getSimulados();
       setSimulados(data as any[]);
     } catch (error: any) {
       toast.error(error.message || "Erro ao carregar simulados");
@@ -63,7 +64,7 @@ export default function AlunoSimulados() {
       const [ano, mes, dia] = formData.data.split('-').map(Number);
       const dataLocal = new Date(ano, mes - 1, dia, 12, 0, 0); // Meio-dia para evitar problemas de timezone
       
-      await alunoApi.createSimulado({
+      await api.createSimulado({
         ...formData,
         data: dataLocal,
       });
@@ -80,7 +81,7 @@ export default function AlunoSimulados() {
   const handleDelete = async (id: string) => {
     if (confirm("Tem certeza que deseja excluir este simulado?")) {
       try {
-        await alunoApi.deleteSimulado(id);
+        await api.deleteSimulado(id);
         toast.success("Simulado excluído!");
         await loadSimulados();
       } catch (error: any) {

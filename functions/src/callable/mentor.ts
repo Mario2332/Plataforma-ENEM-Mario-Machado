@@ -780,8 +780,616 @@ const getAlunoData = functions
     }
   });
 
-// Atualizar exportação
+// Placeholder - exportação será feita no final do arquivo
+
+/**
+ * Funções para o mentor gerenciar horários do cronograma do aluno
+ */
+const createAlunoHorario = functions
+  .region("southamerica-east1")
+  .https.onCall(async (data, context) => {
+    const auth = await getAuthContext(context);
+    requireRole(auth, "mentor");
+
+    const { alunoId, ...horarioData } = data;
+
+    if (!alunoId) {
+      throw new functions.https.HttpsError("invalid-argument", "ID do aluno é obrigatório");
+    }
+
+    try {
+      const alunoDoc = await db.collection("alunos").doc(alunoId).get();
+      if (!alunoDoc.exists) {
+        throw new functions.https.HttpsError("not-found", "Aluno não encontrado");
+      }
+
+      const horarioRef = await db
+        .collection("alunos")
+        .doc(alunoId)
+        .collection("horarios")
+        .add({
+          ...horarioData,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+      return { success: true, horarioId: horarioRef.id };
+    } catch (error: any) {
+      functions.logger.error("Erro ao criar horário do aluno:", error);
+      throw new functions.https.HttpsError("internal", error.message);
+    }
+  });
+
+const updateAlunoHorario = functions
+  .region("southamerica-east1")
+  .https.onCall(async (data, context) => {
+    const auth = await getAuthContext(context);
+    requireRole(auth, "mentor");
+
+    const { alunoId, horarioId, ...updates } = data;
+
+    if (!alunoId || !horarioId) {
+      throw new functions.https.HttpsError("invalid-argument", "IDs do aluno e horário são obrigatórios");
+    }
+
+    try {
+      await db
+        .collection("alunos")
+        .doc(alunoId)
+        .collection("horarios")
+        .doc(horarioId)
+        .update({
+          ...updates,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+      return { success: true };
+    } catch (error: any) {
+      functions.logger.error("Erro ao atualizar horário do aluno:", error);
+      throw new functions.https.HttpsError("internal", error.message);
+    }
+  });
+
+const deleteAlunoHorario = functions
+  .region("southamerica-east1")
+  .https.onCall(async (data, context) => {
+    const auth = await getAuthContext(context);
+    requireRole(auth, "mentor");
+
+    const { alunoId, horarioId } = data;
+
+    if (!alunoId || !horarioId) {
+      throw new functions.https.HttpsError("invalid-argument", "IDs do aluno e horário são obrigatórios");
+    }
+
+    try {
+      await db
+        .collection("alunos")
+        .doc(alunoId)
+        .collection("horarios")
+        .doc(horarioId)
+        .delete();
+
+      return { success: true };
+    } catch (error: any) {
+      functions.logger.error("Erro ao deletar horário do aluno:", error);
+      throw new functions.https.HttpsError("internal", error.message);
+    }
+  });
+
+/**
+ * Funções para o mentor gerenciar templates de cronograma do aluno
+ */
+const saveAlunoTemplate = functions
+  .region("southamerica-east1")
+  .https.onCall(async (data, context) => {
+    const auth = await getAuthContext(context);
+    requireRole(auth, "mentor");
+
+    const { alunoId, ...templateData } = data;
+
+    if (!alunoId) {
+      throw new functions.https.HttpsError("invalid-argument", "ID do aluno é obrigatório");
+    }
+
+    try {
+      const alunoDoc = await db.collection("alunos").doc(alunoId).get();
+      if (!alunoDoc.exists) {
+        throw new functions.https.HttpsError("not-found", "Aluno não encontrado");
+      }
+
+      const templateRef = await db
+        .collection("alunos")
+        .doc(alunoId)
+        .collection("templates")
+        .add({
+          ...templateData,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+      return { success: true, templateId: templateRef.id };
+    } catch (error: any) {
+      functions.logger.error("Erro ao salvar template do aluno:", error);
+      throw new functions.https.HttpsError("internal", error.message);
+    }
+  });
+
+const loadAlunoTemplate = functions
+  .region("southamerica-east1")
+  .https.onCall(async (data, context) => {
+    const auth = await getAuthContext(context);
+    requireRole(auth, "mentor");
+
+    const { alunoId, templateId } = data;
+
+    if (!alunoId || !templateId) {
+      throw new functions.https.HttpsError("invalid-argument", "IDs do aluno e template são obrigatórios");
+    }
+
+    try {
+      const templateDoc = await db
+        .collection("alunos")
+        .doc(alunoId)
+        .collection("templates")
+        .doc(templateId)
+        .get();
+
+      if (!templateDoc.exists) {
+        throw new functions.https.HttpsError("not-found", "Template não encontrado");
+      }
+
+      return { id: templateDoc.id, ...templateDoc.data() };
+    } catch (error: any) {
+      functions.logger.error("Erro ao carregar template do aluno:", error);
+      throw new functions.https.HttpsError("internal", error.message);
+    }
+  });
+
+const deleteAlunoTemplate = functions
+  .region("southamerica-east1")
+  .https.onCall(async (data, context) => {
+    const auth = await getAuthContext(context);
+    requireRole(auth, "mentor");
+
+    const { alunoId, templateId } = data;
+
+    if (!alunoId || !templateId) {
+      throw new functions.https.HttpsError("invalid-argument", "IDs do aluno e template são obrigatórios");
+    }
+
+    try {
+      await db
+        .collection("alunos")
+        .doc(alunoId)
+        .collection("templates")
+        .doc(templateId)
+        .delete();
+
+      return { success: true };
+    } catch (error: any) {
+      functions.logger.error("Erro ao deletar template do aluno:", error);
+      throw new functions.https.HttpsError("internal", error.message);
+    }
+  });
+
+/**
+ * Funções para o mentor gerenciar diário emocional do aluno
+ */
+const createAlunoDiarioEmocional = functions
+  .region("southamerica-east1")
+  .https.onCall(async (data, context) => {
+    const auth = await getAuthContext(context);
+    requireRole(auth, "mentor");
+
+    const { alunoId, ...diarioData } = data;
+
+    if (!alunoId) {
+      throw new functions.https.HttpsError("invalid-argument", "ID do aluno é obrigatório");
+    }
+
+    try {
+      const alunoDoc = await db.collection("alunos").doc(alunoId).get();
+      if (!alunoDoc.exists) {
+        throw new functions.https.HttpsError("not-found", "Aluno não encontrado");
+      }
+
+      const diarioRef = await db
+        .collection("alunos")
+        .doc(alunoId)
+        .collection("diario_emocional")
+        .add({
+          ...diarioData,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+      return { success: true, registroId: diarioRef.id };
+    } catch (error: any) {
+      functions.logger.error("Erro ao criar registro emocional do aluno:", error);
+      throw new functions.https.HttpsError("internal", error.message);
+    }
+  });
+
+const deleteAlunoDiarioEmocional = functions
+  .region("southamerica-east1")
+  .https.onCall(async (data, context) => {
+    const auth = await getAuthContext(context);
+    requireRole(auth, "mentor");
+
+    const { alunoId, registroId } = data;
+
+    if (!alunoId || !registroId) {
+      throw new functions.https.HttpsError("invalid-argument", "IDs do aluno e registro são obrigatórios");
+    }
+
+    try {
+      await db
+        .collection("alunos")
+        .doc(alunoId)
+        .collection("diario_emocional")
+        .doc(registroId)
+        .delete();
+
+      return { success: true };
+    } catch (error: any) {
+      functions.logger.error("Erro ao deletar registro emocional do aluno:", error);
+      throw new functions.https.HttpsError("internal", error.message);
+    }
+  });
+
+/**
+ * Funções para o mentor gerenciar autodiagnósticos do aluno
+ */
+const createAlunoAutodiagnostico = functions
+  .region("southamerica-east1")
+  .https.onCall(async (data, context) => {
+    const auth = await getAuthContext(context);
+    requireRole(auth, "mentor");
+
+    const { alunoId, ...autodiagnosticoData } = data;
+
+    if (!alunoId) {
+      throw new functions.https.HttpsError("invalid-argument", "ID do aluno é obrigatório");
+    }
+
+    try {
+      const alunoDoc = await db.collection("alunos").doc(alunoId).get();
+      if (!alunoDoc.exists) {
+        throw new functions.https.HttpsError("not-found", "Aluno não encontrado");
+      }
+
+      const autodiagnosticoRef = await db
+        .collection("alunos")
+        .doc(alunoId)
+        .collection("autodiagnosticos")
+        .add({
+          ...autodiagnosticoData,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+      return { success: true, autodiagnosticoId: autodiagnosticoRef.id };
+    } catch (error: any) {
+      functions.logger.error("Erro ao criar autodiagnóstico do aluno:", error);
+      throw new functions.https.HttpsError("internal", error.message);
+    }
+  });
+
+const deleteAlunoAutodiagnostico = functions
+  .region("southamerica-east1")
+  .https.onCall(async (data, context) => {
+    const auth = await getAuthContext(context);
+    requireRole(auth, "mentor");
+
+    const { alunoId, autodiagnosticoId } = data;
+
+    if (!alunoId || !autodiagnosticoId) {
+      throw new functions.https.HttpsError("invalid-argument", "IDs do aluno e autodiagnóstico são obrigatórios");
+    }
+
+    try {
+      await db
+        .collection("alunos")
+        .doc(alunoId)
+        .collection("autodiagnosticos")
+        .doc(autodiagnosticoId)
+        .delete();
+
+      return { success: true };
+    } catch (error: any) {
+      functions.logger.error("Erro ao deletar autodiagnóstico do aluno:", error);
+      throw new functions.https.HttpsError("internal", error.message);
+    }
+  });
+
+/**
+ * Funções para o mentor gerenciar progresso nos conteúdos ENEM do aluno
+ */
+const updateAlunoProgresso = functions
+  .region("southamerica-east1")
+  .https.onCall(async (data, context) => {
+    const auth = await getAuthContext(context);
+    requireRole(auth, "mentor");
+
+    const { alunoId, materia, topico, concluido } = data;
+
+    if (!alunoId || !materia || !topico) {
+      throw new functions.https.HttpsError("invalid-argument", "ID do aluno, matéria e tópico são obrigatórios");
+    }
+
+    try {
+      const alunoDoc = await db.collection("alunos").doc(alunoId).get();
+      if (!alunoDoc.exists) {
+        throw new functions.https.HttpsError("not-found", "Aluno não encontrado");
+      }
+
+      // Buscar ou criar documento de progresso
+      const progressoQuery = await db
+        .collection("alunos")
+        .doc(alunoId)
+        .collection("progresso")
+        .where("materia", "==", materia)
+        .where("topico", "==", topico)
+        .limit(1)
+        .get();
+
+      if (progressoQuery.empty) {
+        // Criar novo registro
+        await db
+          .collection("alunos")
+          .doc(alunoId)
+          .collection("progresso")
+          .add({
+            materia,
+            topico,
+            concluido: concluido || false,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+      } else {
+        // Atualizar registro existente
+        const progressoDoc = progressoQuery.docs[0];
+        await progressoDoc.ref.update({
+          concluido: concluido || false,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      }
+
+      return { success: true };
+    } catch (error: any) {
+      functions.logger.error("Erro ao atualizar progresso do aluno:", error);
+      throw new functions.https.HttpsError("internal", error.message);
+    }
+  });
+
+/**
+ * Atualizar perfil do aluno
+ */
+const updateAlunoProfile = functions
+  .region("southamerica-east1")
+  .https.onCall(async (data, context) => {
+    const auth = await getAuthContext(context);
+    requireRole(auth, "mentor");
+
+    const { alunoId, ...updates } = data;
+
+    if (!alunoId) {
+      throw new functions.https.HttpsError("invalid-argument", "ID do aluno é obrigatório");
+    }
+
+    try {
+      const alunoDoc = await db.collection("alunos").doc(alunoId).get();
+      if (!alunoDoc.exists) {
+        throw new functions.https.HttpsError("not-found", "Aluno não encontrado");
+      }
+
+      await db.collection("alunos").doc(alunoId).update({
+        ...updates,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      return { success: true };
+    } catch (error: any) {
+      functions.logger.error("Erro ao atualizar perfil do aluno:", error);
+      throw new functions.https.HttpsError("internal", error.message);
+    }
+  });
+
+/**
+ * Funções para o mentor gerenciar cronogramas do aluno
+ */
+const createAlunoCronograma = functions
+  .region("southamerica-east1")
+  .https.onCall(async (data, context) => {
+    const auth = await getAuthContext(context);
+    requireRole(auth, "mentor");
+
+    const { alunoId, ...cronogramaData } = data;
+
+    if (!alunoId) {
+      throw new functions.https.HttpsError("invalid-argument", "ID do aluno é obrigatório");
+    }
+
+    try {
+      const alunoDoc = await db.collection("alunos").doc(alunoId).get();
+      if (!alunoDoc.exists) {
+        throw new functions.https.HttpsError("not-found", "Aluno não encontrado");
+      }
+
+      const cronogramaRef = await db
+        .collection("alunos")
+        .doc(alunoId)
+        .collection("cronogramas")
+        .add({
+          ...cronogramaData,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+      return { success: true, cronogramaId: cronogramaRef.id };
+    } catch (error: any) {
+      functions.logger.error("Erro ao criar cronograma do aluno:", error);
+      throw new functions.https.HttpsError("internal", error.message);
+    }
+  });
+
+const updateAlunoCronograma = functions
+  .region("southamerica-east1")
+  .https.onCall(async (data, context) => {
+    const auth = await getAuthContext(context);
+    requireRole(auth, "mentor");
+
+    const { alunoId, cronogramaId, ...updates } = data;
+
+    if (!alunoId || !cronogramaId) {
+      throw new functions.https.HttpsError("invalid-argument", "IDs do aluno e cronograma são obrigatórios");
+    }
+
+    try {
+      await db
+        .collection("alunos")
+        .doc(alunoId)
+        .collection("cronogramas")
+        .doc(cronogramaId)
+        .update({
+          ...updates,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+      return { success: true };
+    } catch (error: any) {
+      functions.logger.error("Erro ao atualizar cronograma do aluno:", error);
+      throw new functions.https.HttpsError("internal", error.message);
+    }
+  });
+
+const deleteAlunoCronograma = functions
+  .region("southamerica-east1")
+  .https.onCall(async (data, context) => {
+    const auth = await getAuthContext(context);
+    requireRole(auth, "mentor");
+
+    const { alunoId, cronogramaId } = data;
+
+    if (!alunoId || !cronogramaId) {
+      throw new functions.https.HttpsError("invalid-argument", "IDs do aluno e cronograma são obrigatórios");
+    }
+
+    try {
+      await db
+        .collection("alunos")
+        .doc(alunoId)
+        .collection("cronogramas")
+        .doc(cronogramaId)
+        .delete();
+
+      return { success: true };
+    } catch (error: any) {
+      functions.logger.error("Erro ao deletar cronograma do aluno:", error);
+      throw new functions.https.HttpsError("internal", error.message);
+    }
+  });
+
+/**
+ * Funções para o mentor gerenciar tarefas do cronograma do aluno
+ */
+const createAlunoTarefa = functions
+  .region("southamerica-east1")
+  .https.onCall(async (data, context) => {
+    const auth = await getAuthContext(context);
+    requireRole(auth, "mentor");
+
+    const { alunoId, cronogramaId, ...tarefaData } = data;
+
+    if (!alunoId || !cronogramaId) {
+      throw new functions.https.HttpsError("invalid-argument", "IDs do aluno e cronograma são obrigatórios");
+    }
+
+    try {
+      const tarefaRef = await db
+        .collection("alunos")
+        .doc(alunoId)
+        .collection("cronogramas")
+        .doc(cronogramaId)
+        .collection("tarefas")
+        .add({
+          ...tarefaData,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+      return { success: true, tarefaId: tarefaRef.id };
+    } catch (error: any) {
+      functions.logger.error("Erro ao criar tarefa do aluno:", error);
+      throw new functions.https.HttpsError("internal", error.message);
+    }
+  });
+
+const updateAlunoTarefa = functions
+  .region("southamerica-east1")
+  .https.onCall(async (data, context) => {
+    const auth = await getAuthContext(context);
+    requireRole(auth, "mentor");
+
+    const { alunoId, cronogramaId, tarefaId, ...updates } = data;
+
+    if (!alunoId || !cronogramaId || !tarefaId) {
+      throw new functions.https.HttpsError("invalid-argument", "IDs do aluno, cronograma e tarefa são obrigatórios");
+    }
+
+    try {
+      await db
+        .collection("alunos")
+        .doc(alunoId)
+        .collection("cronogramas")
+        .doc(cronogramaId)
+        .collection("tarefas")
+        .doc(tarefaId)
+        .update({
+          ...updates,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+      return { success: true };
+    } catch (error: any) {
+      functions.logger.error("Erro ao atualizar tarefa do aluno:", error);
+      throw new functions.https.HttpsError("internal", error.message);
+    }
+  });
+
+const deleteAlunoTarefa = functions
+  .region("southamerica-east1")
+  .https.onCall(async (data, context) => {
+    const auth = await getAuthContext(context);
+    requireRole(auth, "mentor");
+
+    const { alunoId, cronogramaId, tarefaId } = data;
+
+    if (!alunoId || !cronogramaId || !tarefaId) {
+      throw new functions.https.HttpsError("invalid-argument", "IDs do aluno, cronograma e tarefa são obrigatórios");
+    }
+
+    try {
+      await db
+        .collection("alunos")
+        .doc(alunoId)
+        .collection("cronogramas")
+        .doc(cronogramaId)
+        .collection("tarefas")
+        .doc(tarefaId)
+        .delete();
+
+      return { success: true };
+    } catch (error: any) {
+      functions.logger.error("Erro ao deletar tarefa do aluno:", error);
+      throw new functions.https.HttpsError("internal", error.message);
+    }
+  });
+
+// Exportar todas as funções do mentor
 export const mentorFunctions = {
+  // Funções básicas do mentor
   getMe,
   getAlunos,
   getAlunoById,
@@ -796,12 +1404,49 @@ export const mentorFunctions = {
   getAlunosMetricas,
   getEvolucaoAlunos,
   getAlunoAreaCompleta,
-  // Novas funções para gerenciar dados do aluno
+  getAlunoData,
+  
+  // Estudos
   createAlunoEstudo,
   updateAlunoEstudo,
   deleteAlunoEstudo,
+  
+  // Simulados
   createAlunoSimulado,
   updateAlunoSimulado,
   deleteAlunoSimulado,
-  getAlunoData,
+  
+  // Horários
+  createAlunoHorario,
+  updateAlunoHorario,
+  deleteAlunoHorario,
+  
+  // Templates
+  saveAlunoTemplate,
+  loadAlunoTemplate,
+  deleteAlunoTemplate,
+  
+  // Diário Emocional
+  createAlunoDiarioEmocional,
+  deleteAlunoDiarioEmocional,
+  
+  // Autodiagnósticos
+  createAlunoAutodiagnostico,
+  deleteAlunoAutodiagnostico,
+  
+  // Progresso
+  updateAlunoProgresso,
+  
+  // Perfil
+  updateAlunoProfile,
+  
+  // Cronogramas
+  createAlunoCronograma,
+  updateAlunoCronograma,
+  deleteAlunoCronograma,
+  
+  // Tarefas
+  createAlunoTarefa,
+  updateAlunoTarefa,
+  deleteAlunoTarefa,
 };

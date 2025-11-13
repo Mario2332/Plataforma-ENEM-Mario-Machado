@@ -151,6 +151,146 @@ export const mentorApi = {
     alunoId: string;
     collection: string;
   }) => callFunction("mentorFunctions-getAlunoData", data),
+  
+  // Horários
+  createAlunoHorario: (data: {
+    alunoId: string;
+    diaSemana: number;
+    horaInicio: string;
+    horaFim: string;
+    materia: string;
+    descricao?: string;
+    cor?: string;
+  }) => callFunction("mentorFunctions-createAlunoHorario", data),
+  
+  updateAlunoHorario: (data: {
+    alunoId: string;
+    horarioId: string;
+    diaSemana?: number;
+    horaInicio?: string;
+    horaFim?: string;
+    materia?: string;
+    descricao?: string;
+    cor?: string;
+  }) => callFunction("mentorFunctions-updateAlunoHorario", data),
+  
+  deleteAlunoHorario: (data: {
+    alunoId: string;
+    horarioId: string;
+  }) => callFunction("mentorFunctions-deleteAlunoHorario", data),
+  
+  // Templates
+  saveAlunoTemplate: (data: {
+    alunoId: string;
+    nome: string;
+    horarios: any[];
+  }) => callFunction("mentorFunctions-saveAlunoTemplate", data),
+  
+  loadAlunoTemplate: (data: {
+    alunoId: string;
+    templateId: string;
+  }) => callFunction("mentorFunctions-loadAlunoTemplate", data),
+  
+  deleteAlunoTemplate: (data: {
+    alunoId: string;
+    templateId: string;
+  }) => callFunction("mentorFunctions-deleteAlunoTemplate", data),
+  
+  // Diário Emocional
+  createAlunoDiarioEmocional: (data: {
+    alunoId: string;
+    data: string;
+    estadoEmocional: string;
+    nivelCansaco: string;
+    observacoes?: string;
+  }) => callFunction("mentorFunctions-createAlunoDiarioEmocional", data),
+  
+  deleteAlunoDiarioEmocional: (data: {
+    alunoId: string;
+    registroId: string;
+  }) => callFunction("mentorFunctions-deleteAlunoDiarioEmocional", data),
+  
+  // Autodiagnósticos
+  createAlunoAutodiagnostico: (data: {
+    alunoId: string;
+    prova: string;
+    questoes: Array<{
+      numeroQuestao: string;
+      macroassunto: string;
+      microassunto: string;
+      motivoErro: string;
+    }>;
+  }) => callFunction("mentorFunctions-createAlunoAutodiagnostico", data),
+  
+  deleteAlunoAutodiagnostico: (data: {
+    alunoId: string;
+    autodiagnosticoId: string;
+  }) => callFunction("mentorFunctions-deleteAlunoAutodiagnostico", data),
+  
+  // Progresso
+  updateAlunoProgresso: (data: {
+    alunoId: string;
+    materia: string;
+    topico: string;
+    concluido: boolean;
+  }) => callFunction("mentorFunctions-updateAlunoProgresso", data),
+  
+  // Perfil
+  updateAlunoProfile: (data: {
+    alunoId: string;
+    nome?: string;
+    email?: string;
+    telefone?: string;
+    plano?: string;
+    [key: string]: any;
+  }) => callFunction("mentorFunctions-updateAlunoProfile", data),
+  
+  // Cronogramas
+  createAlunoCronograma: (data: {
+    alunoId: string;
+    nome: string;
+    descricao?: string;
+    dataInicio?: string;
+    dataFim?: string;
+  }) => callFunction("mentorFunctions-createAlunoCronograma", data),
+  
+  updateAlunoCronograma: (data: {
+    alunoId: string;
+    cronogramaId: string;
+    nome?: string;
+    descricao?: string;
+    dataInicio?: string;
+    dataFim?: string;
+  }) => callFunction("mentorFunctions-updateAlunoCronograma", data),
+  
+  deleteAlunoCronograma: (data: {
+    alunoId: string;
+    cronogramaId: string;
+  }) => callFunction("mentorFunctions-deleteAlunoCronograma", data),
+  
+  // Tarefas
+  createAlunoTarefa: (data: {
+    alunoId: string;
+    cronogramaId: string;
+    titulo: string;
+    descricao?: string;
+    concluida?: boolean;
+  }) => callFunction("mentorFunctions-createAlunoTarefa", data),
+  
+  updateAlunoTarefa: (data: {
+    alunoId: string;
+    cronogramaId: string;
+    tarefaId: string;
+    titulo?: string;
+    descricao?: string;
+    concluida?: boolean;
+  }) => callFunction("mentorFunctions-updateAlunoTarefa", data),
+  
+  deleteAlunoTarefa: (data: {
+    alunoId: string;
+    cronogramaId: string;
+    tarefaId: string;
+  }) => callFunction("mentorFunctions-deleteAlunoTarefa", data),
 };
 
 // ============================================

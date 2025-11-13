@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { alunoApi } from "@/lib/api";
 import { Heart, Battery, Calendar, Trash2, TrendingUp, TrendingDown, Minus, BarChart3, AlertTriangle } from "lucide-react";
@@ -32,6 +33,7 @@ export default function AlunoDiario() {
   const [estudos, setEstudos] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [periodoFiltro, setPeriodoFiltro] = useState<string>("todo");
   
   // Formulário
   const [formData, setFormData] = useState({
@@ -207,8 +209,92 @@ export default function AlunoDiario() {
     };
   };
 
+  // Filtrar registros por período
+  const filtrarPorPeriodo = () => {
+    if (periodoFiltro === "todo") return registros;
+    
+    const agora = new Date();
+    let dataLimite: Date;
+    
+    switch (periodoFiltro) {
+      case "7dias":
+        dataLimite = new Date(agora.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case "30dias":
+        dataLimite = new Date(agora.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case "3meses":
+        dataLimite = new Date(agora.getTime() - 90 * 24 * 60 * 60 * 1000);
+        break;
+      case "12meses":
+        dataLimite = new Date(agora.getTime() - 365 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        return registros;
+    }
+    
+    return registros.filter(registro => {
+      let dataRegistro: Date;
+      
+      if (registro.data?.toDate) {
+        dataRegistro = registro.data.toDate();
+      } else if (registro.data?.seconds || registro.data?._seconds) {
+        const seconds = registro.data.seconds || registro.data._seconds;
+        dataRegistro = new Date(seconds * 1000);
+      } else if (registro.data) {
+        dataRegistro = new Date(registro.data);
+      } else {
+        return false;
+      }
+      
+      return dataRegistro >= dataLimite;
+    });
+  };
+
+  // Preparar dados de distribuição para gráfico de barras
+  const prepararDadosDistribuicao = () => {
+    const registrosFiltrados = filtrarPorPeriodo();
+    
+    // Contar estados emocionais
+    const contagemEstados: any = {};
+    ESTADOS_EMOCIONAIS.forEach(e => {
+      contagemEstados[e.value] = 0;
+    });
+    
+    // Contar níveis de cansaço
+    const contagemCansaco: any = {};
+    NIVEIS_CANSACO.forEach(n => {
+      contagemCansaco[n.value] = 0;
+    });
+    
+    registrosFiltrados.forEach(registro => {
+      if (registro.estadoEmocional) {
+        contagemEstados[registro.estadoEmocional] = (contagemEstados[registro.estadoEmocional] || 0) + 1;
+      }
+      if (registro.nivelCansaco) {
+        contagemCansaco[registro.nivelCansaco] = (contagemCansaco[registro.nivelCansaco] || 0) + 1;
+      }
+    });
+    
+    // Preparar dados para o gráfico
+    const dadosEstados = ESTADOS_EMOCIONAIS.map(e => ({
+      nome: e.label,
+      quantidade: contagemEstados[e.value] || 0,
+      cor: e.color.replace('bg-', '')
+    }));
+    
+    const dadosCansaco = NIVEIS_CANSACO.map(n => ({
+      nome: n.label,
+      quantidade: contagemCansaco[n.value] || 0,
+      cor: n.color.replace('bg-', '')
+    }));
+    
+    return { dadosEstados, dadosCansaco };
+  };
+
   const dadosGrafico = useMemo(() => prepararDadosGrafico(), [registros]);
   const analise = useMemo(() => analisarCorrelacao(), [registros, estudos]);
+  const dadosDistribuicao = useMemo(() => prepararDadosDistribuicao(), [registros, periodoFiltro]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -220,7 +306,15 @@ export default function AlunoDiario() {
 
     try {
       setIsSaving(true);
-      await alunoApi.createDiarioEmocional(formData);
+      
+      // Corrigir timezone: criar data no timezone local ao meio-dia
+      const [ano, mes, dia] = formData.data.split('-').map(Number);
+      const dataLocal = new Date(ano, mes - 1, dia, 12, 0, 0);
+      
+      await alunoApi.createDiarioEmocional({
+        ...formData,
+        data: dataLocal.toISOString()
+      });
       toast.success("Registro salvo com sucesso!");
       setFormData({
         data: new Date().toISOString().split('T')[0],
@@ -458,13 +552,69 @@ export default function AlunoDiario() {
                 <p className="text-center text-muted-foreground py-8">
                   Registre mais dias para ver os gráficos
                 </p>
-              )}
+                       </CardContent>
+          </Card>
+
+          {/* Gráfico de Distribuição */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Distribuição de Estados</CardTitle>
+                  <CardDescription>
+                    Quantidade de dias em cada estado emocional e nível de energia
+                  </CardDescription>
+                </div>
+                <Select value={periodoFiltro} onValueChange={setPeriodoFiltro}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Período" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="7dias">Últimos 7 dias</SelectItem>
+                    <SelectItem value="30dias">Últimos 30 dias</SelectItem>
+                    <SelectItem value="3meses">Últimos 3 meses</SelectItem>
+                    <SelectItem value="12meses">Últimos 12 meses</SelectItem>
+                    <SelectItem value="todo">Tempo todo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-8">
+                {/* Gráfico de Estados Emocionais */}
+                <div>
+                  <h3 className="text-sm font-medium mb-4">Estado Emocional</h3>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={dadosDistribuicao.dadosEstados}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="nome" />
+                      <YAxis allowDecimals={false} />
+                      <RechartsTooltip />
+                      <Bar dataKey="quantidade" fill="#3b82f6" radius={[8, 8, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Gráfico de Nível de Energia */}
+                <div>
+                  <h3 className="text-sm font-medium mb-4">Nível de Energia</h3>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={dadosDistribuicao.dadosCansaco}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="nome" />
+                      <YAxis allowDecimals={false} />
+                      <RechartsTooltip />
+                      <Bar dataKey="quantidade" fill="#10b981" radius={[8, 8, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </>
       )}
 
-      {/* Histórico */}
+      {/* Histórico de Registros */}
       <Card>
         <CardHeader>
           <CardTitle>Histórico de Registros</CardTitle>

@@ -25,6 +25,22 @@ const DIFICULDADES = [
   { value: "muito_dificil", label: "Muito Difícil" },
 ];
 
+// Função para formatar tempo em minutos para "XhYmin"
+const formatarTempo = (minutos: number): string => {
+  if (minutos === 0) return "-";
+  
+  const horas = Math.floor(minutos / 60);
+  const mins = minutos % 60;
+  
+  if (horas === 0) {
+    return `${mins}min`;
+  } else if (mins === 0) {
+    return `${horas}h`;
+  } else {
+    return `${horas}h${mins}min`;
+  }
+};
+
 export default function AlunoSimulados() {
   const api = useAlunoApi();
   const [activeTab, setActiveTab] = useState("simulados");
@@ -661,10 +677,10 @@ export default function AlunoSimulados() {
                             <TableCell>{natureza}/45</TableCell>
                             <TableCell>{matematica}/45</TableCell>
                             <TableCell className="font-semibold">{dia1Acertos}/90</TableCell>
-                            <TableCell>{tempoDia1 > 0 ? `${tempoDia1} min` : "-"}</TableCell>
+                            <TableCell>{formatarTempo(tempoDia1)}</TableCell>
                             <TableCell className="text-sm">{getDificuldadeLabel(simulado.dificuldadeDia1)}</TableCell>
                             <TableCell className="font-semibold">{dia2Acertos}/90</TableCell>
-                            <TableCell>{tempoDia2 > 0 ? `${tempoDia2} min` : "-"}</TableCell>
+                            <TableCell>{formatarTempo(tempoDia2)}</TableCell>
                             <TableCell className="text-sm">{getDificuldadeLabel(simulado.dificuldadeDia2)}</TableCell>
                             <TableCell className="font-bold">{total}/180</TableCell>
                             <TableCell>{simulado.redacaoNota > 0 ? simulado.redacaoNota : "-"}</TableCell>

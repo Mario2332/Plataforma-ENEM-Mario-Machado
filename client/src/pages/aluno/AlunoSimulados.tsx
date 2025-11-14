@@ -607,12 +607,17 @@ export default function AlunoSimulados() {
                       <TableRow>
                         <TableHead>Nome</TableHead>
                         <TableHead>Data</TableHead>
+                        <TableHead>Ling.</TableHead>
+                        <TableHead>Hum.</TableHead>
+                        <TableHead>Nat.</TableHead>
+                        <TableHead>Mat.</TableHead>
                         <TableHead>1º Dia</TableHead>
-                        <TableHead>Dif. 1º Dia</TableHead>
+                        <TableHead>Tempo 1º</TableHead>
+                        <TableHead>Dif. 1º</TableHead>
                         <TableHead>2º Dia</TableHead>
-                        <TableHead>Dif. 2º Dia</TableHead>
+                        <TableHead>Tempo 2º</TableHead>
+                        <TableHead>Dif. 2º</TableHead>
                         <TableHead>Total</TableHead>
-                        <TableHead>Tempo Total</TableHead>
                         <TableHead>Redação</TableHead>
                         <TableHead className="text-right">Ações</TableHead>
                       </TableRow>
@@ -634,22 +639,34 @@ export default function AlunoSimulados() {
                           data = new Date();
                         }
 
-                        const dia1 = (simulado.linguagensAcertos || 0) + (simulado.humanasAcertos || 0);
-                        const dia2 = (simulado.naturezaAcertos || 0) + (simulado.matematicaAcertos || 0);
-                        const total = dia1 + dia2;
-                        const tempoTotal = (simulado.linguagensTempo || 0) + (simulado.humanasTempo || 0) + 
-                                          (simulado.naturezaTempo || 0) + (simulado.matematicaTempo || 0);
+                        // Cálculos
+                        const linguagens = simulado.linguagensAcertos || 0;
+                        const humanas = simulado.humanasAcertos || 0;
+                        const natureza = simulado.naturezaAcertos || 0;
+                        const matematica = simulado.matematicaAcertos || 0;
+                        
+                        const dia1Acertos = linguagens + humanas;
+                        const dia2Acertos = natureza + matematica;
+                        const total = dia1Acertos + dia2Acertos;
+                        
+                        const tempoDia1 = (simulado.linguagensTempo || 0) + (simulado.humanasTempo || 0);
+                        const tempoDia2 = (simulado.naturezaTempo || 0) + (simulado.matematicaTempo || 0);
 
                         return (
                           <TableRow key={simulado.id}>
                             <TableCell className="font-medium">{simulado.nome}</TableCell>
                             <TableCell>{data.toLocaleDateString('pt-BR')}</TableCell>
-                            <TableCell>{dia1}/90</TableCell>
-                            <TableCell>{getDificuldadeLabel(simulado.dificuldadeDia1)}</TableCell>
-                            <TableCell>{dia2}/90</TableCell>
-                            <TableCell>{getDificuldadeLabel(simulado.dificuldadeDia2)}</TableCell>
-                            <TableCell className="font-semibold">{total}/180</TableCell>
-                            <TableCell>{tempoTotal > 0 ? `${tempoTotal} min` : "-"}</TableCell>
+                            <TableCell>{linguagens}/45</TableCell>
+                            <TableCell>{humanas}/45</TableCell>
+                            <TableCell>{natureza}/45</TableCell>
+                            <TableCell>{matematica}/45</TableCell>
+                            <TableCell className="font-semibold">{dia1Acertos}/90</TableCell>
+                            <TableCell>{tempoDia1 > 0 ? `${tempoDia1} min` : "-"}</TableCell>
+                            <TableCell className="text-sm">{getDificuldadeLabel(simulado.dificuldadeDia1)}</TableCell>
+                            <TableCell className="font-semibold">{dia2Acertos}/90</TableCell>
+                            <TableCell>{tempoDia2 > 0 ? `${tempoDia2} min` : "-"}</TableCell>
+                            <TableCell className="text-sm">{getDificuldadeLabel(simulado.dificuldadeDia2)}</TableCell>
+                            <TableCell className="font-bold">{total}/180</TableCell>
                             <TableCell>{simulado.redacaoNota > 0 ? simulado.redacaoNota : "-"}</TableCell>
                             <TableCell className="text-right">
                               <div className="flex items-center justify-end gap-2">

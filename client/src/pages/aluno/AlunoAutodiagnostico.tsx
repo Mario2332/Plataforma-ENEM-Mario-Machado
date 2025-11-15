@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { alunoApi } from "@/lib/api";
@@ -32,6 +33,7 @@ interface Questao {
   macroassunto: string;
   microassunto: string;
   motivoErro: string;
+  anotacoes?: string;
 }
 
 export default function AlunoAutodiagnostico() {
@@ -46,7 +48,7 @@ export default function AlunoAutodiagnostico() {
   // Formulário
   const [prova, setProva] = useState("");
   const [questoes, setQuestoes] = useState<Questao[]>([
-    { numeroQuestao: "", area: "", macroassunto: "", microassunto: "", motivoErro: "" }
+    { numeroQuestao: "", area: "", macroassunto: "", microassunto: "", motivoErro: "", anotacoes: "" }
   ]);
 
   useEffect(() => {
@@ -66,7 +68,7 @@ export default function AlunoAutodiagnostico() {
   };
 
   const addQuestao = () => {
-    setQuestoes([...questoes, { numeroQuestao: "", area: "", macroassunto: "", microassunto: "", motivoErro: "" }]);
+    setQuestoes([...questoes, { numeroQuestao: "", area: "", macroassunto: "", microassunto: "", motivoErro: "", anotacoes: "" }]);
   };
 
   const removeQuestao = (index: number) => {
@@ -111,7 +113,7 @@ export default function AlunoAutodiagnostico() {
       
       // Limpar formulário
       setProva("");
-      setQuestoes([{ numeroQuestao: "", area: "", macroassunto: "", microassunto: "", motivoErro: "" }]);
+      setQuestoes([{ numeroQuestao: "", area: "", macroassunto: "", microassunto: "", motivoErro: "", anotacoes: "" }]);
       
       await loadAutodiagnosticos();
     } catch (error: any) {
@@ -346,6 +348,20 @@ export default function AlunoAutodiagnostico() {
                             </SelectContent>
                           </Select>
                         </div>
+
+                        <div className="space-y-2 md:col-span-2">
+                          <Label>Anotações (opcional)</Label>
+                          <Textarea
+                            placeholder="Ex: Confundi o narrador com o personagem principal..."
+                            value={questao.anotacoes || ""}
+                            onChange={(e) => updateQuestao(index, "anotacoes", e.target.value)}
+                            rows={3}
+                            className="resize-none"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Use este campo para registrar observações sobre o erro, raciocínio, ou pontos de atenção.
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </Card>
@@ -526,19 +542,31 @@ export default function AlunoAutodiagnostico() {
                                     {questoesDaArea.map((q: Questao, idx: number) => {
                                       const motivo = getMotivoErro(q.motivoErro);
                                       return (
-                                        <tr key={idx} className="border-b last:border-0">
-                                          <td className="py-2 px-3">{q.numeroQuestao}</td>
-                                          <td className="py-2 px-3">{q.macroassunto}</td>
-                                          <td className="py-2 px-3">{q.microassunto}</td>
-                                          <td className="py-2 px-3">
-                                            <span 
-                                              className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium text-white"
-                                              style={{ backgroundColor: motivo?.color }}
-                                            >
-                                              {motivo?.label}
-                                            </span>
-                                          </td>
-                                        </tr>
+                                        <>
+                                          <tr key={idx} className="border-b last:border-0">
+                                            <td className="py-2 px-3">{q.numeroQuestao}</td>
+                                            <td className="py-2 px-3">{q.macroassunto}</td>
+                                            <td className="py-2 px-3">{q.microassunto}</td>
+                                            <td className="py-2 px-3">
+                                              <span 
+                                                className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium text-white"
+                                                style={{ backgroundColor: motivo?.color }}
+                                              >
+                                                {motivo?.label}
+                                              </span>
+                                            </td>
+                                          </tr>
+                                          {q.anotacoes && (
+                                            <tr key={`${idx}-anotacoes`} className="border-b last:border-0 bg-muted/30">
+                                              <td colSpan={4} className="py-2 px-3">
+                                                <div className="text-xs">
+                                                  <span className="font-medium text-muted-foreground">Anotações:</span>
+                                                  <p className="mt-1 text-muted-foreground whitespace-pre-wrap">{q.anotacoes}</p>
+                                                </div>
+                                              </td>
+                                            </tr>
+                                          )}
+                                        </>
                                       );
                                     })}
                                   </tbody>

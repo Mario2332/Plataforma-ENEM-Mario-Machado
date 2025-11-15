@@ -17,7 +17,7 @@ type AreaFiltro = "total" | "linguagens" | "humanas" | "natureza" | "matematica"
 type MetricaFiltro = "acertos" | "tempo";
 
 const DIFICULDADES = [
-  { value: "", label: "Não informado" },
+  { value: "nao_informado", label: "Não informado" },
   { value: "muito_facil", label: "Muito Fácil" },
   { value: "facil", label: "Fácil" },
   { value: "media", label: "Média" },
@@ -67,8 +67,8 @@ export default function AlunoSimulados() {
     matematicaTempo: 0,
     redacaoNota: 0,
     redacaoTempo: 0,
-    dificuldadeDia1: "", // Linguagens + Humanas
-    dificuldadeDia2: "", // Natureza + Matemática
+    dificuldadeDia1: "nao_informado", // Linguagens + Humanas
+    dificuldadeDia2: "nao_informado", // Natureza + Matemática
   });
 
   const resetForm = () => {
@@ -85,8 +85,8 @@ export default function AlunoSimulados() {
       matematicaTempo: 0,
       redacaoNota: 0,
       redacaoTempo: 0,
-      dificuldadeDia1: "",
-      dificuldadeDia2: "",
+      dificuldadeDia1: "nao_informado",
+      dificuldadeDia2: "nao_informado",
     });
     setEditandoId(null);
   };
@@ -179,8 +179,8 @@ export default function AlunoSimulados() {
       matematicaTempo: simulado.matematicaTempo || 0,
       redacaoNota: simulado.redacaoNota || 0,
       redacaoTempo: simulado.redacaoTempo || 0,
-      dificuldadeDia1: simulado.dificuldadeDia1 || "",
-      dificuldadeDia2: simulado.dificuldadeDia2 || "",
+      dificuldadeDia1: simulado.dificuldadeDia1 || "nao_informado",
+      dificuldadeDia2: simulado.dificuldadeDia2 || "nao_informado",
     });
     setEditandoId(simulado.id);
     setDialogOpen(true);

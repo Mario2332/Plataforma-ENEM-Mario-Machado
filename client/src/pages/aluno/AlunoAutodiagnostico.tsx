@@ -7,7 +7,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { alunoApi } from "@/lib/api";
-import { Plus, Trash2, FileText, BarChart3, AlertCircle, Filter } from "lucide-react";
+import { storage } from "@/lib/firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { Plus, Trash2, FileText, BarChart3, AlertCircle, Filter, Upload, X, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from "recharts";
 
@@ -34,12 +36,14 @@ interface Questao {
   microassunto: string;
   motivoErro: string;
   anotacoes?: string;
+  imagemUrl?: string;
 }
 
 export default function AlunoAutodiagnostico() {
   const [autodiagnosticos, setAutodiagnosticos] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [uploadingImages, setUploadingImages] = useState<Record<number, boolean>>({});
   
   // Filtros
   const [filtroArea, setFiltroArea] = useState<string>("geral");
@@ -83,6 +87,54 @@ export default function AlunoAutodiagnostico() {
     const novasQuestoes = [...questoes];
     novasQuestoes[index][field] = value;
     setQuestoes(novasQuestoes);
+  };
+
+  const handleImageUpload = async (index: number, file: File) => {
+    // Validar arquivo
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Formato de imagem não suportado. Use JPG, PNG ou WEBP.");
+      return;
+    }
+
+    if (file.size > maxSize) {
+      toast.error("A imagem deve ter no máximo 5MB.");
+      return;
+    }
+
+    try {
+      setUploadingImages(prev => ({ ...prev, [index]: true }));
+
+      // Gerar nome único para o arquivo
+      const timestamp = Date.now();
+      const fileName = `${timestamp}_${file.name}`;
+      const storageRef = ref(storage, `autodiagnosticos/temp/${fileName}`);
+
+      // Upload
+      await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(storageRef);
+
+      // Atualizar questão com URL da imagem
+      const novasQuestoes = [...questoes];
+      novasQuestoes[index].imagemUrl = downloadURL;
+      setQuestoes(novasQuestoes);
+
+      toast.success("Imagem carregada com sucesso!");
+    } catch (error: any) {
+      console.error("Erro ao fazer upload da imagem:", error);
+      toast.error("Erro ao fazer upload da imagem");
+    } finally {
+      setUploadingImages(prev => ({ ...prev, [index]: false }));
+    }
+  };
+
+  const handleRemoveImage = (index: number) => {
+    const novasQuestoes = [...questoes];
+    novasQuestoes[index].imagemUrl = undefined;
+    setQuestoes(novasQuestoes);
+    toast.success("Imagem removida");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -362,6 +414,52 @@ export default function AlunoAutodiagnostico() {
                             Use este campo para registrar observações sobre o erro, raciocínio, ou pontos de atenção.
                           </p>
                         </div>
+
+                        <div className="space-y-2 md:col-span-2">
+                          <Label>Imagem (opcional)</Label>
+                          {questao.imagemUrl ? (
+                            <div className="space-y-2">
+                              <div className="relative rounded-lg border overflow-hidden">
+                                <img 
+                                  src={questao.imagemUrl} 
+                                  alt="Preview" 
+                                  className="w-full max-h-64 object-contain bg-muted"
+                                />
+                                <Button
+                                  type="button"
+                                  onClick={() => handleRemoveImage(index)}
+                                  size="sm"
+                                  variant="destructive"
+                                  className="absolute top-2 right-2"
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) handleImageUpload(index, file);
+                                }}
+                                disabled={uploadingImages[index]}
+                                className="cursor-pointer"
+                              />
+                              {uploadingImages[index] && (
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                                  Enviando...
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          <p className="text-xs text-muted-foreground">
+                            Adicione uma imagem da questão ou do seu raciocínio (JPG, PNG ou WEBP, máx. 5MB)
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </Card>
@@ -562,6 +660,27 @@ export default function AlunoAutodiagnostico() {
                                                 <div className="text-xs">
                                                   <span className="font-medium text-muted-foreground">Anotações:</span>
                                                   <p className="mt-1 text-muted-foreground whitespace-pre-wrap">{q.anotacoes}</p>
+                                                </div>
+                                              </td>
+                                            </tr>
+                                          )}
+                                          {q.imagemUrl && (
+                                            <tr key={`${idx}-imagem`} className="border-b last:border-0 bg-muted/30">
+                                              <td colSpan={4} className="py-2 px-3">
+                                                <div className="text-xs space-y-2">
+                                                  <span className="font-medium text-muted-foreground flex items-center gap-1">
+                                                    <ImageIcon className="h-3 w-3" />
+                                                    Imagem:
+                                                  </span>
+                                                  <div className="rounded-lg border overflow-hidden bg-white">
+                                                    <img 
+                                                      src={q.imagemUrl} 
+                                                      alt="Questão" 
+                                                      className="w-full max-h-96 object-contain cursor-pointer hover:opacity-90 transition-opacity"
+                                                      onClick={() => window.open(q.imagemUrl, '_blank')}
+                                                    />
+                                                  </div>
+                                                  <p className="text-muted-foreground italic">Clique na imagem para abrir em tamanho completo</p>
                                                 </div>
                                               </td>
                                             </tr>

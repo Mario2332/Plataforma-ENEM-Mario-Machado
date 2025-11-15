@@ -221,6 +221,7 @@ export const mentorApi = {
       microassunto: string;
       motivoErro: string;
       anotacoes?: string;
+      imagemUrl?: string;
     }>;
   }) => callFunction("mentorFunctions-createAlunoAutodiagnostico", data),
   
@@ -473,6 +474,7 @@ export const alunoApi = {
       microassunto: string;
       motivoErro: string;
       anotacoes?: string;
+      imagemUrl?: string;
     }>;
   }) => callFunction("createAutodiagnostico", data),
   getAutodiagnosticos: () => callFunction("getAutodiagnosticos"),

@@ -24,6 +24,27 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Separar React e bibliotecas principais
+          'vendor-react': ['react', 'react-dom', 'react/jsx-runtime'],
+          // Separar Firebase
+          'vendor-firebase': [
+            'firebase/app',
+            'firebase/auth',
+            'firebase/firestore',
+            'firebase/storage',
+            'firebase/functions'
+          ],
+          // Separar Recharts (gráficos)
+          'vendor-recharts': ['recharts'],
+          // Separar UI components
+          'vendor-ui': ['wouter', 'sonner', '@radix-ui/react-dialog', '@radix-ui/react-select'],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 1000,
   },
   server: {
     host: true,

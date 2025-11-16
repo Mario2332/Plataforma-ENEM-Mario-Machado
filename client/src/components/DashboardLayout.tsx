@@ -22,7 +22,7 @@ import {
 import { APP_LOGO, APP_TITLE, getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
 import { BarChart3, BookOpen, ChevronDown, FileText, GraduationCap, Heart, Home, LayoutDashboard, LogOut, Moon, PanelLeft, Settings, Sun, Users } from "lucide-react";
-import { CSSProperties, useEffect, useRef, useState } from "react";
+import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
@@ -191,7 +191,12 @@ function DashboardLayoutContent({
   const [isResizing, setIsResizing] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({});
   const sidebarRef = useRef<HTMLDivElement>(null);
-  const menuItems = getMenuItems(userData?.role);
+  
+  // Recalcular menuItems sempre que userData.role mudar
+  const menuItems = useMemo(() => {
+    return getMenuItems(userData?.role);
+  }, [userData?.role]);
+  
   const activeMenuItem = menuItems.find(item => item.path === location);
   const isMobile = useIsMobile();
 

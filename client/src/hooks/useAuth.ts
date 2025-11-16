@@ -179,7 +179,21 @@ export function useAuth() {
   // Função de logout
   const signOut = async () => {
     try {
+      // Salvar o role atual antes de fazer logout
+      const currentRole = authState.userData?.role;
+      
       await firebaseSignOut(auth);
+      
+      // Redirecionar para a página de login correta baseada no role
+      if (currentRole === 'aluno') {
+        window.location.href = '/login/aluno';
+      } else if (currentRole === 'mentor') {
+        window.location.href = '/login/mentor';
+      } else if (currentRole === 'gestor') {
+        window.location.href = '/login/gestor';
+      } else {
+        window.location.href = '/';
+      }
     } catch (error: any) {
       setAuthState((prev) => ({ ...prev, error: error.message }));
       throw error;

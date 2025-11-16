@@ -21,7 +21,14 @@ const INCIDENCE_MAP: Record<string, number> = {
 export const getConteudos = functions
   .region("southamerica-east1")
   .https.onCall(async (data, context) => {
+    functions.logger.info("🔵 getConteudos chamada", { 
+      data, 
+      hasAuth: !!context.auth,
+      uid: context.auth?.uid 
+    });
+    
     const auth = await getAuthContext(context);
+    functions.logger.info("✅ Auth OK", { uid: auth.uid, role: auth.role });
     
     const { materiaKey } = data;
 
@@ -142,7 +149,11 @@ export const getConteudos = functions
         return allMaterias;
       }
     } catch (error: any) {
-      functions.logger.error("Erro ao obter conteúdos:", error);
+      functions.logger.error("❌ Erro em getConteudos:", {
+        message: error.message,
+        code: error.code,
+        stack: error.stack
+      });
       throw new functions.https.HttpsError("internal", error.message);
     }
   });

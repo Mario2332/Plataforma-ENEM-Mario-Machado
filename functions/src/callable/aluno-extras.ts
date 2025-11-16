@@ -323,6 +323,7 @@ export const getProgresso = functions
         estudado: data.estudado || false,
         questoesFeitas: data.questoesFeitas || 0,
         questoesAcertos: data.questoesAcertos || 0,
+        anotacoes: data.anotacoes || "",
       };
     });
 

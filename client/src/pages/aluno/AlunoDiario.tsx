@@ -41,6 +41,8 @@ export default function AlunoDiario() {
     data: new Date().toISOString().split('T')[0],
     estadoEmocional: "",
     nivelCansaco: "",
+    qualidadeSono: "",
+    atividadeFisica: undefined as boolean | undefined,
     observacoes: "",
   });
 
@@ -123,6 +125,8 @@ export default function AlunoDiario() {
         data: dataStr,
         estadoEmocional: estadoMap[registro.estadoEmocional] || 3,
         nivelEnergia: cansacoMap[registro.nivelCansaco] || 3,
+        qualidadeSono: registro.qualidadeSono ? estadoMap[registro.qualidadeSono] : null,
+        atividadeFisica: registro.atividadeFisica !== undefined ? (registro.atividadeFisica ? 5 : 1) : null,
       };
     }).reverse(); // Inverter para ordem cronológica
     
@@ -268,12 +272,33 @@ export default function AlunoDiario() {
       contagemCansaco[n.value] = 0;
     });
     
+    // Contar qualidade de sono
+    const contagemSono: any = {};
+    ESTADOS_EMOCIONAIS.forEach(e => {
+      contagemSono[e.value] = 0;
+    });
+    
+    // Contar atividade física
+    let diasComAtividade = 0;
+    let diasSemAtividade = 0;
+    let diasSemRegistroAtividade = 0;
+    
     registrosFiltrados.forEach(registro => {
       if (registro.estadoEmocional) {
         contagemEstados[registro.estadoEmocional] = (contagemEstados[registro.estadoEmocional] || 0) + 1;
       }
       if (registro.nivelCansaco) {
         contagemCansaco[registro.nivelCansaco] = (contagemCansaco[registro.nivelCansaco] || 0) + 1;
+      }
+      if (registro.qualidadeSono) {
+        contagemSono[registro.qualidadeSono] = (contagemSono[registro.qualidadeSono] || 0) + 1;
+      }
+      if (registro.atividadeFisica === true) {
+        diasComAtividade++;
+      } else if (registro.atividadeFisica === false) {
+        diasSemAtividade++;
+      } else {
+        diasSemRegistroAtividade++;
       }
     });
     
@@ -290,7 +315,18 @@ export default function AlunoDiario() {
       cor: n.color.replace('bg-', '')
     }));
     
-    return { dadosEstados, dadosCansaco };
+    const dadosSono = ESTADOS_EMOCIONAIS.map(e => ({
+      nome: e.label,
+      quantidade: contagemSono[e.value] || 0,
+      cor: e.color.replace('bg-', '')
+    }));
+    
+    const dadosAtividade = [
+      { nome: 'Sim', quantidade: diasComAtividade, cor: 'green-500' },
+      { nome: 'Não', quantidade: diasSemAtividade, cor: 'red-500' },
+    ];
+    
+    return { dadosEstados, dadosCansaco, dadosSono, dadosAtividade };
   };
 
   const dadosGrafico = useMemo(() => prepararDadosGrafico(), [registros]);
@@ -321,6 +357,8 @@ export default function AlunoDiario() {
         data: new Date().toISOString().split('T')[0],
         estadoEmocional: "",
         nivelCansaco: "",
+        qualidadeSono: "",
+        atividadeFisica: undefined,
         observacoes: "",
       });
       await loadRegistros();
@@ -438,6 +476,65 @@ export default function AlunoDiario() {
                     </button>
                   );
                 })}
+              </div>
+            </div>
+
+            {/* Qualidade do Sono */}
+            <div className="space-y-3">
+              <Label className="flex items-center gap-2">
+                <span className="text-xl">😴</span>
+                Como foi a qualidade do seu sono na noite anterior? (opcional)
+              </Label>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                {ESTADOS_EMOCIONAIS.map((estado) => (
+                  <button
+                    key={estado.value}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, qualidadeSono: estado.value })}
+                    className={`p-4 rounded-lg border-2 transition-all ${
+                      formData.qualidadeSono === estado.value
+                        ? `${estado.color} text-white border-transparent`
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
+                  >
+                    <div className="text-3xl mb-2">{estado.emoji}</div>
+                    <div className="text-sm font-medium">{estado.label}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Atividade Física */}
+            <div className="space-y-3">
+              <Label className="flex items-center gap-2">
+                <span className="text-xl">🏋️</span>
+                Fez atividade física hoje? (opcional)
+              </Label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, atividadeFisica: true })}
+                  className={`p-4 rounded-lg border-2 transition-all ${
+                    formData.atividadeFisica === true
+                      ? "bg-green-500 text-white border-transparent"
+                      : "border-gray-200 hover:border-gray-300"
+                  }`}
+                >
+                  <div className="text-3xl mb-2">✅</div>
+                  <div className="text-sm font-medium">Sim</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, atividadeFisica: false })}
+                  className={`p-4 rounded-lg border-2 transition-all ${
+                    formData.atividadeFisica === false
+                      ? "bg-red-500 text-white border-transparent"
+                      : "border-gray-200 hover:border-gray-300"
+                  }`}
+                >
+                  <div className="text-3xl mb-2">❌</div>
+                  <div className="text-sm font-medium">Não</div>
+                </button>
               </div>
             </div>
 
@@ -610,6 +707,44 @@ export default function AlunoDiario() {
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
+                
+                {/* Gráfico de Qualidade do Sono */}
+                <div>
+                  <h3 className="text-sm font-medium mb-4 flex items-center gap-2">
+                    <span className="text-xl">😴</span>
+                    Qualidade do Sono
+                  </h3>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={dadosDistribuicao.dadosSono}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="nome" />
+                      <YAxis allowDecimals={false} />
+                      <RechartsTooltip />
+                      <Bar dataKey="quantidade" fill="#8b5cf6" radius={[8, 8, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                
+                {/* Gráfico de Atividade Física */}
+                <div>
+                  <h3 className="text-sm font-medium mb-4 flex items-center gap-2">
+                    <span className="text-xl">🏋️</span>
+                    Atividade Física
+                  </h3>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={dadosDistribuicao.dadosAtividade}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="nome" />
+                      <YAxis allowDecimals={false} />
+                      <RechartsTooltip />
+                      <Bar dataKey="quantidade" radius={[8, 8, 0, 0]}>
+                        {dadosDistribuicao.dadosAtividade.map((entry: any, index: number) => (
+                          <Cell key={`cell-${index}`} fill={index === 0 ? '#10b981' : '#ef4444'} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -669,6 +804,32 @@ export default function AlunoDiario() {
                               <div>
                                 <div className="text-xs text-muted-foreground">Nível de Energia</div>
                                 <div className="font-medium">{cansaco.label}</div>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Qualidade do Sono */}
+                          {registro.qualidadeSono && (
+                            <div className="flex items-center gap-3">
+                              <div className={`w-12 h-12 rounded-lg ${getEstadoEmocional(registro.qualidadeSono)?.color} flex items-center justify-center text-2xl`}>
+                                😴
+                              </div>
+                              <div>
+                                <div className="text-xs text-muted-foreground">Qualidade do Sono</div>
+                                <div className="font-medium">{getEstadoEmocional(registro.qualidadeSono)?.label}</div>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Atividade Física */}
+                          {registro.atividadeFisica !== undefined && registro.atividadeFisica !== null && (
+                            <div className="flex items-center gap-3">
+                              <div className={`w-12 h-12 rounded-lg ${registro.atividadeFisica ? 'bg-green-500' : 'bg-red-500'} flex items-center justify-center text-2xl`}>
+                                {registro.atividadeFisica ? '✅' : '❌'}
+                              </div>
+                              <div>
+                                <div className="text-xs text-muted-foreground">Atividade Física</div>
+                                <div className="font-medium">{registro.atividadeFisica ? 'Sim' : 'Não'}</div>
                               </div>
                             </div>
                           )}

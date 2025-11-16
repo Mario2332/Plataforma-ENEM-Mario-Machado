@@ -396,7 +396,7 @@ export const createDiarioEmocional = functions
     const auth = await getAuthContext(context);
     requireRole(auth, "aluno");
 
-    const { data: dataRegistro, estadoEmocional, nivelCansaco, observacoes } = data;
+    const { data: dataRegistro, estadoEmocional, nivelCansaco, qualidadeSono, atividadeFisica, observacoes } = data;
 
     if (!dataRegistro || !estadoEmocional || !nivelCansaco) {
       throw new functions.https.HttpsError(
@@ -408,11 +408,26 @@ export const createDiarioEmocional = functions
     // Validar valores permitidos
     const estadosValidos = ["otimo", "bom", "neutro", "ruim", "pessimo"];
     const cansacoValido = ["descansado", "normal", "cansado", "muito_cansado", "exausto"];
+    const sonoValido = ["otimo", "bom", "neutro", "ruim", "pessimo"];
 
     if (!estadosValidos.includes(estadoEmocional) || !cansacoValido.includes(nivelCansaco)) {
       throw new functions.https.HttpsError(
         "invalid-argument",
         "Estado emocional ou nível de cansaço inválido"
+      );
+    }
+
+    if (qualidadeSono && !sonoValido.includes(qualidadeSono)) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "Qualidade de sono inválida"
+      );
+    }
+
+    if (atividadeFisica !== undefined && typeof atividadeFisica !== "boolean") {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "Atividade física deve ser true ou false"
       );
     }
 
@@ -431,6 +446,8 @@ export const createDiarioEmocional = functions
         await existingQuery.docs[0].ref.update({
           estadoEmocional,
           nivelCansaco,
+          qualidadeSono: qualidadeSono || null,
+          atividadeFisica: atividadeFisica !== undefined ? atividadeFisica : null,
           observacoes: observacoes || null,
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
@@ -446,6 +463,8 @@ export const createDiarioEmocional = functions
           data: admin.firestore.Timestamp.fromDate(new Date(dataRegistro)),
           estadoEmocional,
           nivelCansaco,
+          qualidadeSono: qualidadeSono || null,
+          atividadeFisica: atividadeFisica !== undefined ? atividadeFisica : null,
           observacoes: observacoes || null,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),

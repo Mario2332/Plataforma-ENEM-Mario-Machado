@@ -44,6 +44,7 @@ export default function AlunoAutodiagnostico() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [uploadingImages, setUploadingImages] = useState<Record<number, boolean>>({});
+  const [expandedImages, setExpandedImages] = useState<Record<string, boolean>>({});
   
   // Filtros
   const [filtroArea, setFiltroArea] = useState<string>("geral");
@@ -668,19 +669,36 @@ export default function AlunoAutodiagnostico() {
                                             <tr key={`${idx}-imagem`} className="border-b last:border-0 bg-muted/30">
                                               <td colSpan={4} className="py-2 px-3">
                                                 <div className="text-xs space-y-2">
-                                                  <span className="font-medium text-muted-foreground flex items-center gap-1">
-                                                    <ImageIcon className="h-3 w-3" />
-                                                    Imagem:
-                                                  </span>
-                                                  <div className="rounded-lg border overflow-hidden bg-white">
-                                                    <img 
-                                                      src={q.imagemUrl} 
-                                                      alt="Questão" 
-                                                      className="w-full max-h-96 object-contain cursor-pointer hover:opacity-90 transition-opacity"
-                                                      onClick={() => window.open(q.imagemUrl, '_blank')}
-                                                    />
-                                                  </div>
-                                                  <p className="text-muted-foreground italic">Clique na imagem para abrir em tamanho completo</p>
+                                                  <button
+                                                    onClick={() => {
+                                                      const key = `${auto.id}-${idx}`;
+                                                      setExpandedImages(prev => ({
+                                                        ...prev,
+                                                        [key]: !prev[key]
+                                                      }));
+                                                    }}
+                                                    className="flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+                                                  >
+                                                    <ImageIcon className="h-4 w-4" />
+                                                    {expandedImages[`${auto.id}-${idx}`] ? 'Ocultar' : 'Ver'} Imagem da Questão
+                                                    <span className="text-xs text-muted-foreground">
+                                                      {expandedImages[`${auto.id}-${idx}`] ? '▲' : '▼'}
+                                                    </span>
+                                                  </button>
+                                                  
+                                                  {expandedImages[`${auto.id}-${idx}`] && (
+                                                    <div className="mt-2 space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                                                      <div className="rounded-lg border overflow-hidden bg-white">
+                                                        <img 
+                                                          src={q.imagemUrl} 
+                                                          alt="Questão" 
+                                                          className="w-full max-h-96 object-contain cursor-pointer hover:opacity-90 transition-opacity"
+                                                          onClick={() => window.open(q.imagemUrl, '_blank')}
+                                                        />
+                                                      </div>
+                                                      <p className="text-muted-foreground italic text-xs">Clique na imagem para abrir em tamanho completo</p>
+                                                    </div>
+                                                  )}
                                                 </div>
                                               </td>
                                             </tr>

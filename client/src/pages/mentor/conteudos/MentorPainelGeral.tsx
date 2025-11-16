@@ -1,64 +1,16 @@
-import { useState, useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, BookOpen } from "lucide-react";
+import { BookOpen } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import studyData from "@shared/study-content-data.json";
-import { toast } from "sonner";
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-
-const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6", "#f97316", "#6366f1"];
 
 export default function MentorPainelGeral() {
-  const [customTopics, setCustomTopics] = useState<Record<string, any>>({});
-  const [isLoading, setIsLoading] = useState(true);
-
-  const loadData = async () => {
-    try {
-      setIsLoading(true);
-      
-      // Carregar customizações do Firestore
-      const customTopicsSnapshot = await getDocs(collection(db, "conteudos"));
-      const customTopicsData: Record<string, any> = {};
-      customTopicsSnapshot.forEach((doc) => {
-        customTopicsData[doc.id] = doc.data();
-      });
-      setCustomTopics(customTopicsData);
-    } catch (error: any) {
-      toast.error(error.message || "Erro ao carregar dados");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
   const stats = useMemo(() => {
     const materias = Object.entries(studyData as Record<string, any>);
     let totalTopicos = 0;
 
     const resumoPorMateria = materias.map(([key, materia]) => {
-      let topics = [...(materia.topics || [])];
-      
-      // Aplicar customizações
-      Object.entries(customTopics).forEach(([topicId, topicData]: [string, any]) => {
-        if (topicData.materiaKey === key) {
-          if (topicData.deleted) {
-            topics = topics.filter(t => t.id !== topicId);
-          } else {
-            const existingIndex = topics.findIndex(t => t.id === topicId);
-            if (existingIndex >= 0) {
-              topics[existingIndex] = { ...topics[existingIndex], ...topicData };
-            } else {
-              topics.push(topicData);
-            }
-          }
-        }
-      });
-      
-      const topicosMateria = topics.length;
+      const topicosMateria = materia.topics?.length || 0;
       totalTopicos += topicosMateria;
 
       return {
@@ -71,15 +23,7 @@ export default function MentorPainelGeral() {
       totalTopicos,
       resumoPorMateria
     };
-  }, [customTopics]);
-
-  if (isLoading || !stats) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-      </div>
-    );
-  }
+  }, []);
 
   return (
     <div className="space-y-6">

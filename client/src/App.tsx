@@ -27,6 +27,7 @@ import MentorHome from "./pages/mentor/MentorHome";
 import MentorAlunos from "./pages/mentor/MentorAlunos";
 import MentorConfiguracoes from "./pages/mentor/MentorConfiguracoes";
 import MentorViewAluno from "./pages/mentor/MentorViewAluno";
+import MentorConteudos from "./pages/mentor/MentorConteudos";
 import GestorHome from "./pages/gestor/GestorHome";
 import GestorMentores from "./pages/gestor/GestorMentores";
 import GestorAlunos from "./pages/gestor/GestorAlunos";
@@ -155,6 +156,11 @@ function Router() {
       <Route path="/mentor/alunos/:alunoId">
         <DashboardLayout>
           <MentorViewAluno />
+        </DashboardLayout>
+      </Route>
+      <Route path="/mentor/conteudos">
+        <DashboardLayout>
+          <MentorConteudos />
         </DashboardLayout>
       </Route>
       <Route path="/mentor/configuracoes">

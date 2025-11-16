@@ -5,16 +5,28 @@ import { Loader2, BookOpen, TrendingUp } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import studyData from "@shared/study-content-data.json";
 import { toast } from "sonner";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6", "#f97316", "#6366f1"];
 
 export default function PainelGeral() {
   const [progressoMap, setProgressoMap] = useState<any>(null);
+  const [customTopics, setCustomTopics] = useState<Record<string, any>>({});
   const [isLoading, setIsLoading] = useState(true);
 
   const loadProgresso = async () => {
     try {
       setIsLoading(true);
+      
+      // Carregar customizações do Firestore
+      const customTopicsSnapshot = await getDocs(collection(db, "conteudos"));
+      const customTopicsData: Record<string, any> = {};
+      customTopicsSnapshot.forEach((doc) => {
+        customTopicsData[doc.id] = doc.data();
+      });
+      setCustomTopics(customTopicsData);
+      
       const data = await alunoApi.getProgresso();
       setProgressoMap(data);
     } catch (error: any) {
@@ -36,7 +48,24 @@ export default function PainelGeral() {
     let topicosEstudados = 0;
 
     const resumoPorMateria = materias.map(([key, materia]) => {
-      const topics = materia.topics || [];
+      let topics = [...(materia.topics || [])];
+      
+      // Aplicar customizações
+      Object.entries(customTopics).forEach(([topicId, topicData]: [string, any]) => {
+        if (topicData.materiaKey === key) {
+          if (topicData.deleted) {
+            topics = topics.filter(t => t.id !== topicId);
+          } else {
+            const existingIndex = topics.findIndex(t => t.id === topicId);
+            if (existingIndex >= 0) {
+              topics[existingIndex] = { ...topics[existingIndex], ...topicData };
+            } else {
+              topics.push(topicData);
+            }
+          }
+        }
+      });
+      
       const topicosMateria = topics.length;
       let estudadosMateria = 0;
 
@@ -67,7 +96,7 @@ export default function PainelGeral() {
       topicosEstudados,
       resumoPorMateria
     };
-  }, [progressoMap]);
+  }, [progressoMap, customTopics]);
 
   if (isLoading || !stats) {
     return (

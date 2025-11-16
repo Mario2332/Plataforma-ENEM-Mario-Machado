@@ -10,6 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { ArrowUpDown, ArrowUp, ArrowDown, Filter, Loader2, StickyNote } from "lucide-react";
 import { toast } from "sonner";
 import studyData from "@shared/study-content-data.json";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 interface Topic {
   id: string;
@@ -24,8 +26,8 @@ interface MateriaPageProps {
 
 export default function MateriaPage({ materiaKey }: MateriaPageProps) {
   const materia = (studyData as any)[materiaKey];
-  const topics: Topic[] = materia?.topics || [];
-
+  
+  const [topics, setTopics] = useState<Topic[]>([]);
   const [progressoMap, setProgressoMap] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [anotacoesDialog, setAnotacoesDialog] = useState<{ open: boolean; topicoId: string; conteudo: string }>({
@@ -34,9 +36,61 @@ export default function MateriaPage({ materiaKey }: MateriaPageProps) {
     conteudo: ""
   });
 
+  const loadTopics = async () => {
+    try {
+      // Carregar tópicos base do JSON
+      let topicsBase: Topic[] = materia?.topics || [];
+      
+      // Carregar customizações do Firestore
+      const customTopicsSnapshot = await getDocs(collection(db, "conteudos"));
+      const customTopics: Record<string, any> = {};
+      
+      customTopicsSnapshot.forEach((doc) => {
+        customTopics[doc.id] = doc.data();
+      });
+      
+      // Mesclar dados
+      let finalTopics = [...topicsBase];
+      
+      Object.entries(customTopics).forEach(([topicId, topicData]: [string, any]) => {
+        if (topicData.materiaKey === materiaKey) {
+          if (topicData.deleted) {
+            // Remover tópico deletado
+            finalTopics = finalTopics.filter(t => t.id !== topicId);
+          } else {
+            // Atualizar ou adicionar tópico
+            const existingIndex = finalTopics.findIndex(t => t.id === topicId);
+            if (existingIndex >= 0) {
+              finalTopics[existingIndex] = {
+                ...finalTopics[existingIndex],
+                name: topicData.name,
+                incidenceLevel: topicData.incidenceLevel,
+                incidenceValue: topicData.incidenceValue
+              };
+            } else {
+              finalTopics.push({
+                id: topicId,
+                name: topicData.name,
+                incidenceValue: topicData.incidenceValue,
+                incidenceLevel: topicData.incidenceLevel
+              });
+            }
+          }
+        }
+      });
+      
+      setTopics(finalTopics);
+    } catch (error: any) {
+      console.error("Erro ao carregar tópicos:", error);
+      // Em caso de erro, usar apenas dados do JSON
+      setTopics(materia?.topics || []);
+    }
+  };
+
   const loadProgresso = async () => {
     try {
       setIsLoading(true);
+      await loadTopics();
       const data = await alunoApi.getProgresso(materiaKey);
       setProgressoMap(data);
     } catch (error: any) {

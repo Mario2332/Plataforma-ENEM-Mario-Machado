@@ -58,11 +58,58 @@ export function useAuth() {
               hasRole: !!data.role
             });
             
+            // Se dados estiverem faltando, buscar de outras fontes e corrigir
+            let email = data.email || firebaseUser.email || "";
+            let name = data.name || firebaseUser.displayName || "Usuário";
+            let role = data.role as UserRole;
+            
+            // Se role estiver faltando, tentar descobrir
+            if (!role) {
+              console.warn('[useAuth] Role não encontrado, tentando descobrir...');
+              
+              // Verificar se é aluno
+              const alunoDocRef = doc(db, "alunos", firebaseUser.uid);
+              const alunoDoc = await getDoc(alunoDocRef);
+              if (alunoDoc.exists()) {
+                role = "aluno";
+                console.log('[useAuth] Usuário identificado como aluno');
+              } else {
+                // Verificar se é mentor
+                const mentorDocRef = doc(db, "mentores", firebaseUser.uid);
+                const mentorDoc = await getDoc(mentorDocRef);
+                if (mentorDoc.exists()) {
+                  role = "mentor";
+                  console.log('[useAuth] Usuário identificado como mentor');
+                } else {
+                  // Verificar se é gestor
+                  const gestorDocRef = doc(db, "gestores", firebaseUser.uid);
+                  const gestorDoc = await getDoc(gestorDocRef);
+                  if (gestorDoc.exists()) {
+                    role = "gestor";
+                    console.log('[useAuth] Usuário identificado como gestor');
+                  } else {
+                    // Padrão: aluno
+                    role = "aluno";
+                    console.warn('[useAuth] Role não encontrado em nenhuma coleção, usando padrão: aluno');
+                  }
+                }
+              }
+              
+              // Atualizar documento users com dados corretos
+              console.log('[useAuth] Atualizando documento users com dados corrigidos');
+              await setDoc(userDocRef, {
+                email,
+                name,
+                role,
+                updatedAt: serverTimestamp()
+              }, { merge: true });
+            }
+            
             const userData: UserData = {
               uid: firebaseUser.uid,
-              email: data.email,
-              name: data.name,
-              role: data.role as UserRole,
+              email,
+              name,
+              role,
               createdAt: data.createdAt?.toDate() || new Date(),
               updatedAt: data.updatedAt?.toDate() || new Date(),
               lastSignedIn: data.lastSignedIn?.toDate() || new Date(),

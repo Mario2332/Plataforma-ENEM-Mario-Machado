@@ -118,12 +118,16 @@ export default function LoginAluno() {
         {/* Lado Esquerdo - Informações */}
         <div className="text-center md:text-left space-y-6">
           <div className="flex items-center justify-center md:justify-start gap-3">
-            <GraduationCap className="w-12 h-12 text-blue-600" />
+            <img 
+              src="https://firebasestorage.googleapis.com/v0/b/plataforma-mentoria-mario.firebasestorage.app/o/Logo%2FLogo%20mentoria%20sem%20texto.png?alt=media&token=452fed10-1481-41ad-a4c1-ddd61b039409" 
+              alt="Logo Mentoria Mário Machado" 
+              className="w-12 h-12 object-contain"
+            />
             <h1 className="text-4xl font-bold text-gray-900">Mentoria Mário Machado</h1>
           </div>
           
           <h2 className="text-2xl font-semibold text-gray-800">
-            Sua jornada rumo ao ENEM começa aqui
+            Sua jornada rumo ao ENEM começa aqui!
           </h2>
           
           <p className="text-gray-600 text-lg">

@@ -17,11 +17,12 @@ const INCIDENCE_MAP: Record<string, number> = {
 /**
  * Obter conteúdos mesclados (JSON base + customizações)
  * Disponível para alunos e mentores
+ * 
+ * NOTA: Funções callable já têm CORS habilitado automaticamente
  */
 export const getConteudos = functions
   .region("southamerica-east1")
   .runWith({
-    cors: true, // Habilitar CORS explicitamente
     memory: "256MB",
     timeoutSeconds: 60,
   })
@@ -190,7 +191,6 @@ export const getConteudos = functions
 export const createTopico = functions
   .region("southamerica-east1")
   .runWith({
-    cors: true,
     memory: "256MB",
     timeoutSeconds: 60,
   })
@@ -249,7 +249,6 @@ export const createTopico = functions
 export const updateTopico = functions
   .region("southamerica-east1")
   .runWith({
-    cors: true,
     memory: "256MB",
     timeoutSeconds: 60,
   })
@@ -319,7 +318,6 @@ export const updateTopico = functions
 export const deleteTopico = functions
   .region("southamerica-east1")
   .runWith({
-    cors: true,
     memory: "256MB",
     timeoutSeconds: 60,
   })

@@ -1,26 +1,1699 @@
 [
-  { "cycle": 1, "subjects": [
-    { "name": "Mat. Básica", "topics": ["Sistemas de numeração e Sistema métrico", "As quatro operações e Expressões numéricas", "Múltiplos, Divisores, Critérios de divisibilidade, Números primos, MMC e MDC", "Frações e Dízimas periódicas"] },
-    { "name": "Biologia", "topics": ["Origem da vida", "Água e Sais Minerais", "Carboidratos", "Lipídios"] },
-    { "name": "Física", "topics": ["Ordem de grandeza e sistemas de unidades", "Temperatura, Calor e Energia térmica"] },
-    { "name": "História", "topics": ["Grécia Antiga", "Roma Antiga"] },
-    { "name": "Química", "topics": ["Classificações e propriedades periódicas", "Propriedades da matéria", "Modelos atômicos"] },
-    { "name": "Geografia", "topics": ["Orientação e Coordenadas geográficas", "Cartografia"] }
-  ]},
-  { "cycle": 2, "subjects": [
-    { "name": "Mat. Básica", "topics": ["Potenciação e notação científica", "Radiciação", "Produtos notáveis e Fatoração", "Equações e Sistemas do primeiro grau"] },
-    { "name": "Biologia", "topics": ["Aminoácidos e Proteínas", "Enzimas", "Vitaminas", "Ácidos nucleicos"] },
-    { "name": "Física", "topics": ["Escalas termométricas", "Mudanças de fase", "Calorimetria", "Dilatação térmica"] },
-    { "name": "História", "topics": ["Alta Idade Média", "Baixa Idade Média", "Transição feudo-capitalista"] },
-    { "name": "Química", "topics": ["Distribuição eletrônica", "Ligações químicas", "Geometria molecular"] },
-    { "name": "Geografia", "topics": ["Projeções cartográficas", "Fuso horário"] }
-  ]},
-  { "cycle": 3, "subjects": [
-    { "name": "Matemática", "topics": ["Razão e proporção", "Regras de 3", "Porcentagem", "Juros simples e compostos"] },
-    { "name": "Biologia", "topics": ["Replicação do DNA", "Transcrição e Tradução", "Membrana plasmática", "Citoplasma"] },
-    { "name": "Física", "topics": ["Propagação do calor", "Gases ideais", "Termodinâmica"] },
-    { "name": "História", "topics": ["Absolutismo e Mercantilismo", "Expansão marítima", "Renascimento"] },
-    { "name": "Química", "topics": ["Hibridização", "Polaridade", "Forças intermoleculares", "Radioatividade"] },
-    { "name": "Geografia", "topics": ["Energias renováveis", "Revolução Industrial", "Modelos produtivos"] }
-  ]}
+  {
+    "cycle": 1,
+    "subjects": [
+      {
+        "name": "Mat. Básica",
+        "topics": [
+          "Sistemas de numeração e Sistema métrico",
+          "As quatro operações e Expressões numéricas",
+          "Múltiplos, Divisores, Critérios de divisibilidade, Números primos, MMC e MDC"
+        ]
+      },
+      {
+        "name": "Biologia 3",
+        "topics": [
+          "Origem da vida: Abiogênese e biogênese",
+          "Origem da vida: Evolução química",
+          "Origem da vida: Hipótese autotrófica e heterotrófica",
+          "Origem da vida: Teoria da endossimbiose"
+        ]
+      },
+      {
+        "name": "Física 1",
+        "topics": [
+          "Ordem de grandeza e sistemas de unidades"
+        ]
+      },
+      {
+        "name": "Física 2",
+        "topics": [
+          "Temperatura, Calor e Energia térmica"
+        ]
+      },
+      {
+        "name": "História Geral",
+        "topics": [
+          "Grécia Antiga"
+        ]
+      },
+      {
+        "name": "Química 1",
+        "topics": [
+          "Classificações e propriedades periódicas",
+          "Propriedades da matéria"
+        ]
+      },
+      {
+        "name": "Geografia 1",
+        "topics": [
+          "Orientação e Coordenadas geográficas"
+        ]
+      },
+      {
+        "name": "Geografia 2",
+        "topics": [
+          "Regiões: Norte, Sul, Nordeste, Centro-Oeste, Sudeste"
+        ]
+      }
+    ]
+  },
+  {
+    "cycle": 2,
+    "subjects": [
+      {
+        "name": "Mat. Básica",
+        "topics": [
+          "Frações e Dízimas periódicas",
+          "Potenciação e notação científica",
+          "Radiciação"
+        ]
+      },
+      {
+        "name": "Biologia 1",
+        "topics": [
+          "Água e Sais Minerais",
+          "Carboidratos",
+          "Lipídios"
+        ]
+      },
+      {
+        "name": "Física 2",
+        "topics": [
+          "Escalas termométricas",
+          "Mudanças de fase e diagramas de fase"
+        ]
+      },
+      {
+        "name": "História Geral",
+        "topics": [
+          "Roma Antiga"
+        ]
+      },
+      {
+        "name": "Química 1",
+        "topics": [
+          "Modelos atômicos",
+          "Distribuição eletrônica"
+        ]
+      },
+      {
+        "name": "Geografia 1",
+        "topics": [
+          "Cartografia: Elementos, Escalas e Convenções"
+        ]
+      },
+      {
+        "name": "Geografia 2",
+        "topics": [
+          "Diferentes classificações regionais do Brasil"
+        ]
+      }
+    ]
+  },
+  {
+    "cycle": 3,
+    "subjects": [
+      {
+        "name": "Mat. Básica",
+        "topics": [
+          "Produtos notáveis e Fatoração",
+          "Equações e Sistemas do primeiro grau",
+          "Equações do segundo grau"
+        ]
+      },
+      {
+        "name": "Biologia 1",
+        "topics": [
+          "Aminoácidos e Proteínas",
+          "Enzimas"
+        ]
+      },
+      {
+        "name": "Física 2",
+        "topics": [
+          "Calorimetria",
+          "Dilatação térmica"
+        ]
+      },
+      {
+        "name": "História Geral",
+        "topics": [
+          "Alta Idade Média: Sistema Feudal e Igreja medieval",
+          "Idade Média no Oriente, Civilização muçulmana e Cruzadas"
+        ]
+      },
+      {
+        "name": "Química 1",
+        "topics": [
+          "Ligações químicas",
+          "Geometria molecular"
+        ]
+      },
+      {
+        "name": "Geografia 1",
+        "topics": [
+          "Projeções cartográficas"
+        ]
+      },
+      {
+        "name": "Geografia 2",
+        "topics": [
+          "Energias renováveis e não renováveis"
+        ]
+      }
+    ]
+  },
+  {
+    "cycle": 4,
+    "subjects": [
+      {
+        "name": "Mat. Básica",
+        "topics": [
+          "Razão e proporção",
+          "Regras de 3 e Escalas",
+          "Porcentagem"
+        ]
+      },
+      {
+        "name": "Biologia 1",
+        "topics": [
+          "Vitaminas",
+          "Ácidos nucleicos: RNA e DNA",
+          "Estrutura do DNA"
+        ]
+      },
+      {
+        "name": "Física 2",
+        "topics": [
+          "Propagação do calor",
+          "Estudo do gás ideal"
+        ]
+      },
+      {
+        "name": "História Geral",
+        "topics": [
+          "Transição feudo-capitalista",
+          "Baixa Idade Média"
+        ]
+      },
+      {
+        "name": "Química 1",
+        "topics": [
+          "Hibridização (estudar apenas sobre o carbono hibridizações sp3, sp2 e sp)",
+          "Polaridade das ligações e das moléculas"
+        ]
+      },
+      {
+        "name": "Geografia 1",
+        "topics": [
+          "Fuso horário"
+        ]
+      },
+      {
+        "name": "Geografia 2",
+        "topics": [
+          "Revolução Industrial"
+        ]
+      }
+    ]
+  },
+  {
+    "cycle": 5,
+    "subjects": [
+      {
+        "name": "Mat. Básica",
+        "topics": [
+          "Lucro, Juros simples e juros compostos",
+          "Revisão do Ciclo 1",
+          "Revisão do Ciclo 2"
+        ]
+      },
+      {
+        "name": "Biologia 1",
+        "topics": [
+          "Replicação do DNA",
+          "Transcrição e splicing",
+          "Tradução (síntese proteica) e código genético"
+        ]
+      },
+      {
+        "name": "Física 2",
+        "topics": [
+          "Trabalho de um gás",
+          "Primeira lei da termodinâmica"
+        ]
+      },
+      {
+        "name": "História Geral",
+        "topics": [
+          "Antigo Regime: Absolutismo e Mercantilismo"
+        ]
+      },
+      {
+        "name": "História do Brasil",
+        "topics": [
+          "Expansão marítima"
+        ]
+      },
+      {
+        "name": "Química 1",
+        "topics": [
+          "Forças intermoleculares"
+        ]
+      },
+      {
+        "name": "Geografia 1",
+        "topics": [
+          "Movimentos da Terra e da lua"
+        ]
+      },
+      {
+        "name": "Geografia 2",
+        "topics": [
+          "Modelos produtivos"
+        ]
+      },
+      {
+        "name": "Linguagens",
+        "topics": [
+          "Tipos e Gêneros textuais"
+        ]
+      }
+    ]
+  },
+  {
+    "cycle": 6,
+    "subjects": [
+      {
+        "name": "Mat. Básica",
+        "topics": [
+          "Revisão do Ciclo 3",
+          "Revisão do Ciclo 4",
+          "Revisão do Ciclo 5"
+        ]
+      },
+      {
+        "name": "Biologia 1",
+        "topics": [
+          "Introdução à citologia e Modelos celulares (eucarionte e procarionte)",
+          "Membrana plasmática: Estrutura e Fisiologia",
+          "Membrana plasmática: Transporte passivo e transporte ativo"
+        ]
+      },
+      {
+        "name": "Física 2",
+        "topics": [
+          "Ciclos, Máquinas térmicas e Rendimento",
+          "Ciclos de Carnot e 2ª lei da Termodinâmica"
+        ]
+      },
+      {
+        "name": "História Geral",
+        "topics": [
+          "Renascimento",
+          "Civilizações pré-colombianas e colonização espanhola na América"
+        ]
+      },
+      {
+        "name": "Química 1",
+        "topics": [
+          "Radioatividade"
+        ]
+      },
+      {
+        "name": "Geografia 1",
+        "topics": [
+          "Dinâmica das placas tectônicas"
+        ]
+      },
+      {
+        "name": "Geografia 2",
+        "topics": [
+          "Regiões industriais do Brasil"
+        ]
+      },
+      {
+        "name": "Linguagens",
+        "topics": [
+          "Variações linguísticas e preconceito linguístico"
+        ]
+      }
+    ]
+  },
+  {
+    "cycle": 7,
+    "subjects": [
+      {
+        "name": "Matemática 1",
+        "topics": [
+          "Teoria dos conjuntos",
+          "Conjuntos numéricos e Intervalos reais"
+        ]
+      },
+      {
+        "name": "Matemática 3",
+        "topics": [
+          "Estatística: Médias e demais medidas de tendência central",
+          "Estatística: Medidas de dispersão"
+        ]
+      },
+      {
+        "name": "Biologia 1",
+        "topics": [
+          "Citoplasma: Visão geral, Citoesqueleto e Ribossomos",
+          "Citoplasma: Retículo endoplasmático e Complexo de Golgi",
+          "Citoplasma: Lisossomos, Peroxissomos, Centríolos e Mitocondrias",
+          "Citoplasma: Plastos, Cloroplastos e Vacúolo"
+        ]
+      },
+      {
+        "name": "Física 1",
+        "topics": [
+          "Vetores",
+          "Conceitos iniciais de cinemática"
+        ]
+      },
+      {
+        "name": "História Geral",
+        "topics": [
+          "Reformas religiosas",
+          "Independência da América espanhola"
+        ]
+      },
+      {
+        "name": "Química 1",
+        "topics": [
+          "Substâncias puras e misturas",
+          "Separação de misturas"
+        ]
+      },
+      {
+        "name": "Geografia 1",
+        "topics": [
+          "Dinâmica interna e externa do relevo (agentes modeladores do relevo)"
+        ]
+      },
+      {
+        "name": "Geografia 2",
+        "topics": [
+          "Transportes",
+          "Comércio no Brasil"
+        ]
+      },
+      {
+        "name": "Linguagens",
+        "topics": [
+          "Funções da Linguagem"
+        ]
+      }
+    ]
+  },
+  {
+    "cycle": 8,
+    "subjects": [
+      {
+        "name": "Matemática 1",
+        "topics": [
+          "Teoria geral de funções",
+          "Função constante e Função afim",
+          "Função do segundo grau (quadrática)"
+        ]
+      },
+      {
+        "name": "Biologia 1",
+        "topics": [
+          "Fotossíntese e Quimiossíntese",
+          "Respiração celular",
+          "Fermentação"
+        ]
+      },
+      {
+        "name": "Física 1",
+        "topics": [
+          "Movimento uniforme"
+        ]
+      },
+      {
+        "name": "História Geral",
+        "topics": [
+          "Colonização inglesa na América",
+          "Revoluções Inglesas"
+        ]
+      },
+      {
+        "name": "Química 1",
+        "topics": [
+          "Tratamento da água e do esgoto, poluição ambiental, efeito estufa e chuvas ácidas",
+          "Estudo dos ácidos"
+        ]
+      },
+      {
+        "name": "Geografia 1",
+        "topics": [
+          "Rochas"
+        ]
+      },
+      {
+        "name": "Geografia 2",
+        "topics": [
+          "Globalização e Regionalização"
+        ]
+      },
+      {
+        "name": "Filosofia",
+        "topics": [
+          "Origem da filosofia"
+        ]
+      },
+      {
+        "name": "Linguagens",
+        "topics": [
+          "Figuras de Linguagem"
+        ]
+      }
+    ]
+  },
+  {
+    "cycle": 9,
+    "subjects": [
+      {
+        "name": "Matemática 1",
+        "topics": [
+          "Função exponencial",
+          "Propriedades dos logaritmos",
+          "Função logaritmica e Função modular - Apenas saber como são os gráficos"
+        ]
+      },
+      {
+        "name": "Biologia 1",
+        "topics": [
+          "Núcleo celular",
+          "Ciclo celular e Etapas da divisão celular"
+        ]
+      },
+      {
+        "name": "Física 1",
+        "topics": [
+          "Movimento uniformemente variado"
+        ]
+      },
+      {
+        "name": "História Geral",
+        "topics": [
+          "Liberalismo e Iluminismo"
+        ]
+      },
+      {
+        "name": "História do Brasil",
+        "topics": [
+          "Povos indígenas do Brasil"
+        ]
+      },
+      {
+        "name": "Química 1",
+        "topics": [
+          "Estudo das bases"
+        ]
+      },
+      {
+        "name": "Geografia 1",
+        "topics": [
+          "Estruturas geológicas"
+        ]
+      },
+      {
+        "name": "Geografia 2",
+        "topics": [
+          "Sistemas agrícolas"
+        ]
+      },
+      {
+        "name": "Filosofia",
+        "topics": [
+          "Pré-Socráticos"
+        ]
+      },
+      {
+        "name": "Linguagens",
+        "topics": [
+          "Quinhentismo"
+        ]
+      }
+    ]
+  },
+  {
+    "cycle": 10,
+    "subjects": [
+      {
+        "name": "Matemática 2",
+        "topics": [
+          "Ângulos",
+          "Triângulos",
+          "Triângulo retângulo: Teorema de Pitágoras e relações trigonométricas"
+        ]
+      },
+      {
+        "name": "Biologia 1",
+        "topics": [
+          "Mitose",
+          "Meiose"
+        ]
+      },
+      {
+        "name": "Física 1",
+        "topics": [
+          "Lançamento vertical e Queda livre",
+          "Conceitos iniciais de dinâmica"
+        ]
+      },
+      {
+        "name": "História Geral",
+        "topics": [
+          "Independência dos EUA"
+        ]
+      },
+      {
+        "name": "História do Brasil",
+        "topics": [
+          "Período pré-colonial do Brasil"
+        ]
+      },
+      {
+        "name": "Química 1",
+        "topics": [
+          "Potencial hidrogeniônico (pH) e Indicadores ácido-base"
+        ]
+      },
+      {
+        "name": "Geografia 1",
+        "topics": [
+          "Relevo brasileiro"
+        ]
+      },
+      {
+        "name": "Geografia 2",
+        "topics": [
+          "Revolução verde, Transgênicos e Agronegócio"
+        ]
+      },
+      {
+        "name": "Filosofia",
+        "topics": [
+          "Sofistas, Sócrates e Platão"
+        ]
+      },
+      {
+        "name": "Linguagens",
+        "topics": [
+          "Barroco"
+        ]
+      }
+    ]
+  },
+  {
+    "cycle": 11,
+    "subjects": [
+      {
+        "name": "Matemática 2",
+        "topics": [
+          "Semelhança de triângulos",
+          "Polígonos"
+        ]
+      },
+      {
+        "name": "Biologia 3",
+        "topics": [
+          "Introdução à ecologia e conceitos básicos",
+          "Dinâmica populacional e Potencial biótico"
+        ]
+      },
+      {
+        "name": "Física 1",
+        "topics": [
+          "Leis de Newton"
+        ]
+      },
+      {
+        "name": "História Geral",
+        "topics": [
+          "Revolução Francesa"
+        ]
+      },
+      {
+        "name": "História do Brasil",
+        "topics": [
+          "Início da colonização"
+        ]
+      },
+      {
+        "name": "Química 1",
+        "topics": [
+          "Estudo dos sais",
+          "Estudo dos óxidos"
+        ]
+      },
+      {
+        "name": "Geografia 2",
+        "topics": [
+          "Agricultura no Brasil"
+        ]
+      },
+      {
+        "name": "Filosofia",
+        "topics": [
+          "Aristóteles"
+        ]
+      },
+      {
+        "name": "Linguagens",
+        "topics": [
+          "Romantismo: primeira geração"
+        ]
+      }
+    ]
+  },
+  {
+    "cycle": 12,
+    "subjects": [
+      {
+        "name": "Matemática 2",
+        "topics": [
+          "Circunferência e Círculo",
+          "Geometria de posição: Posições relativas e Projeção ortogonal"
+        ]
+      },
+      {
+        "name": "Biologia 3",
+        "topics": [
+          "Cadeias e teias alimentares",
+          "Fluxo de energia e Pirâmides ecológicas",
+          "Relações ecológicas"
+        ]
+      },
+      {
+        "name": "Física 1",
+        "topics": [
+          "Força elástica",
+          "Força de atrito"
+        ]
+      },
+      {
+        "name": "História Geral",
+        "topics": [
+          "Era Napoleônica e Congresso de Viena"
+        ]
+      },
+      {
+        "name": "História do Brasil",
+        "topics": [
+          "Economia açucareira"
+        ]
+      },
+      {
+        "name": "Química 1",
+        "topics": [
+          "Ácidos, bases, sais e óxidos importantes",
+          "Reações inorgânicas"
+        ]
+      },
+      {
+        "name": "Geografia 2",
+        "topics": [
+          "Guerra Fria"
+        ]
+      },
+      {
+        "name": "Filosofia",
+        "topics": [
+          "Filosofia Medieval"
+        ]
+      },
+      {
+        "name": "Linguagens",
+        "topics": [
+          "Romantismo: segunda geração"
+        ]
+      }
+    ]
+  },
+  {
+    "cycle": 13,
+    "subjects": [
+      {
+        "name": "Matemática 2",
+        "topics": [
+          "Poliedros",
+          "Prismas"
+        ]
+      },
+      {
+        "name": "Biologia 3",
+        "topics": [
+          "Sucessão ecológica",
+          "Ecossistemas e Biomas"
+        ]
+      },
+      {
+        "name": "Física 1",
+        "topics": [
+          "Aplicação das leis de Newton (Blocos, Planos inclinados, Polias, Elevadores)"
+        ]
+      },
+      {
+        "name": "História Geral",
+        "topics": [
+          "Imperialismo"
+        ]
+      },
+      {
+        "name": "História do Brasil",
+        "topics": [
+          "Pecuária e Drogas do sertão"
+        ]
+      },
+      {
+        "name": "Química 1",
+        "topics": [
+          "Grandezas químicas",
+          "Fórmulas químicas"
+        ]
+      },
+      {
+        "name": "Geografia 1",
+        "topics": [
+          "Formação e tipos de solo"
+        ]
+      },
+      {
+        "name": "Geografia 2",
+        "topics": [
+          "Nova ordem mundial"
+        ]
+      },
+      {
+        "name": "Filosofia",
+        "topics": [
+          "Filosofia Renascentista e Revolução científica"
+        ]
+      },
+      {
+        "name": "Linguagens",
+        "topics": [
+          "Romantismo: terceira geração"
+        ]
+      }
+    ]
+  },
+  {
+    "cycle": 14,
+    "subjects": [
+      {
+        "name": "Matemática 2",
+        "topics": [
+          "Cilindros",
+          "Pirâmides e Troncos de pirâmides"
+        ]
+      },
+      {
+        "name": "Biologia 3",
+        "topics": [
+          "Desequilíbrios ecológicos: Eutrofização e Bioacumulação/magnificação trófica",
+          "Desequilíbrios ecológicos: Inversão térmica, Efeito estufa e destruição da camada de ozônio"
+        ]
+      },
+      {
+        "name": "Física 1",
+        "topics": [
+          "Trabalho, potência e rendimento"
+        ]
+      },
+      {
+        "name": "História Geral",
+        "topics": [
+          "Primeira Guerra Mundial"
+        ]
+      },
+      {
+        "name": "História do Brasil",
+        "topics": [
+          "Ocupação e expansão territorial no Brasil"
+        ]
+      },
+      {
+        "name": "Química 1",
+        "topics": [
+          "Balanceamento de reações",
+          "Leis ponderais"
+        ]
+      },
+      {
+        "name": "Geografia 2",
+        "topics": [
+          "Organizações internacionais"
+        ]
+      },
+      {
+        "name": "Filosofia",
+        "topics": [
+          "Filosofia Moderna: Introdução"
+        ]
+      },
+      {
+        "name": "Linguagens",
+        "topics": [
+          "Romantismo: Prosa"
+        ]
+      }
+    ]
+  },
+  {
+    "cycle": 15,
+    "subjects": [
+      {
+        "name": "Matemática 2",
+        "topics": [
+          "Cones e Troncos de cones",
+          "Esferas"
+        ]
+      },
+      {
+        "name": "Biologia 3",
+        "topics": [
+          "Ciclos biogeoquímicos: Carbono, água, nitrogênio, oxigênio e fósforo"
+        ]
+      },
+      {
+        "name": "Física 1",
+        "topics": [
+          "Energia mecânica"
+        ]
+      },
+      {
+        "name": "História Geral",
+        "topics": [
+          "Revolução Russa"
+        ]
+      },
+      {
+        "name": "História do Brasil",
+        "topics": [
+          "Invasões estrangeiras"
+        ]
+      },
+      {
+        "name": "Química 1",
+        "topics": [
+          "Cálculo estequiométrico"
+        ]
+      },
+      {
+        "name": "Geografia 1",
+        "topics": [
+          "Atmosfera e Fatores climáticos"
+        ]
+      },
+      {
+        "name": "Geografia 2",
+        "topics": [
+          "Blocos econômicos"
+        ]
+      },
+      {
+        "name": "Filosofia",
+        "topics": [
+          "Filosofia Moderna: Racionalismo"
+        ]
+      },
+      {
+        "name": "Linguagens",
+        "topics": [
+          "Realismo"
+        ]
+      }
+    ]
+  },
+  {
+    "cycle": 16,
+    "subjects": [
+      {
+        "name": "Matemática 2",
+        "topics": [
+          "Sólidos inscritos",
+          "Estudo do ponto, da reta e das cônicas"
+        ]
+      },
+      {
+        "name": "Biologia 3",
+        "topics": [
+          "Teorias evolutivas",
+          "Evidências da evolução biológica"
+        ]
+      },
+      {
+        "name": "Física 3",
+        "topics": [
+          "Carga elétrica",
+          "Processos de eletrização",
+          "Força elétrica (Lei de Coulomb)"
+        ]
+      },
+      {
+        "name": "História Geral",
+        "topics": [
+          "Crise de 1929"
+        ]
+      },
+      {
+        "name": "História do Brasil",
+        "topics": [
+          "Bandeirantismo, mineração e Período Pombalino"
+        ]
+      },
+      {
+        "name": "Química 1",
+        "topics": [
+          "Variáveis de estado e Transformações gasosas",
+          "Densidade, Efusão e Difusão de gases"
+        ]
+      },
+      {
+        "name": "Geografia 1",
+        "topics": [
+          "Dinâmica dos ventos e Zonas climáticas da Terra"
+        ]
+      },
+      {
+        "name": "Geografia 2",
+        "topics": [
+          "Conflitos do século XX"
+        ]
+      },
+      {
+        "name": "Filosofia",
+        "topics": [
+          "Filosofia Moderna: Empirismo"
+        ]
+      },
+      {
+        "name": "Linguagens",
+        "topics": [
+          "Naturalismo"
+        ]
+      }
+    ]
+  },
+  {
+    "cycle": 17,
+    "subjects": [
+      {
+        "name": "Matemática 1",
+        "topics": [
+          "Progressão aritmética (PA)",
+          "Progressão geométrica (PG)"
+        ]
+      },
+      {
+        "name": "Biologia 3",
+        "topics": [
+          "Camuflagem e mimetismo",
+          "Especiação",
+          "Introdução à genética"
+        ]
+      },
+      {
+        "name": "Física 3",
+        "topics": [
+          "Campo elétrico e Linhas de força",
+          "Potencial elétrico, Trabalho e Energia",
+          "Condutores"
+        ]
+      },
+      {
+        "name": "História Geral",
+        "topics": [
+          "Período entre guerras e Totalitarismo"
+        ]
+      },
+      {
+        "name": "História do Brasil",
+        "topics": [
+          "Revoltas nativistas",
+          "Quimica 3",
+          "Introdução à Química Orgânica e classificação das cadeias carbônicas",
+          "Hidrocarbonetos"
+        ]
+      },
+      {
+        "name": "Geografia 1",
+        "topics": [
+          "Fenômenos e mudanças climáticas"
+        ]
+      },
+      {
+        "name": "Geografia 2",
+        "topics": [
+          "Migrações e Refugiados"
+        ]
+      },
+      {
+        "name": "Filosofia",
+        "topics": [
+          "Filosofia Moderna: Iluminismo"
+        ]
+      },
+      {
+        "name": "Linguagens",
+        "topics": [
+          "Pré-Modernismo"
+        ]
+      }
+    ]
+  },
+  {
+    "cycle": 18,
+    "subjects": [
+      {
+        "name": "Matemática 1",
+        "topics": [
+          "Matriz (introdução)"
+        ]
+      },
+      {
+        "name": "Matemática 3",
+        "topics": [
+          "Análise combinatória: Princípio Fundamental da Contagem (PFC) e Fatorial"
+        ]
+      },
+      {
+        "name": "Biologia 1",
+        "topics": [
+          "Primeira lei de Mendel e Heredogramas",
+          "Aelos letais, dominância incompleta, co-dominância e alelos múltiplos"
+        ]
+      },
+      {
+        "name": "Física 3",
+        "topics": [
+          "Corrente e Potência elétrica",
+          "Leis de Ohm"
+        ]
+      },
+      {
+        "name": "História do Brasil",
+        "topics": [
+          "Movimentos emancipacionistas",
+          "Quimica 3",
+          "Petróleo",
+          "Funções oxigenadas e nitrogenadas"
+        ]
+      },
+      {
+        "name": "Geografia 1",
+        "topics": [
+          "Clima do Brasil",
+          "Grandes biomas terrestres"
+        ]
+      },
+      {
+        "name": "Geografia 2",
+        "topics": [
+          "Conflitos do Século XXI"
+        ]
+      },
+      {
+        "name": "Filosofia",
+        "topics": [
+          "Filosofia Moderna: Immanuel Kant"
+        ]
+      },
+      {
+        "name": "Linguagens",
+        "topics": [
+          "Vanguardas Europeias"
+        ]
+      }
+    ]
+  },
+  {
+    "cycle": 19,
+    "subjects": [
+      {
+        "name": "Matemática 3",
+        "topics": [
+          "Análise combinatória: Permutações simples e com repetição"
+        ]
+      },
+      {
+        "name": "Biologia 1",
+        "topics": [
+          "Sistema ABO, sistema Rh e tipagem sanguínea",
+          "Eritroblastose fetal ou doença hemolítica do recém-nascido"
+        ]
+      },
+      {
+        "name": "Física 3",
+        "topics": [
+          "Associação de Resistores",
+          "Leis de Kirchhoff"
+        ]
+      },
+      {
+        "name": "História Geral",
+        "topics": [
+          "Segunda Guerra mundial"
+        ]
+      },
+      {
+        "name": "História do Brasil",
+        "topics": [
+          "Família Real portuguesa no Brasil",
+          "Quimica 3",
+          "Propriedades físicas e químicas dos compostos orgânicos"
+        ]
+      },
+      {
+        "name": "Geografia 1",
+        "topics": [
+          "Conferências Internacionais"
+        ]
+      },
+      {
+        "name": "Geografia 2",
+        "topics": [
+          "Terrorismo"
+        ]
+      },
+      {
+        "name": "Filosofia",
+        "topics": [
+          "Filosofia moral e ética"
+        ]
+      },
+      {
+        "name": "Linguagens",
+        "topics": [
+          "Modernismo: primeira geração"
+        ]
+      }
+    ]
+  },
+  {
+    "cycle": 20,
+    "subjects": [
+      {
+        "name": "Matemática 3",
+        "topics": [
+          "Análise combinatória: Arranjo e combinação simples",
+          "Probabilidade: Visão geral, união de eventos, eventos simultâneos e probabilidade condicional"
+        ]
+      },
+      {
+        "name": "Biologia 1",
+        "topics": [
+          "Segunda lei de Mendel"
+        ]
+      },
+      {
+        "name": "Física 3",
+        "topics": [
+          "Geradores elétricos",
+          "Receptores elétricos",
+          "Capacitores"
+        ]
+      },
+      {
+        "name": "História Geral",
+        "topics": [
+          "América Latina no século XX"
+        ]
+      },
+      {
+        "name": "História do Brasil",
+        "topics": [
+          "Processo de independência do Brasil",
+          "Quimica 3",
+          "Isomeria plana",
+          "Isomeria geométrica (cis-trans)"
+        ]
+      },
+      {
+        "name": "Geografia 1",
+        "topics": [
+          "Ecossistemas Brasileiros",
+          "Uso e degradação das formações vegetais"
+        ]
+      },
+      {
+        "name": "Filosofia",
+        "topics": [
+          "Filosofia Política"
+        ]
+      },
+      {
+        "name": "Linguagens",
+        "topics": [
+          "Modernismo: segunda geração"
+        ]
+      }
+    ]
+  },
+  {
+    "cycle": 21,
+    "subjects": [
+      {
+        "name": "Matemática 3",
+        "topics": [
+          "Trigonometria: Conceitos básicos e funções trigonométricas"
+        ]
+      },
+      {
+        "name": "Biologia 1",
+        "topics": [
+          "Engenharia genética e biotecnologia: transgênicos e clonagem"
+        ]
+      },
+      {
+        "name": "Física 2",
+        "topics": [
+          "Princípios da óptica geométrica",
+          "Luz e Câmara de orifício"
+        ]
+      },
+      {
+        "name": "História Geral",
+        "topics": [
+          "Descolonização afro-asiática"
+        ]
+      },
+      {
+        "name": "História do Brasil",
+        "topics": [
+          "Primeiro Reinado",
+          "Quimica 3",
+          "Reações orgânicas de eliminação",
+          "Reações orgânicas de substituição"
+        ]
+      },
+      {
+        "name": "Geografia 1",
+        "topics": [
+          "Espaço geográfico, urbanização e hierarquias urbanas",
+          "Urbanização do Brasil"
+        ]
+      },
+      {
+        "name": "Filosofia",
+        "topics": [
+          "Filosofia Helenística"
+        ]
+      },
+      {
+        "name": "Linguagens",
+        "topics": [
+          "Modernismo: terceira geração"
+        ]
+      }
+    ]
+  },
+  {
+    "cycle": 22,
+    "subjects": [
+      {
+        "name": "Biologia 2",
+        "topics": [
+          "Anexos embrionários",
+          "Tecido epitelial",
+          "Tecido conjuntivo propriamente dito"
+        ]
+      },
+      {
+        "name": "Física 2",
+        "topics": [
+          "Espelhos planos"
+        ]
+      },
+      {
+        "name": "História Geral",
+        "topics": [
+          "Guerra Fria"
+        ]
+      },
+      {
+        "name": "História do Brasil",
+        "topics": [
+          "Período Regencial",
+          "Quimica 3",
+          "Reações orgânicas de oxidação",
+          "Reações orgânicas de adição"
+        ]
+      },
+      {
+        "name": "Geografia 1",
+        "topics": [
+          "Problemas sociais e ambientais urbanos",
+          "Movimentos migratórios"
+        ]
+      },
+      {
+        "name": "Sociologia",
+        "topics": [
+          "Comte e o Positivismo"
+        ]
+      },
+      {
+        "name": "Linguagens",
+        "topics": [
+          "Arte Moderna: Impressionismo e outros movimentos"
+        ]
+      }
+    ]
+  },
+  {
+    "cycle": 23,
+    "subjects": [
+      {
+        "name": "Biologia 2",
+        "topics": [
+          "Tecidos sanguíneo e hematopoiético",
+          "Tecido muscular",
+          "Sistema digestório"
+        ]
+      },
+      {
+        "name": "Física 2",
+        "topics": [
+          "Espelhos esféricos"
+        ]
+      },
+      {
+        "name": "História Geral",
+        "topics": [
+          "A Nova Ordem Mundial."
+        ]
+      },
+      {
+        "name": "História do Brasil",
+        "topics": [
+          "Segundo Reinado",
+          "Quimica 2",
+          "Entalpia",
+          "Lei de Hess",
+          "Quimica 3",
+          "Biomoléculas"
+        ]
+      },
+      {
+        "name": "Geografia 1",
+        "topics": [
+          "Teorias demográficas",
+          "Demografia do Brasil"
+        ]
+      },
+      {
+        "name": "Sociologia",
+        "topics": [
+          "Karl Marx"
+        ]
+      },
+      {
+        "name": "Linguagens",
+        "topics": [
+          "Arte Moderna: Vanguardas europeias"
+        ]
+      }
+    ]
+  },
+  {
+    "cycle": 24,
+    "subjects": [
+      {
+        "name": "Biologia 2",
+        "topics": [
+          "Sistema respiratório",
+          "Sistema cardiovascular",
+          "Sistemas linfático e imunológico"
+        ]
+      },
+      {
+        "name": "Física 2",
+        "topics": [
+          "Refração",
+          "Dioptro plano, Ângulo limite e Reflexão total"
+        ]
+      },
+      {
+        "name": "História do Brasil",
+        "topics": [
+          "República da Espada",
+          "Quimica 2",
+          "Energia de Ligação",
+          "Soluções: classificação e solubilidade"
+        ]
+      },
+      {
+        "name": "Geografia 1",
+        "topics": [
+          "Estrutura da população",
+          "Fatores do desenvolvimento e Indicadores sociais"
+        ]
+      },
+      {
+        "name": "Sociologia",
+        "topics": [
+          "Trabalho, economia e sociedade"
+        ]
+      },
+      {
+        "name": "Linguagens",
+        "topics": [
+          "Arte moderna no Brasil"
+        ]
+      }
+    ]
+  },
+  {
+    "cycle": 25,
+    "subjects": [
+      {
+        "name": "Biologia 2",
+        "topics": [
+          "Sistema excretor",
+          "Sistema endócrino"
+        ]
+      },
+      {
+        "name": "Física 2",
+        "topics": [
+          "Óptica da Visão",
+          "Instrumentos ópticos"
+        ]
+      },
+      {
+        "name": "História do Brasil",
+        "topics": [
+          "República Oligárquica",
+          "Quimica 2",
+          "Diluição e mistura de soluções",
+          "Propriedades coligativas"
+        ]
+      },
+      {
+        "name": "Sociologia",
+        "topics": [
+          "Estratificação, Classe e Mobilidade social"
+        ]
+      },
+      {
+        "name": "Linguagens",
+        "topics": [
+          "Arte contemporânea"
+        ]
+      }
+    ]
+  },
+  {
+    "cycle": 26,
+    "subjects": [
+      {
+        "name": "Biologia 3",
+        "topics": [
+          "Vírus: Características gerais",
+          "Viroses",
+          "Bactérias: Características gerais e reprodução"
+        ]
+      },
+      {
+        "name": "Física 2",
+        "topics": [
+          "Ondulatória: Introdução e Equação fundamental",
+          "Fenômenos ondulatórios"
+        ]
+      },
+      {
+        "name": "História do Brasil",
+        "topics": [
+          "Era Vargas",
+          "Quimica 2",
+          "Noções e cálculos de equilíbrio químico",
+          "Deslocamento de equilíbrio"
+        ]
+      },
+      {
+        "name": "Sociologia",
+        "topics": [
+          "Revolução Industrial e Globalização",
+          "Cultura e Educação"
+        ]
+      },
+      {
+        "name": "Linguagens",
+        "topics": [
+          "Instalações, Performances e Ready-mades"
+        ]
+      }
+    ]
+  },
+  {
+    "cycle": 27,
+    "subjects": [
+      {
+        "name": "Biologia 3",
+        "topics": [
+          "Cianobactérias e Archeas",
+          "Bacterioses",
+          "Algas"
+        ]
+      },
+      {
+        "name": "Física 2",
+        "topics": [
+          "Acústica, fenômenos sonoros e instrumentos musicais",
+          "Efeito doppler (parte teórica)"
+        ]
+      },
+      {
+        "name": "História do Brasil",
+        "topics": [
+          "República Liberal",
+          "Quimica 2",
+          "Equilíbrio iônico da água, pH e pOH",
+          "Soluções tampão e Titulação"
+        ]
+      },
+      {
+        "name": "Sociologia",
+        "topics": [
+          "Escola de Frankfurt e indústria cultural",
+          "Poder, Política e Estado",
+          "Direitos, Cidadania e Movimentos sociais"
+        ]
+      }
+    ]
+  },
+  {
+    "cycle": 28,
+    "subjects": [
+      {
+        "name": "Biologia 3",
+        "topics": [
+          "Protozoários: Características gerais",
+          "Protozooses",
+          "Reino Fungi: Características gerais",
+          "Importância dos fungos",
+          "Micoses"
+        ]
+      },
+      {
+        "name": "História do Brasil",
+        "topics": [
+          "Regime Militar",
+          "Quimica 2",
+          "Número de oxidação (NOX)",
+          "Reações e Balanceamento por oxirredução"
+        ]
+      },
+      {
+        "name": "Sociologia",
+        "topics": [
+          "Estado de bem-estar social",
+          "Instituições Sociais"
+        ]
+      }
+    ]
+  },
+  {
+    "cycle": 29,
+    "subjects": [
+      {
+        "name": "Biologia 3",
+        "topics": [
+          "Introdução à Botânica",
+          "Ciclo reprodutivo dos vegetais",
+          "Briófitas e Pteridófitas",
+          "Gimnospermas"
+        ]
+      },
+      {
+        "name": "História do Brasil",
+        "topics": [
+          "Redemocratização",
+          "Quimica 2",
+          "Pilhas"
+        ]
+      }
+    ]
+  },
+  {
+    "cycle": 30,
+    "subjects": [
+      {
+        "name": "Biologia 3",
+        "topics": [
+          "Angiospermas",
+          "Morfologia vegetal: Flor, semente e fruto",
+          "Morfologia vegetal: Raiz, caule e folha"
+        ]
+      },
+      {
+        "name": "História do Brasil",
+        "topics": [
+          "Nova República"
+        ]
+      }
+    ]
+  },
+  {
+    "cycle": 31,
+    "subjects": [
+      {
+        "name": "Biologia 3",
+        "topics": [
+          "Fisiologia e Transpiração vegetal"
+        ]
+      },
+      {
+        "name": "Biologia 3",
+        "topics": [
+          "Platelmintos e suas verminoses",
+          "Nematelmintos e suas verminoses",
+          "Peixes"
+        ]
+      }
+    ]
+  },
+  {
+    "cycle": 32,
+    "subjects": [
+      {
+        "name": "Biologia 3",
+        "topics": [
+          "Anfibios",
+          "Répteis",
+          "Aves",
+          "Mamíferos"
+        ]
+      }
+    ]
+  }
 ]

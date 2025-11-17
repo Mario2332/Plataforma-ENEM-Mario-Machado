@@ -45,6 +45,8 @@ const cronogramaIntensivo = require("../data/cronograma-intensivo.json");
  * Função para inicializar templates de cronograma
  * Será chamada automaticamente quando necessário
  */
+// Versão dos templates - incrementar quando houver mudanças
+const TEMPLATE_VERSION = 2; // Atualizado com cronograma intensivo completo (32 ciclos)
 async function initializeTemplatesIfNeeded() {
     try {
         // Verificar se templates já existem
@@ -55,36 +57,42 @@ async function initializeTemplatesIfNeeded() {
             intensiveRef.get(),
         ]);
         const promises = [];
-        // Criar template extensivo se não existir
-        if (!extensiveDoc.exists) {
-            functions.logger.info("📦 Criando template extensivo...");
+        // Verificar e atualizar template extensivo
+        const needsExtensiveUpdate = !extensiveDoc.exists ||
+            (extensiveDoc.data()?.version || 0) < TEMPLATE_VERSION;
+        if (needsExtensiveUpdate) {
+            functions.logger.info("📦 Atualizando template extensivo...");
             promises.push(extensiveRef.set({
                 cycles: cronogramaExtensivo,
                 tipo: "extensive",
                 nome: "Cronograma Extensivo",
                 descricao: "Cronograma completo para preparação ao longo do ano",
-                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                version: TEMPLATE_VERSION,
+                createdAt: extensiveDoc.exists ? extensiveDoc.data()?.createdAt : admin.firestore.FieldValue.serverTimestamp(),
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             }));
         }
-        // Criar template intensivo se não existir
-        if (!intensiveDoc.exists) {
-            functions.logger.info("📦 Criando template intensivo...");
+        // Verificar e atualizar template intensivo
+        const needsIntensiveUpdate = !intensiveDoc.exists ||
+            (intensiveDoc.data()?.version || 0) < TEMPLATE_VERSION;
+        if (needsIntensiveUpdate) {
+            functions.logger.info("📦 Atualizando template intensivo...");
             promises.push(intensiveRef.set({
                 cycles: cronogramaIntensivo,
                 tipo: "intensive",
                 nome: "Cronograma Intensivo",
                 descricao: "Cronograma focado para preparação intensiva",
-                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                version: TEMPLATE_VERSION,
+                createdAt: intensiveDoc.exists ? intensiveDoc.data()?.createdAt : admin.firestore.FieldValue.serverTimestamp(),
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             }));
         }
         if (promises.length > 0) {
             await Promise.all(promises);
-            functions.logger.info("✅ Templates inicializados com sucesso!");
+            functions.logger.info(`✅ Templates atualizados para versão ${TEMPLATE_VERSION}!`);
             return true;
         }
-        return false; // Templates já existiam
+        return false; // Templates já estavam atualizados
     }
     catch (error) {
         functions.logger.error("❌ Erro ao inicializar templates:", error);

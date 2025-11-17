@@ -19,5 +19,6 @@ export * from "./callable/mentor-conteudos";
 export * from "./callable/conteudos-simples";
 export * from "./callable/cronograma-anual";
 export * from "./callable/init-cronograma-templates";
+export * from "./callable/update-templates-http";
 export * from "./webhooks/kiwify";
 export * from "./triggers/email-sender";

@@ -180,9 +180,11 @@ export function useAuth() {
       setAuthState((prev) => ({ ...prev, loading: true, error: null }));
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       
-      // Atualizar lastSignedIn
+      // Atualizar lastSignedIn (preservando outros campos com merge: true)
       const userDocRef = doc(db, "users", userCredential.user.uid);
+      console.log('[useAuth] signIn: atualizando lastSignedIn com merge: true');
       await setDoc(userDocRef, { lastSignedIn: serverTimestamp() }, { merge: true });
+      console.log('[useAuth] signIn: lastSignedIn atualizado');
       
       return userCredential.user;
     } catch (error: any) {

@@ -2,16 +2,69 @@ import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 
 const db = admin.firestore();
+const fs = require("fs");
+const path = require("path");
+
+// Flag global para controlar inicialização
+let initializationPromise: Promise<void> | null = null;
+
+/**
+ * Inicializar collection conteudos_base se não existir
+ */
+async function ensureDataExists() {
+  // Se já está inicializando, aguardar
+  if (initializationPromise) {
+    return initializationPromise;
+  }
+
+  // Verificar se já existe
+  const snapshot = await db.collection("conteudos_base").limit(1).get();
+  if (!snapshot.empty) {
+    functions.logger.info("✅ conteudos_base já existe");
+    return;
+  }
+
+  // Inicializar
+  functions.logger.info("🔄 Inicializando conteudos_base...");
+  
+  initializationPromise = (async () => {
+    try {
+      // Carregar JSON
+      const jsonPath = path.join(__dirname, "..", "study-content-data.json");
+      const jsonContent = fs.readFileSync(jsonPath, "utf-8");
+      const baseData = JSON.parse(jsonContent);
+      
+      functions.logger.info(`📦 Carregado ${Object.keys(baseData).length} matérias`);
+      
+      // Salvar no Firestore em batch
+      const batch = db.batch();
+      for (const [key, value] of Object.entries(baseData)) {
+        const docRef = db.collection("conteudos_base").doc(key);
+        batch.set(docRef, value);
+      }
+      await batch.commit();
+      
+      functions.logger.info("✅ conteudos_base inicializado com sucesso!");
+    } catch (error: any) {
+      functions.logger.error("❌ Erro ao inicializar:", error);
+      initializationPromise = null; // Resetar para tentar novamente
+      throw error;
+    }
+  })();
+  
+  return initializationPromise;
+}
 
 /**
  * Função SIMPLES para obter conteúdos
- * Retorna dados direto do Firestore sem complicações
+ * Retorna dados direto do Firestore
+ * Inicializa automaticamente se necessário
  */
 export const getConteudosSimples = functions
   .region("southamerica-east1")
   .runWith({
-    memory: "256MB",
-    timeoutSeconds: 30,
+    memory: "512MB",
+    timeoutSeconds: 60,
   })
   .https.onCall(async (data, context) => {
     try {
@@ -27,6 +80,9 @@ export const getConteudosSimples = functions
           "Você precisa estar autenticado"
         );
       }
+
+      // Garantir que dados existem (inicializa se necessário)
+      await ensureDataExists();
 
       const { materiaKey } = data;
 

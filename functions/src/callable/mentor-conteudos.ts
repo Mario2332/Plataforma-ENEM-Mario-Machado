@@ -5,7 +5,23 @@ import { getAuthContext, requireRole } from "../utils/auth";
 
 // Usar caminho absoluto para garantir que o JSON seja encontrado
 const studyDataPath = path.join(__dirname, "..", "study-content-data.json");
-const studyData = require(studyDataPath);
+functions.logger.info("📂 Tentando carregar JSON de:", studyDataPath);
+functions.logger.info("📂 __dirname:", __dirname);
+
+let studyData: any;
+try {
+  studyData = require(studyDataPath);
+  functions.logger.info("✅ JSON carregado com sucesso!", {
+    keys: Object.keys(studyData).length
+  });
+} catch (error: any) {
+  functions.logger.error("❌ Erro ao carregar JSON:", {
+    path: studyDataPath,
+    error: error.message,
+    stack: error.stack
+  });
+  throw error;
+}
 
 const db = admin.firestore();
 

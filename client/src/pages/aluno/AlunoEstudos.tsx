@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAlunoApi } from "@/hooks/useAlunoApi";
-import { BookOpen, Clock, Edit, Play, Plus, Trash2, Pause, RotateCcw, Save, ArrowUpDown } from "lucide-react";
+import { BookOpen, Clock, Edit, Play, Plus, Trash2, Pause, RotateCcw, Save, ArrowUpDown, Zap, Timer, CheckCircle2 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 
@@ -91,7 +91,7 @@ export default function AlunoEstudos() {
           const tempoDecorridoAtual = Math.floor((agora - tempoInicioRef.current) / 1000) + tempoAcumuladoRef.current;
           setTempoDecorrido(tempoDecorridoAtual);
         }
-      }, 100); // Atualiza a cada 100ms para maior precisão
+      }, 100);
     } else {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
@@ -140,10 +140,8 @@ export default function AlunoEstudos() {
       setIsSaving(true);
       
       if (editandoId) {
-        // Modo de edição
-        // Criar data no timezone local (evita problema de um dia anterior)
         const [ano, mes, dia] = formData.data.split('-').map(Number);
-        const dataLocal = new Date(ano, mes - 1, dia, 12, 0, 0); // Meio-dia para evitar problemas de timezone
+        const dataLocal = new Date(ano, mes - 1, dia, 12, 0, 0);
         
         await api.updateEstudo(editandoId, {
           ...formData,
@@ -151,10 +149,8 @@ export default function AlunoEstudos() {
         });
         toast.success("Estudo atualizado com sucesso!");
       } else {
-        // Modo de criação
-        // Criar data no timezone local (evita problema de um dia anterior)
         const [ano, mes, dia] = formData.data.split('-').map(Number);
-        const dataLocal = new Date(ano, mes - 1, dia, 12, 0, 0); // Meio-dia para evitar problemas de timezone
+        const dataLocal = new Date(ano, mes - 1, dia, 12, 0, 0);
         
         await api.createEstudo({
           ...formData,
@@ -183,7 +179,6 @@ export default function AlunoEstudos() {
   };
   
   const handleEdit = (estudo: any) => {
-    // Converter data para formato do input
     let dataFormatada: string;
     try {
       let data: Date;
@@ -224,7 +219,6 @@ export default function AlunoEstudos() {
     }
   };
 
-  // Funções do cronômetro
   const iniciarCronometro = () => {
     tempoInicioRef.current = Date.now();
     tempoAcumuladoRef.current = tempoDecorrido;
@@ -267,19 +261,15 @@ export default function AlunoEstudos() {
     return `${String(horas).padStart(2, "0")}:${String(minutos).padStart(2, "0")}:${String(segs).padStart(2, "0")}`;
   };
   
-  // Função para ordenar estudos
   const handleOrdenar = (coluna: OrdenacaoColuna) => {
     if (colunaOrdenacao === coluna) {
-      // Inverte a direção se clicar na mesma coluna
       setDirecaoOrdenacao(direcaoOrdenacao === "asc" ? "desc" : "asc");
     } else {
-      // Nova coluna, começa com descendente
       setColunaOrdenacao(coluna);
       setDirecaoOrdenacao("desc");
     }
   };
   
-  // Estudos ordenados
   const estudosOrdenados = [...estudos].sort((a, b) => {
     if (!colunaOrdenacao) return 0;
     
@@ -288,7 +278,6 @@ export default function AlunoEstudos() {
     
     switch (colunaOrdenacao) {
       case "data":
-        // Converter datas para timestamp
         try {
           const dataA = a.data?.seconds || a.data?._seconds ? new Date((a.data.seconds || a.data._seconds) * 1000) : new Date(a.data);
           const dataB = b.data?.seconds || b.data?._seconds ? new Date((b.data.seconds || b.data._seconds) * 1000) : new Date(b.data);
@@ -318,285 +307,371 @@ export default function AlunoEstudos() {
         return 0;
     }
     
-    if (valorA < valorB) return direcaoOrdenacao === "asc" ? -1 : 1;
-    if (valorA > valorB) return direcaoOrdenacao === "asc" ? 1 : -1;
-    return 0;
+    if (direcaoOrdenacao === "asc") {
+      return valorA > valorB ? 1 : -1;
+    } else {
+      return valorA < valorB ? 1 : -1;
+    }
   });
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <div className="relative">
+          <div className="animate-spin rounded-full h-20 w-20 border-t-4 border-b-4 border-primary"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+            <Zap className="h-8 w-8 text-primary animate-pulse" />
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Estudos</h1>
-          <p className="text-muted-foreground mt-2">Registre e acompanhe suas sessões de estudo</p>
-        </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Registrar Estudo
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{editandoId ? "Editar Sessão de Estudo" : "Registrar Sessão de Estudo"}</DialogTitle>
-              <DialogDescription>
-                {editandoId ? "Atualize os detalhes da sua sessão de estudo" : "Preencha os detalhes da sua sessão de estudo"}
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit}>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="data">Data</Label>
-                    <Input
-                      id="data"
-                      type="date"
-                      value={formData.data}
-                      onChange={(e) => setFormData({ ...formData, data: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="tempoMinutos">Tempo (minutos)</Label>
-                    <Input
-                      id="tempoMinutos"
-                      type="number"
-                      min="1"
-                      value={formData.tempoMinutos}
-                      onChange={(e) => setFormData({ ...formData, tempoMinutos: parseInt(e.target.value) || 0 })}
-                      required
-                    />
-                  </div>
-                </div>
+    <div className="space-y-8 pb-8 animate-fade-in">
+      {/* Elementos decorativos */}
+      <div className="fixed top-20 right-10 w-72 h-72 bg-blue-500/5 rounded-full blur-3xl animate-float pointer-events-none" />
+      <div className="fixed bottom-20 left-10 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl animate-float-delayed pointer-events-none" />
 
-                <div className="space-y-2">
-                  <Label htmlFor="materia">Matéria</Label>
-                  <Select
-                    value={formData.materia}
-                    onValueChange={(value) => setFormData({ ...formData, materia: value })}
-                    required
-                  >
-                    <SelectTrigger id="materia">
-                      <SelectValue placeholder="Selecione uma matéria" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {MATERIAS_ENEM.map((materia) => (
-                        <SelectItem key={materia} value={materia}>
-                          {materia}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="conteudo">Conteúdo Estudado</Label>
-                  <Input
-                    id="conteudo"
-                    value={formData.conteudo}
-                    onChange={(e) => setFormData({ ...formData, conteudo: e.target.value })}
-                    placeholder="Ex: Funções quadráticas, Análise sintática..."
-                  />
-                </div>
-
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="questoesFeitas">Questões Feitas</Label>
-                    <Input
-                      id="questoesFeitas"
-                      type="number"
-                      min="0"
-                      value={formData.questoesFeitas}
-                      onChange={(e) => setFormData({ ...formData, questoesFeitas: parseInt(e.target.value) || 0 })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="questoesAcertadas">Questões Acertadas</Label>
-                    <Input
-                      id="questoesAcertadas"
-                      type="number"
-                      min="0"
-                      value={formData.questoesAcertadas}
-                      onChange={(e) => setFormData({ ...formData, questoesAcertadas: parseInt(e.target.value) || 0 })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="flashcardsRevisados">Flashcards Revisados</Label>
-                    <Input
-                      id="flashcardsRevisados"
-                      type="number"
-                      min="0"
-                      value={formData.flashcardsRevisados}
-                      onChange={(e) => setFormData({ ...formData, flashcardsRevisados: parseInt(e.target.value) || 0 })}
-                    />
-                  </div>
+      {/* Header Premium */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-500/20 via-emerald-500/10 to-purple-500/10 p-8 border-2 border-white/20 dark:border-white/10 backdrop-blur-xl shadow-2xl animate-slide-up">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-blue-500/20 to-transparent rounded-full blur-3xl animate-pulse-slow" />
+        <div className="absolute bottom-0 left-0 w-72 h-72 bg-gradient-to-tr from-emerald-500/20 to-transparent rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '1s' }} />
+        
+        <div className="relative flex items-center justify-between">
+          <div className="space-y-3">
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-emerald-500 rounded-2xl blur-xl opacity-50 animate-pulse-slow" />
+                <div className="relative bg-gradient-to-br from-blue-500 via-emerald-500 to-purple-500 p-4 rounded-2xl shadow-2xl">
+                  <BookOpen className="h-10 w-10 text-white" />
                 </div>
               </div>
+              <div>
+                <h1 className="text-5xl font-black tracking-tight bg-gradient-to-r from-blue-600 via-emerald-600 to-purple-600 bg-clip-text text-transparent animate-gradient">
+                  Estudos
+                </h1>
+              </div>
+            </div>
+            <p className="text-lg text-muted-foreground font-medium">
+              Registre e acompanhe suas sessões de estudo 📚
+            </p>
+          </div>
+          
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button 
+                size="lg"
+                className="relative overflow-hidden bg-gradient-to-r from-blue-500 via-emerald-500 to-purple-500 hover:from-blue-600 hover:via-emerald-600 hover:to-purple-600 shadow-xl hover:shadow-2xl transition-all duration-300 font-bold border-0"
+                onClick={() => {
+                  setEditandoId(null);
+                  setFormData({
+                    data: new Date().toISOString().split("T")[0],
+                    materia: "",
+                    conteudo: "",
+                    tempoMinutos: 0,
+                    questoesFeitas: 0,
+                    questoesAcertadas: 0,
+                    flashcardsRevisados: 0,
+                  });
+                }}
+              >
+                <Plus className="h-5 w-5 mr-2" />
+                Registrar Estudo
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto border-2">
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-black">{editandoId ? "Editar Sessão de Estudo" : "Registrar Sessão de Estudo"}</DialogTitle>
+                <DialogDescription className="text-base">
+                  {editandoId ? "Atualize os detalhes da sua sessão de estudo" : "Preencha os detalhes da sua sessão de estudo"}
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleSubmit}>
+                <div className="grid gap-6 py-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="data" className="text-sm font-semibold">Data</Label>
+                      <Input
+                        id="data"
+                        type="date"
+                        value={formData.data}
+                        onChange={(e) => setFormData({ ...formData, data: e.target.value })}
+                        required
+                        className="border-2"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="tempoMinutos" className="text-sm font-semibold">Tempo (minutos)</Label>
+                      <Input
+                        id="tempoMinutos"
+                        type="number"
+                        min="1"
+                        value={formData.tempoMinutos}
+                        onChange={(e) => setFormData({ ...formData, tempoMinutos: parseInt(e.target.value) || 0 })}
+                        required
+                        className="border-2"
+                      />
+                    </div>
+                  </div>
 
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button type="submit" disabled={isSaving}>
-                  {isSaving ? "Salvando..." : "Salvar"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+                  <div className="space-y-2">
+                    <Label htmlFor="materia" className="text-sm font-semibold">Matéria</Label>
+                    <Select
+                      value={formData.materia}
+                      onValueChange={(value) => setFormData({ ...formData, materia: value })}
+                      required
+                    >
+                      <SelectTrigger id="materia" className="border-2">
+                        <SelectValue placeholder="Selecione uma matéria" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {MATERIAS_ENEM.map((materia) => (
+                          <SelectItem key={materia} value={materia}>
+                            {materia}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="conteudo" className="text-sm font-semibold">Conteúdo Estudado</Label>
+                    <Input
+                      id="conteudo"
+                      value={formData.conteudo}
+                      onChange={(e) => setFormData({ ...formData, conteudo: e.target.value })}
+                      placeholder="Ex: Funções quadráticas, Análise sintática..."
+                      className="border-2"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="questoesFeitas" className="text-sm font-semibold">Questões Feitas</Label>
+                      <Input
+                        id="questoesFeitas"
+                        type="number"
+                        min="0"
+                        value={formData.questoesFeitas}
+                        onChange={(e) => setFormData({ ...formData, questoesFeitas: parseInt(e.target.value) || 0 })}
+                        className="border-2"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="questoesAcertadas" className="text-sm font-semibold">Questões Acertadas</Label>
+                      <Input
+                        id="questoesAcertadas"
+                        type="number"
+                        min="0"
+                        value={formData.questoesAcertadas}
+                        onChange={(e) => setFormData({ ...formData, questoesAcertadas: parseInt(e.target.value) || 0 })}
+                        className="border-2"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="flashcardsRevisados" className="text-sm font-semibold">Flashcards Revisados</Label>
+                      <Input
+                        id="flashcardsRevisados"
+                        type="number"
+                        min="0"
+                        value={formData.flashcardsRevisados}
+                        onChange={(e) => setFormData({ ...formData, flashcardsRevisados: parseInt(e.target.value) || 0 })}
+                        className="border-2"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <DialogFooter className="gap-2">
+                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} className="border-2">
+                    Cancelar
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    disabled={isSaving}
+                    className="bg-gradient-to-r from-blue-500 to-emerald-500 hover:from-blue-600 hover:to-emerald-600 font-bold"
+                  >
+                    {isSaving ? "Salvando..." : "Salvar"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
-      {/* Cronômetro */}
-      <Card>
+      {/* Cronômetro Premium */}
+      <Card className="border-2 hover:shadow-2xl transition-all duration-500 animate-slide-up" style={{ animationDelay: '0.1s' }}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5" />
-            Cronômetro de Estudo
-          </CardTitle>
-          <CardDescription>
-            Inicie o cronômetro para registrar o tempo de estudo em tempo real
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-3 text-2xl font-black">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl blur-md opacity-50" />
+                  <div className="relative p-3 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl shadow-xl">
+                    <Timer className="h-6 w-6 text-white" />
+                  </div>
+                </div>
+                Cronômetro de Estudo
+              </CardTitle>
+              <CardDescription className="mt-2 text-base">
+                Inicie o cronômetro para registrar o tempo de estudo em tempo real
+              </CardDescription>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col items-center gap-6">
-            <div className="text-6xl font-mono font-bold tabular-nums">
-              {formatarTempo(tempoDecorrido)}
+          <div className="flex flex-col items-center gap-8">
+            {/* Display do tempo com design moderno */}
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 via-cyan-500/20 to-blue-500/20 rounded-3xl blur-2xl animate-pulse-slow" />
+              <div className="relative px-12 py-8 bg-gradient-to-br from-blue-50/50 to-cyan-50/50 dark:from-blue-950/30 dark:to-cyan-950/30 rounded-3xl border-2 border-blue-200 dark:border-blue-800">
+                <div className="text-7xl font-mono font-black tabular-nums bg-gradient-to-r from-blue-600 via-cyan-600 to-blue-600 bg-clip-text text-transparent">
+                  {formatarTempo(tempoDecorrido)}
+                </div>
+              </div>
             </div>
-            <div className="flex gap-3">
+
+            {/* Botões com design premium */}
+            <div className="flex flex-wrap gap-4 justify-center">
               {!cronometroAtivo ? (
-                <Button onClick={iniciarCronometro} size="lg">
-                  <Play className="h-5 w-5 mr-2" />
+                <Button 
+                  onClick={iniciarCronometro} 
+                  size="lg"
+                  className="relative overflow-hidden bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 shadow-xl hover:shadow-2xl hover:shadow-emerald-500/30 transition-all duration-300 font-bold px-8 py-6 text-lg"
+                >
+                  <Play className="h-6 w-6 mr-2" />
                   Iniciar
                 </Button>
               ) : (
-                <Button onClick={pausarCronometro} size="lg" variant="secondary">
-                  <Pause className="h-5 w-5 mr-2" />
+                <Button 
+                  onClick={pausarCronometro} 
+                  size="lg"
+                  className="relative overflow-hidden bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 shadow-xl hover:shadow-2xl hover:shadow-orange-500/30 transition-all duration-300 font-bold px-8 py-6 text-lg"
+                >
+                  <Pause className="h-6 w-6 mr-2" />
                   Pausar
                 </Button>
               )}
-              <Button onClick={resetarCronometro} size="lg" variant="outline">
-                <RotateCcw className="h-5 w-5 mr-2" />
+              
+              <Button 
+                onClick={resetarCronometro} 
+                size="lg"
+                variant="outline"
+                className="border-2 hover:bg-gradient-to-r hover:from-gray-500 hover:to-gray-600 hover:text-white hover:border-transparent transition-all duration-300 font-bold px-8 py-6 text-lg"
+              >
+                <RotateCcw className="h-6 w-6 mr-2" />
                 Resetar
               </Button>
+              
               <Button 
                 onClick={salvarCronometro} 
-                size="lg" 
-                variant="default"
+                size="lg"
                 disabled={tempoDecorrido === 0}
+                className="relative overflow-hidden bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 shadow-xl hover:shadow-2xl hover:shadow-blue-500/30 transition-all duration-300 font-bold px-8 py-6 text-lg disabled:opacity-50"
               >
-                <Save className="h-5 w-5 mr-2" />
+                <Save className="h-6 w-6 mr-2" />
                 Salvar Sessão
               </Button>
             </div>
+
             {cronometroAtivo && (
-              <p className="text-sm text-muted-foreground">
-                ⏱️ Cronômetro ativo - Continue estudando! O tempo será salvo mesmo se você trocar de aba.
-              </p>
+              <div className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-500/20 to-green-500/20 rounded-full border-2 border-emerald-500/30 backdrop-blur-sm animate-pulse-slow">
+                <div className="w-3 h-3 bg-emerald-500 rounded-full animate-ping" />
+                <p className="text-sm font-bold text-emerald-700 dark:text-emerald-300">
+                  Cronômetro ativo - Continue estudando!
+                </p>
+              </div>
             )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Lista de Estudos */}
-      <Card>
+      {/* Lista de Estudos Premium */}
+      <Card className="border-2 hover:shadow-xl transition-shadow animate-slide-up" style={{ animationDelay: '0.2s' }}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BookOpen className="h-5 w-5" />
+          <CardTitle className="flex items-center gap-3 text-2xl font-black">
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl blur-md opacity-50" />
+              <div className="relative p-3 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl shadow-xl">
+                <BookOpen className="h-6 w-6 text-white" />
+              </div>
+            </div>
             Histórico de Estudos
           </CardTitle>
-          <CardDescription>Suas sessões de estudo registradas</CardDescription>
+          <CardDescription className="text-base">Suas sessões de estudo registradas</CardDescription>
         </CardHeader>
         <CardContent>
           {estudos.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Nenhum estudo registrado ainda</p>
-              <p className="text-sm mt-2">Comece registrando sua primeira sessão de estudo!</p>
+            <div className="text-center py-16">
+              <div className="relative mx-auto w-24 h-24 mb-6">
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full blur-xl opacity-30" />
+                <div className="relative p-6 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-full flex items-center justify-center border-2 border-blue-200 dark:border-blue-800">
+                  <BookOpen className="h-12 w-12 text-blue-500" />
+                </div>
+              </div>
+              <p className="text-lg font-semibold mb-2">Nenhum estudo registrado ainda</p>
+              <p className="text-sm text-muted-foreground">Comece registrando sua primeira sessão de estudo!</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow>
+                  <TableRow className="hover:bg-transparent border-b-2">
                     <TableHead>
-                      <Button variant="ghost" size="sm" onClick={() => handleOrdenar("data")} className="-ml-3 h-8">
+                      <Button variant="ghost" size="sm" onClick={() => handleOrdenar("data")} className="-ml-3 h-8 font-bold">
                         Data
                         <ArrowUpDown className="ml-2 h-4 w-4" />
                       </Button>
                     </TableHead>
                     <TableHead>
-                      <Button variant="ghost" size="sm" onClick={() => handleOrdenar("materia")} className="-ml-3 h-8">
+                      <Button variant="ghost" size="sm" onClick={() => handleOrdenar("materia")} className="-ml-3 h-8 font-bold">
                         Matéria
                         <ArrowUpDown className="ml-2 h-4 w-4" />
                       </Button>
                     </TableHead>
-                    <TableHead>Conteúdo</TableHead>
+                    <TableHead className="font-bold">Conteúdo</TableHead>
                     <TableHead>
-                      <Button variant="ghost" size="sm" onClick={() => handleOrdenar("tempo")} className="-ml-3 h-8">
+                      <Button variant="ghost" size="sm" onClick={() => handleOrdenar("tempo")} className="-ml-3 h-8 font-bold">
                         Tempo
                         <ArrowUpDown className="ml-2 h-4 w-4" />
                       </Button>
                     </TableHead>
                     <TableHead>
-                      <Button variant="ghost" size="sm" onClick={() => handleOrdenar("questoes")} className="-ml-3 h-8">
+                      <Button variant="ghost" size="sm" onClick={() => handleOrdenar("questoes")} className="-ml-3 h-8 font-bold">
                         Questões
                         <ArrowUpDown className="ml-2 h-4 w-4" />
                       </Button>
                     </TableHead>
                     <TableHead>
-                      <Button variant="ghost" size="sm" onClick={() => handleOrdenar("acertos")} className="-ml-3 h-8">
+                      <Button variant="ghost" size="sm" onClick={() => handleOrdenar("acertos")} className="-ml-3 h-8 font-bold">
                         Acertos
                         <ArrowUpDown className="ml-2 h-4 w-4" />
                       </Button>
                     </TableHead>
-                    <TableHead>Flashcards</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
+                    <TableHead className="font-bold">Flashcards</TableHead>
+                    <TableHead className="text-right font-bold">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {estudosOrdenados.map((estudo) => {
-                    // Lidar com diferentes formatos de data
                     let dataFormatada = "Data inválida";
-                    
-                    // LOG DE DIAGNÓSTICO
-                    console.log("=== DIAGNÓSTICO DE DATA ===");
-                    console.log("Estudo ID:", estudo.id);
-                    console.log("Data raw:", estudo.data);
-                    console.log("Tipo:", typeof estudo.data);
-                    console.log("Tem seconds?", estudo.data?.seconds);
-                    console.log("Tem toDate?", typeof estudo.data?.toDate);
-                    console.log("É objeto?", estudo.data && typeof estudo.data === 'object');
-                    console.log("Keys:", estudo.data && typeof estudo.data === 'object' ? Object.keys(estudo.data) : 'N/A');
                     
                     try {
                       if (estudo.data?.seconds || estudo.data?._seconds) {
-                        // Timestamp do Firestore (com ou sem underscore)
                         const seconds = estudo.data.seconds || estudo.data._seconds;
                         const date = new Date(seconds * 1000);
-                        console.log("Convertido (seconds):", date);
                         if (!isNaN(date.getTime())) {
                           dataFormatada = date.toLocaleDateString("pt-BR");
                         }
                       } else if (estudo.data?.toDate && typeof estudo.data.toDate === 'function') {
-                        // Timestamp do Firestore (método toDate)
                         const date = estudo.data.toDate();
-                        console.log("Convertido (toDate):", date);
                         if (!isNaN(date.getTime())) {
                           dataFormatada = date.toLocaleDateString("pt-BR");
                         }
                       } else if (estudo.data) {
-                        // String ou Date
                         const date = new Date(estudo.data);
-                        console.log("Convertido (new Date):", date);
                         if (!isNaN(date.getTime())) {
                           dataFormatada = date.toLocaleDateString("pt-BR");
                         }
@@ -605,18 +680,29 @@ export default function AlunoEstudos() {
                       console.error("Erro ao formatar data:", error);
                     }
                     
-                    console.log("Data formatada final:", dataFormatada);
-                    console.log("=========================");
-                    
                     return (
-                    <TableRow key={estudo.id}>
-                      <TableCell>{dataFormatada}</TableCell>
-                      <TableCell className="font-medium">{estudo.materia}</TableCell>
-                      <TableCell>{estudo.conteudo || "-"}</TableCell>
-                      <TableCell>{estudo.tempoMinutos} min</TableCell>
-                      <TableCell>{estudo.questoesFeitas || 0}</TableCell>
-                      <TableCell>{estudo.questoesAcertadas || 0}</TableCell>
-                      <TableCell>{estudo.flashcardsRevisados || 0}</TableCell>
+                    <TableRow key={estudo.id} className="hover:bg-gradient-to-r hover:from-primary/5 hover:to-transparent transition-all">
+                      <TableCell className="font-medium">{dataFormatada}</TableCell>
+                      <TableCell>
+                        <span className="px-3 py-1 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full text-sm font-semibold border border-blue-500/30">
+                          {estudo.materia}
+                        </span>
+                      </TableCell>
+                      <TableCell className="max-w-xs truncate">{estudo.conteudo || "-"}</TableCell>
+                      <TableCell>
+                        <span className="flex items-center gap-1.5 font-semibold">
+                          <Clock className="h-4 w-4 text-blue-500" />
+                          {estudo.tempoMinutos} min
+                        </span>
+                      </TableCell>
+                      <TableCell className="font-semibold">{estudo.questoesFeitas || 0}</TableCell>
+                      <TableCell>
+                        <span className="flex items-center gap-1.5 font-semibold text-emerald-600 dark:text-emerald-400">
+                          <CheckCircle2 className="h-4 w-4" />
+                          {estudo.questoesAcertadas || 0}
+                        </span>
+                      </TableCell>
+                      <TableCell className="font-semibold">{estudo.flashcardsRevisados || 0}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <Button
@@ -624,6 +710,7 @@ export default function AlunoEstudos() {
                             size="icon"
                             onClick={() => handleEdit(estudo)}
                             title="Editar"
+                            className="hover:bg-blue-500/20 hover:text-blue-600 transition-colors"
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -632,6 +719,7 @@ export default function AlunoEstudos() {
                             size="icon"
                             onClick={() => handleDelete(estudo.id)}
                             title="Excluir"
+                            className="hover:bg-red-500/20 hover:text-red-600 transition-colors"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -646,6 +734,69 @@ export default function AlunoEstudos() {
           )}
         </CardContent>
       </Card>
+
+      <style>{`
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-20px); }
+        }
+        
+        @keyframes float-delayed {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-30px); }
+        }
+        
+        @keyframes gradient {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+        
+        @keyframes pulse-slow {
+          0%, 100% { opacity: 0.5; }
+          50% { opacity: 0.8; }
+        }
+        
+        @keyframes fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        @keyframes slide-up {
+          from {
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        .animate-float {
+          animation: float 8s ease-in-out infinite;
+        }
+        
+        .animate-float-delayed {
+          animation: float-delayed 10s ease-in-out infinite;
+        }
+        
+        .animate-gradient {
+          background-size: 200% 200%;
+          animation: gradient 3s ease infinite;
+        }
+        
+        .animate-pulse-slow {
+          animation: pulse-slow 3s ease-in-out infinite;
+        }
+        
+        .animate-fade-in {
+          animation: fade-in 0.8s ease-out;
+        }
+        
+        .animate-slide-up {
+          animation: slide-up 0.6s ease-out;
+        }
+      `}</style>
     </div>
   );
 }

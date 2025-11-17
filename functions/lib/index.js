@@ -56,6 +56,9 @@ var aluno_1 = require("./callable/aluno");
 Object.defineProperty(exports, "alunoFunctions", { enumerable: true, get: function () { return aluno_1.alunoFunctions; } });
 __exportStar(require("./callable/aluno-extras"), exports);
 __exportStar(require("./callable/mentor-conteudos"), exports);
+__exportStar(require("./callable/conteudos-simples"), exports);
+__exportStar(require("./callable/cronograma-anual"), exports);
+__exportStar(require("./callable/init-cronograma-templates"), exports);
 __exportStar(require("./webhooks/kiwify"), exports);
 __exportStar(require("./triggers/email-sender"), exports);
 //# sourceMappingURL=index.js.map

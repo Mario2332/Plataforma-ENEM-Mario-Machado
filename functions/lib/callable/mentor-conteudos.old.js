@@ -46,55 +46,10 @@ const INCIDENCE_MAP = {
     "Baixa": 0.02,
     "Muito baixa": 0.01,
 };
-// Flag para controlar inicialização
-let isInitialized = false;
-let baseDataCache = null;
-/**
- * Inicializar dados base do Firestore (executa apenas uma vez)
- */
-async function initializeBaseData() {
-    if (isInitialized && baseDataCache) {
-        return baseDataCache;
-    }
-    functions.logger.info("🔄 Verificando se conteudos_base existe...");
-    // Verificar se já existe
-    const snapshot = await db.collection("conteudos_base").limit(1).get();
-    if (!snapshot.empty) {
-        functions.logger.info("✅ conteudos_base já existe");
-        isInitialized = true;
-        return null; // Dados já estão no Firestore
-    }
-    functions.logger.info("📦 Inicializando conteudos_base pela primeira vez...");
-    // Carregar JSON inline (sem dependência de arquivo externo)
-    const fs = require("fs");
-    const path = require("path");
-    try {
-        const jsonPath = path.join(__dirname, "..", "study-content-data.json");
-        const jsonContent = fs.readFileSync(jsonPath, "utf-8");
-        const baseData = JSON.parse(jsonContent);
-        // Salvar no Firestore
-        const batch = db.batch();
-        for (const [key, value] of Object.entries(baseData)) {
-            const docRef = db.collection("conteudos_base").doc(key);
-            batch.set(docRef, value);
-        }
-        await batch.commit();
-        functions.logger.info("✅ conteudos_base inicializado com sucesso!");
-        isInitialized = true;
-        baseDataCache = baseData;
-        return baseData;
-    }
-    catch (error) {
-        functions.logger.error("❌ Erro ao inicializar:", error);
-        throw error;
-    }
-}
 /**
  * Carregar dados base do Firestore
  */
 async function loadBaseData(materiaKey) {
-    // Tentar inicializar se necessário
-    await initializeBaseData();
     if (materiaKey) {
         // Carregar apenas uma matéria
         const doc = await db.collection("conteudos_base").doc(materiaKey).get();
@@ -120,7 +75,7 @@ async function loadBaseData(materiaKey) {
 exports.getConteudos = functions
     .region("southamerica-east1")
     .runWith({
-    memory: "512MB",
+    memory: "256MB",
     timeoutSeconds: 60,
 })
     .https.onCall(async (data, context) => {
@@ -138,8 +93,8 @@ exports.getConteudos = functions
     functions.logger.info("✅ Auth OK", { uid: auth.uid, role: auth.role });
     const { materiaKey } = data;
     try {
-        // Carregar dados base do Firestore (inicializa automaticamente se necessário)
-        functions.logger.info("📂 Carregando dados base...");
+        // Carregar dados base do Firestore
+        functions.logger.info("📂 Carregando dados base do Firestore...");
         const baseData = await loadBaseData(materiaKey);
         functions.logger.info("✅ Dados base carregados", {
             materias: Object.keys(baseData).length
@@ -165,8 +120,9 @@ exports.getConteudos = functions
                 if (customMap[topic.id]) {
                     const custom = customMap[topic.id];
                     if (custom.isDeleted) {
-                        return null;
+                        return null; // Marcar para remoção
                     }
+                    // Sobrescrever com dados customizados
                     return {
                         ...topic,
                         name: custom.name,
@@ -175,7 +131,7 @@ exports.getConteudos = functions
                     };
                 }
                 return topic;
-            }).filter((t) => t !== null);
+            }).filter((t) => t !== null); // Remover deletados
             // Adicionar tópicos customizados novos
             Object.values(customMap).forEach((custom) => {
                 if (custom.isCustom && !custom.isDeleted) {
@@ -197,11 +153,12 @@ exports.getConteudos = functions
             };
         }
         else {
-            // Retornar todas as matérias
+            // Retornar todas as matérias (para painel geral)
             const allMaterias = {};
             for (const [key, materia] of Object.entries(baseData)) {
                 const materiaData = materia;
                 const topics = materiaData.topics || [];
+                // Buscar customizações
                 const customizacoesSnapshot = await db
                     .collection("conteudos_customizados")
                     .doc(key)
@@ -212,6 +169,7 @@ exports.getConteudos = functions
                     const data = doc.data();
                     customMap[data.id] = data;
                 });
+                // Mesclar
                 let mergedTopics = topics.map((topic) => {
                     if (customMap[topic.id]) {
                         const custom = customMap[topic.id];
@@ -251,6 +209,7 @@ exports.getConteudos = functions
             code: error.code,
             stack: error.stack
         });
+        // Se já for um HttpsError, re-lançar
         if (error.code && error.code.startsWith('functions/')) {
             throw error;
         }
@@ -277,6 +236,7 @@ exports.createTopico = functions
         throw new functions.https.HttpsError("invalid-argument", "Nível de incidência inválido");
     }
     try {
+        // Gerar ID único
         const topicoId = `custom_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         const topicoData = {
             id: topicoId,
@@ -337,9 +297,11 @@ exports.updateTopico = functions
             updates.incidenceValue = INCIDENCE_MAP[incidenceLevel];
         }
         if (topicoDoc.exists) {
+            // Atualizar existente
             await topicoRef.update(updates);
         }
         else {
+            // Criar novo (caso seja do JSON base sendo editado pela primeira vez)
             await topicoRef.set({
                 id: topicoId,
                 ...updates,
@@ -379,12 +341,14 @@ exports.deleteTopico = functions
             .doc(topicoId);
         const topicoDoc = await topicoRef.get();
         if (topicoDoc.exists) {
+            // Atualizar existente para deletado
             await topicoRef.update({
                 isDeleted: true,
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             });
         }
         else {
+            // Criar registro de deleção (para tópicos do JSON base)
             await topicoRef.set({
                 id: topicoId,
                 isDeleted: true,
@@ -400,4 +364,4 @@ exports.deleteTopico = functions
         throw new functions.https.HttpsError("internal", error.message);
     }
 });
-//# sourceMappingURL=mentor-conteudos.js.map
+//# sourceMappingURL=mentor-conteudos.old.js.map

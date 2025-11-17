@@ -32,7 +32,7 @@ export default function MateriaPage({ materiaKey }: MateriaPageProps) {
 
   const loadConteudos = async () => {
     try {
-      const data = await mentorConteudosApi.getConteudos(materiaKey);
+      const data = await mentorConteudosApi.getConteudos(materiaKey) as any;
       setMateria(data);
       setTopics(data.topics || []);
     } catch (error: any) {

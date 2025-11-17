@@ -163,19 +163,21 @@ export default function AlunoEstudos() {
         const [ano, mes, dia] = formData.data.split('-').map(Number);
         const dataLocal = new Date(ano, mes - 1, dia, 12, 0, 0);
         
+        const { data: _, ...restFormData } = formData;
         await api.updateEstudo(editandoId, {
-          ...formData,
+          ...restFormData,
           data: dataLocal,
-        });
+        } as any);
         toast.success("Estudo atualizado com sucesso!");
       } else {
         const [ano, mes, dia] = formData.data.split('-').map(Number);
         const dataLocal = new Date(ano, mes - 1, dia, 12, 0, 0);
         
+        const { data: _, ...restFormData } = formData;
         await api.createEstudo({
-          ...formData,
+          ...restFormData,
           data: dataLocal,
-        });
+        } as any);
         toast.success("Estudo registrado com sucesso!");
       }
       

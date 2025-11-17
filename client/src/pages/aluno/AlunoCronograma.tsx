@@ -329,7 +329,10 @@ export default function AlunoCronograma() {
       }));
       
       console.log('Salvando horários:', horarios);
-      await api.saveHorarios(horarios);
+      // Salvar cada horário individualmente
+      for (const horario of horarios) {
+        await api.createHorario(horario);
+      }
       toast.success("Cronograma salvo com sucesso!");
     } catch (error: any) {
       toast.error(error.message || "Erro ao salvar cronograma");

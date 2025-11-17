@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAlunoApi } from "@/hooks/useAlunoApi";
-import { BookOpen, Clock, Edit, Play, Plus, Trash2, Pause, RotateCcw, Save, ArrowUpDown, Zap, Timer, CheckCircle2 } from "lucide-react";
+import { BookOpen, Clock, Edit, Play, Plus, Trash2, Pause, RotateCcw, Save, ArrowUpDown, Zap, Timer, CheckCircle2, Target, Maximize2, X, AlertCircle } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 
@@ -46,6 +46,13 @@ export default function AlunoEstudos() {
   const [colunaOrdenacao, setColunaOrdenacao] = useState<OrdenacaoColuna>(null);
   const [direcaoOrdenacao, setDirecaoOrdenacao] = useState<DirecaoOrdenacao>("desc");
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Novos estados para tempo meta e modo foco
+  const [tempoMeta, setTempoMeta] = useState<number | null>(null); // em segundos
+  const [modoFoco, setModoFoco] = useState(false);
+  const [dialogTempoOpen, setDialogTempoOpen] = useState(false);
+  const [horasMeta, setHorasMeta] = useState("0");
+  const [minutosMeta, setMinutosMeta] = useState("30");
 
   const [formData, setFormData] = useState({
     data: new Date().toISOString().split("T")[0],
@@ -90,6 +97,19 @@ export default function AlunoEstudos() {
           const agora = Date.now();
           const tempoDecorridoAtual = Math.floor((agora - tempoInicioRef.current) / 1000) + tempoAcumuladoRef.current;
           setTempoDecorrido(tempoDecorridoAtual);
+          
+          // Verificar se atingiu o tempo meta
+          if (tempoMeta && tempoDecorridoAtual >= tempoMeta) {
+            pausarCronometro();
+            toast.success("⏰ Tempo de estudos concluído! Parabéns!", {
+              duration: 5000,
+            });
+            // Tocar som de notificação (opcional)
+            try {
+              const audio = new Audio('/notification.mp3');
+              audio.play().catch(() => {});
+            } catch {}
+          }
         }
       }, 100);
     } else {
@@ -104,7 +124,7 @@ export default function AlunoEstudos() {
         clearInterval(intervalRef.current);
       }
     };
-  }, [cronometroAtivo]);
+  }, [cronometroAtivo, tempoMeta]);
 
   // Salvar estado do cronômetro no localStorage quando mudar
   useEffect(() => {
@@ -260,6 +280,45 @@ export default function AlunoEstudos() {
     const segs = segundos % 60;
     return `${String(horas).padStart(2, "0")}:${String(minutos).padStart(2, "0")}:${String(segs).padStart(2, "0")}`;
   };
+  
+  const definirTempoMeta = () => {
+    const horas = parseInt(horasMeta) || 0;
+    const minutos = parseInt(minutosMeta) || 0;
+    const totalSegundos = (horas * 3600) + (minutos * 60);
+    
+    if (totalSegundos === 0) {
+      toast.error("Defina um tempo válido");
+      return;
+    }
+    
+    setTempoMeta(totalSegundos);
+    setDialogTempoOpen(false);
+    toast.success(`Meta de tempo definida: ${horas}h ${minutos}min`);
+  };
+  
+  const removerTempoMeta = () => {
+    setTempoMeta(null);
+    toast.info("Meta de tempo removida");
+  };
+  
+  const ativarModoFoco = () => {
+    setModoFoco(true);
+    // Tentar entrar em fullscreen
+    try {
+      document.documentElement.requestFullscreen?.();
+    } catch {}
+  };
+  
+  const desativarModoFoco = () => {
+    setModoFoco(false);
+    // Sair do fullscreen
+    try {
+      document.exitFullscreen?.();
+    } catch {}
+  };
+  
+  const tempoRestante = tempoMeta ? Math.max(0, tempoMeta - tempoDecorrido) : 0;
+  const progressoPercentual = tempoMeta ? Math.min(100, (tempoDecorrido / tempoMeta) * 100) : 0;
   
   const handleOrdenar = (coluna: OrdenacaoColuna) => {
     if (colunaOrdenacao === coluna) {
@@ -574,7 +633,53 @@ export default function AlunoEstudos() {
                 <Save className="h-6 w-6 mr-2" />
                 Salvar Sessão
               </Button>
+              
+              <Button 
+                onClick={() => setDialogTempoOpen(true)} 
+                size="lg"
+                variant="outline"
+                className="border-2 border-blue-500 hover:bg-blue-500 hover:text-white transition-all duration-300 font-bold px-8 py-6 text-lg"
+              >
+                <Target className="h-6 w-6 mr-2" />
+                Definir Tempo
+              </Button>
+              
+              <Button 
+                onClick={ativarModoFoco} 
+                size="lg"
+                variant="outline"
+                className="border-2 border-indigo-500 hover:bg-indigo-500 hover:text-white transition-all duration-300 font-bold px-8 py-6 text-lg"
+              >
+                <Maximize2 className="h-6 w-6 mr-2" />
+                Modo Foco
+              </Button>
             </div>
+            
+            {/* Indicador de tempo meta */}
+            {tempoMeta && (
+              <div className="w-full space-y-3">
+                <div className="flex items-center justify-between text-sm font-semibold">
+                  <span className="text-blue-600 dark:text-blue-400">Meta: {formatarTempo(tempoMeta)}</span>
+                  <span className="text-cyan-600 dark:text-cyan-400">Restante: {formatarTempo(tempoRestante)}</span>
+                  <Button 
+                    onClick={removerTempoMeta} 
+                    size="sm" 
+                    variant="ghost"
+                    className="h-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                  >
+                    <X className="h-4 w-4 mr-1" />
+                    Remover
+                  </Button>
+                </div>
+                <div className="relative h-3 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
+                  <div 
+                    className="absolute h-full bg-gradient-to-r from-blue-500 to-cyan-500 transition-all duration-300 rounded-full"
+                    style={{ width: `${progressoPercentual}%` }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
 
             {cronometroAtivo && (
               <div className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-500/20 to-sky-500/20 rounded-full border-2 border-cyan-500/30 backdrop-blur-sm animate-pulse-slow">
@@ -735,6 +840,157 @@ export default function AlunoEstudos() {
         </CardContent>
       </Card>
 
+      {/* Dialog para definir tempo meta */}
+      <Dialog open={dialogTempoOpen} onOpenChange={setDialogTempoOpen}>
+        <DialogContent className="border-2">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black flex items-center gap-2">
+              <Target className="h-6 w-6 text-blue-500" />
+              Definir Tempo de Estudos
+            </DialogTitle>
+            <DialogDescription className="text-base">
+              Defina quanto tempo você pretende estudar nesta sessão
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="horas" className="font-bold">Horas</Label>
+              <Input
+                id="horas"
+                type="number"
+                min="0"
+                max="23"
+                value={horasMeta}
+                onChange={(e) => setHorasMeta(e.target.value)}
+                className="border-2 font-semibold text-lg"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="minutos" className="font-bold">Minutos</Label>
+              <Input
+                id="minutos"
+                type="number"
+                min="0"
+                max="59"
+                value={minutosMeta}
+                onChange={(e) => setMinutosMeta(e.target.value)}
+                className="border-2 font-semibold text-lg"
+              />
+            </div>
+          </div>
+          <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+            <AlertCircle className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
+            <p className="text-sm text-blue-700 dark:text-blue-300 font-medium">
+              O cronômetro irá contar até o tempo definido e você será notificado quando terminar.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogTempoOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={definirTempoMeta} className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 font-bold">
+              Definir Meta
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Modo Foco - Tela Cheia */}
+      {modoFoco && (
+        <div className="fixed inset-0 z-50 bg-gradient-to-br from-blue-950 via-indigo-950 to-cyan-950 flex items-center justify-center">
+          {/* Elementos decorativos */}
+          <div className="absolute top-20 right-20 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-float" />
+          <div className="absolute bottom-20 left-20 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-float-delayed" />
+          
+          <div className="relative z-10 flex flex-col items-center gap-12 p-8">
+            {/* Botão fechar */}
+            <Button
+              onClick={desativarModoFoco}
+              size="lg"
+              variant="ghost"
+              className="absolute top-8 right-8 text-white hover:bg-white/10 rounded-full h-14 w-14 p-0"
+            >
+              <X className="h-8 w-8" />
+            </Button>
+            
+            {/* Título */}
+            <div className="text-center space-y-2">
+              <h2 className="text-4xl font-black text-white">Modo Foco</h2>
+              <p className="text-xl text-blue-200 font-medium">Concentre-se nos seus estudos</p>
+            </div>
+            
+            {/* Cronômetro gigante */}
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/30 via-cyan-500/30 to-blue-500/30 rounded-[4rem] blur-3xl animate-pulse-slow" />
+              <div className="relative px-20 py-16 bg-gradient-to-br from-blue-900/50 to-cyan-900/50 rounded-[4rem] border-4 border-blue-400/30 backdrop-blur-xl">
+                <div className="text-[10rem] font-mono font-black tabular-nums text-white drop-shadow-2xl">
+                  {formatarTempo(tempoDecorrido)}
+                </div>
+              </div>
+            </div>
+            
+            {/* Indicador de meta (se definido) */}
+            {tempoMeta && (
+              <div className="w-full max-w-2xl space-y-4">
+                <div className="flex items-center justify-between text-white text-xl font-bold">
+                  <span>Meta: {formatarTempo(tempoMeta)}</span>
+                  <span className="text-cyan-300">Restante: {formatarTempo(tempoRestante)}</span>
+                </div>
+                <div className="relative h-6 bg-white/10 rounded-full overflow-hidden backdrop-blur-sm">
+                  <div 
+                    className="absolute h-full bg-gradient-to-r from-blue-400 to-cyan-400 transition-all duration-300 rounded-full shadow-lg shadow-cyan-500/50"
+                    style={{ width: `${progressoPercentual}%` }}
+                  />
+                </div>
+              </div>
+            )}
+            
+            {/* Botões de controle */}
+            <div className="flex gap-6">
+              {!cronometroAtivo ? (
+                <Button 
+                  onClick={iniciarCronometro} 
+                  size="lg"
+                  className="bg-gradient-to-r from-cyan-500 to-sky-500 hover:from-cyan-400 hover:to-sky-400 text-white shadow-2xl shadow-cyan-500/50 font-bold px-12 py-8 text-2xl rounded-2xl"
+                >
+                  <Play className="h-10 w-10 mr-3" />
+                  Iniciar
+                </Button>
+              ) : (
+                <Button 
+                  onClick={pausarCronometro} 
+                  size="lg"
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-2xl shadow-blue-500/50 font-bold px-12 py-8 text-2xl rounded-2xl"
+                >
+                  <Pause className="h-10 w-10 mr-3" />
+                  Pausar
+                </Button>
+              )}
+              
+              <Button 
+                onClick={resetarCronometro} 
+                size="lg"
+                variant="outline"
+                className="border-4 border-white/30 hover:bg-white/10 text-white font-bold px-12 py-8 text-2xl rounded-2xl backdrop-blur-sm"
+              >
+                <RotateCcw className="h-10 w-10 mr-3" />
+                Resetar
+              </Button>
+            </div>
+            
+            {/* Indicador de cronômetro ativo */}
+            {cronometroAtivo && (
+              <div className="flex items-center gap-3 px-8 py-4 bg-cyan-500/20 rounded-full border-2 border-cyan-400/30 backdrop-blur-sm animate-pulse-slow">
+                <div className="w-4 h-4 bg-cyan-400 rounded-full animate-ping" />
+                <p className="text-lg font-bold text-cyan-100">
+                  Cronômetro ativo - Continue estudando!
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      
       <style>{`
         @keyframes float {
           0%, 100% { transform: translateY(0px); }

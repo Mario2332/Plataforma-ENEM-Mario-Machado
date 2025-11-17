@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { cronogramaAnualApi } from "../../../lib/api-cronograma-anual";
-import { Loader2, TrendingUp, Award, Target } from "lucide-react";
+import { Loader2, TrendingUp, Award, Target, Zap, BarChart3, PieChart } from "lucide-react";
 
 type CronogramaTipo = "extensive" | "intensive";
 
@@ -35,7 +35,6 @@ interface StatsData {
   }>;
 }
 
-// Agrupamento de matérias por área de conhecimento
 const SUBJECT_GROUPS: Record<string, string[]> = {
   'Matemática': ['Mat. Básica', 'Matemática 1', 'Matemática 2', 'Matemática 3'],
   'Física': ['Física 1', 'Física 2', 'Física 3'],
@@ -48,17 +47,17 @@ const SUBJECT_GROUPS: Record<string, string[]> = {
   'Linguagens': ['Linguagens']
 };
 
-// Cores para cada área
+// Paleta azul padronizada
 const AREA_COLORS: Record<string, string> = {
   'Matemática': 'bg-blue-500',
-  'Física': 'bg-purple-500',
-  'Química': 'bg-green-500',
-  'Biologia': 'bg-emerald-500',
-  'História': 'bg-amber-500',
-  'Geografia': 'bg-cyan-500',
-  'Filosofia': 'bg-indigo-500',
-  'Sociologia': 'bg-pink-500',
-  'Linguagens': 'bg-orange-500'
+  'Física': 'bg-indigo-500',
+  'Química': 'bg-cyan-500',
+  'Biologia': 'bg-sky-500',
+  'História': 'bg-blue-600',
+  'Geografia': 'bg-cyan-600',
+  'Filosofia': 'bg-indigo-600',
+  'Sociologia': 'bg-sky-600',
+  'Linguagens': 'bg-blue-400'
 };
 
 export default function CronogramaEstatisticas() {
@@ -98,7 +97,6 @@ export default function CronogramaEstatisticas() {
       };
     }
 
-    // Inicializar estatísticas por área
     const areas: Record<string, Stats> = {};
     Object.keys(SUBJECT_GROUPS).forEach(area => {
       areas[area] = { total: 0, completed: 0, percentage: 0 };
@@ -107,13 +105,11 @@ export default function CronogramaEstatisticas() {
     let totalTopics = 0;
     let totalCompleted = 0;
 
-    // Estatísticas por ciclo
     const cycles = cronograma.cycles.map(cycle => {
       let cycleTotal = 0;
       let cycleCompleted = 0;
 
       cycle.subjects.forEach(subject => {
-        // Encontrar área da matéria
         const area = Object.keys(SUBJECT_GROUPS).find(a => 
           SUBJECT_GROUPS[a].includes(subject.name)
         );
@@ -147,7 +143,6 @@ export default function CronogramaEstatisticas() {
       };
     });
 
-    // Calcular porcentagens das áreas
     Object.keys(areas).forEach(area => {
       if (areas[area].total > 0) {
         areas[area].percentage = Math.round((areas[area].completed / areas[area].total) * 100);
@@ -167,19 +162,24 @@ export default function CronogramaEstatisticas() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="relative">
+          <div className="animate-spin rounded-full h-20 w-20 border-t-4 border-b-4 border-blue-500"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+            <Zap className="h-8 w-8 text-blue-500 animate-pulse" />
+          </div>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-        <p className="text-red-800">{error}</p>
+      <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6 animate-slide-up">
+        <p className="text-red-800 font-semibold">{error}</p>
         <button
           onClick={loadCronograma}
-          className="mt-2 text-sm text-red-600 hover:text-red-700 underline"
+          className="mt-3 px-4 py-2 text-sm text-white bg-red-600 hover:bg-red-700 rounded-lg font-bold transition-colors"
         >
           Tentar novamente
         </button>
@@ -188,117 +188,236 @@ export default function CronogramaEstatisticas() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Estatísticas do Cronograma</h2>
-            <p className="text-sm text-gray-600 mt-1">
-              Visualize seu progresso por área de conhecimento
-            </p>
+    <div className="space-y-8 pb-8 animate-fade-in">
+      {/* Elementos decorativos */}
+      <div className="fixed top-20 right-10 w-72 h-72 bg-blue-500/5 rounded-full blur-3xl animate-float pointer-events-none" />
+      <div className="fixed bottom-20 left-10 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl animate-float-delayed pointer-events-none" />
+
+      {/* Header Premium */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-500/20 via-cyan-500/10 to-sky-500/10 p-8 border-2 border-white/20 dark:border-white/10 backdrop-blur-xl shadow-2xl animate-slide-up">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-blue-500/20 to-transparent rounded-full blur-3xl animate-pulse-slow" />
+        <div className="absolute bottom-0 left-0 w-72 h-72 bg-gradient-to-tr from-cyan-500/20 to-transparent rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '1s' }} />
+        
+        <div className="relative">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-2xl blur-xl opacity-50 animate-pulse-slow" />
+              <div className="relative bg-gradient-to-br from-blue-500 via-cyan-500 to-sky-500 p-4 rounded-2xl shadow-2xl">
+                <BarChart3 className="h-10 w-10 text-white" />
+              </div>
+            </div>
+            <div>
+              <h1 className="text-5xl font-black tracking-tight bg-gradient-to-r from-blue-600 via-cyan-600 to-sky-600 bg-clip-text text-transparent animate-gradient">
+                Estatísticas
+              </h1>
+            </div>
+          </div>
+          <p className="text-lg text-muted-foreground font-medium">
+            Visualize seu progresso por área de conhecimento 📊
+          </p>
+        </div>
+      </div>
+
+      {/* Toggle Extensivo/Intensivo Premium */}
+      <div className="grid md:grid-cols-2 gap-4 animate-slide-up" style={{ animationDelay: '0.1s' }}>
+        <button
+          onClick={() => setTipo("extensive")}
+          className={`relative overflow-hidden p-6 rounded-2xl border-2 font-bold text-lg transition-all hover:shadow-xl hover:-translate-y-1 ${
+            tipo === "extensive"
+              ? "bg-gradient-to-br from-blue-500 to-cyan-500 text-white border-blue-400 shadow-xl shadow-blue-500/30"
+              : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-blue-300"
+          }`}
+        >
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl" />
+          <div className="relative flex items-center justify-center gap-3">
+            <Target className="w-6 h-6" />
+            <span>Cronograma Extensivo</span>
+          </div>
+        </button>
+        <button
+          onClick={() => setTipo("intensive")}
+          className={`relative overflow-hidden p-6 rounded-2xl border-2 font-bold text-lg transition-all hover:shadow-xl hover:-translate-y-1 ${
+            tipo === "intensive"
+              ? "bg-gradient-to-br from-blue-500 to-cyan-500 text-white border-blue-400 shadow-xl shadow-blue-500/30"
+              : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-blue-300"
+          }`}
+        >
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl" />
+          <div className="relative flex items-center justify-center gap-3">
+            <Zap className="w-6 h-6" />
+            <span>Cronograma Intensivo</span>
+          </div>
+        </button>
+      </div>
+
+      {/* Card de Progresso Total Premium */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-500 via-cyan-500 to-sky-500 p-10 shadow-2xl shadow-blue-500/30 animate-slide-up" style={{ animationDelay: '0.2s' }}>
+        <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
+        
+        <div className="relative">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-2xl font-black text-white">Progresso Total</h3>
+            <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-sm">
+              <Award className="w-12 h-12 text-white" />
+            </div>
+          </div>
+          <div className="text-7xl font-black mb-4 text-white drop-shadow-2xl">{stats.total.percentage}%</div>
+          <p className="text-blue-100 text-xl font-semibold mb-8">
+            {stats.total.completed} de {stats.total.total} tópicos concluídos
+          </p>
+          <div className="w-full bg-white/20 rounded-full h-5 backdrop-blur-sm">
+            <div
+              className="bg-white h-5 rounded-full transition-all duration-500 shadow-xl"
+              style={{ width: `${stats.total.percentage}%` }}
+            />
           </div>
         </div>
-
-        {/* Toggle Extensivo/Intensivo */}
-        <div className="mt-6 flex gap-2">
-          <button
-            onClick={() => setTipo("extensive")}
-            className={`flex-1 px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${
-              tipo === "extensive"
-                ? "bg-indigo-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            Cronograma Extensivo
-          </button>
-          <button
-            onClick={() => setTipo("intensive")}
-            className={`flex-1 px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${
-              tipo === "intensive"
-                ? "bg-indigo-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            Cronograma Intensivo
-          </button>
-        </div>
       </div>
 
-      {/* Card de Progresso Total */}
-      <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg shadow-lg p-8 text-white">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-bold">Progresso Total</h3>
-          <Award className="w-10 h-10 opacity-80" />
-        </div>
-        <div className="text-5xl font-bold mb-2">{stats.total.percentage}%</div>
-        <p className="text-indigo-100 text-lg">
-          {stats.total.completed} de {stats.total.total} tópicos concluídos
-        </p>
-        <div className="mt-6 w-full bg-white/20 rounded-full h-4">
-          <div
-            className="bg-white h-4 rounded-full transition-all duration-500"
-            style={{ width: `${stats.total.percentage}%` }}
-          />
-        </div>
-      </div>
-
-      {/* Estatísticas por Área */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-          <Target className="w-5 h-5 text-indigo-600" />
+      {/* Estatísticas por Área Premium */}
+      <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl p-8 border-2 border-gray-100 dark:border-gray-800 animate-slide-up" style={{ animationDelay: '0.3s' }}>
+        <h3 className="text-2xl font-black mb-6 flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl shadow-lg">
+            <PieChart className="w-6 h-6 text-white" />
+          </div>
           Progresso por Área de Conhecimento
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {Object.entries(stats.areas)
             .filter(([_, data]) => data.total > 0)
             .sort((a, b) => b[1].percentage - a[1].percentage)
-            .map(([area, data]) => (
-              <div key={area} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-semibold text-gray-900">{area}</h4>
-                  <span className="text-2xl font-bold text-indigo-600">{data.percentage}%</span>
+            .map(([area, data], index) => (
+              <div 
+                key={area} 
+                className="relative overflow-hidden border-2 border-gray-200 dark:border-gray-700 rounded-2xl p-6 hover:shadow-2xl hover:-translate-y-1 transition-all group"
+                style={{ animationDelay: `${0.4 + index * 0.05}s` }}
+              >
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/5 to-cyan-500/5 rounded-full blur-2xl group-hover:scale-150 transition-transform" />
+                
+                <div className="relative">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-black text-lg">{area}</h4>
+                    <span className="text-3xl font-black bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
+                      {data.percentage}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 mb-3 overflow-hidden">
+                    <div
+                      className={`${AREA_COLORS[area]} h-4 rounded-full transition-all duration-500 shadow-lg`}
+                      style={{ width: `${data.percentage}%` }}
+                    />
+                  </div>
+                  <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">
+                    {data.completed} / {data.total} tópicos
+                  </p>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
-                  <div
-                    className={`${AREA_COLORS[area]} h-3 rounded-full transition-all duration-500`}
-                    style={{ width: `${data.percentage}%` }}
-                  />
-                </div>
-                <p className="text-sm text-gray-600">
-                  {data.completed} / {data.total} tópicos
-                </p>
               </div>
             ))}
         </div>
       </div>
 
-      {/* Estatísticas por Ciclo */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-          <TrendingUp className="w-5 h-5 text-indigo-600" />
+      {/* Estatísticas por Ciclo Premium */}
+      <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl p-8 border-2 border-gray-100 dark:border-gray-800 animate-slide-up" style={{ animationDelay: '0.4s' }}>
+        <h3 className="text-2xl font-black mb-6 flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl shadow-lg">
+            <TrendingUp className="w-6 h-6 text-white" />
+          </div>
           Progresso por Ciclo
         </h3>
-        <div className="space-y-3">
-          {stats.cycles.map((cycle) => (
-            <div key={cycle.cycle} className="border border-gray-200 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-semibold text-gray-900">Ciclo {cycle.cycle}</span>
-                <span className="text-lg font-bold text-indigo-600">{cycle.percentage}%</span>
+        <div className="space-y-4">
+          {stats.cycles.map((cycle, index) => (
+            <div 
+              key={cycle.cycle} 
+              className="relative overflow-hidden border-2 border-gray-200 dark:border-gray-700 rounded-2xl p-6 hover:shadow-xl hover:-translate-y-0.5 transition-all group"
+              style={{ animationDelay: `${0.5 + index * 0.05}s` }}
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/5 to-cyan-500/5 rounded-full blur-2xl group-hover:scale-150 transition-transform" />
+              
+              <div className="relative">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="font-black text-lg">Ciclo {cycle.cycle}</span>
+                  <span className="text-2xl font-black bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
+                    {cycle.percentage}%
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3.5 mb-3 overflow-hidden">
+                  <div
+                    className="bg-gradient-to-r from-blue-500 to-cyan-500 h-3.5 rounded-full transition-all duration-500 shadow-lg"
+                    style={{ width: `${cycle.percentage}%` }}
+                  />
+                </div>
+                <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">
+                  {cycle.completed} / {cycle.total} tópicos
+                </p>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2.5 mb-2">
-                <div
-                  className="bg-indigo-600 h-2.5 rounded-full transition-all duration-500"
-                  style={{ width: `${cycle.percentage}%` }}
-                />
-              </div>
-              <p className="text-sm text-gray-600">
-                {cycle.completed} / {cycle.total} tópicos
-              </p>
             </div>
           ))}
         </div>
       </div>
+
+      <style>{`
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-20px); }
+        }
+        
+        @keyframes float-delayed {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-30px); }
+        }
+        
+        @keyframes gradient {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+        
+        @keyframes pulse-slow {
+          0%, 100% { opacity: 0.5; }
+          50% { opacity: 0.8; }
+        }
+        
+        @keyframes fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        @keyframes slide-up {
+          from {
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        .animate-float {
+          animation: float 8s ease-in-out infinite;
+        }
+        
+        .animate-float-delayed {
+          animation: float-delayed 10s ease-in-out infinite;
+        }
+        
+        .animate-gradient {
+          background-size: 200% 200%;
+          animation: gradient 3s ease infinite;
+        }
+        
+        .animate-pulse-slow {
+          animation: pulse-slow 3s ease-in-out infinite;
+        }
+        
+        .animate-fade-in {
+          animation: fade-in 0.8s ease-out;
+        }
+        
+        .animate-slide-up {
+          animation: slide-up 0.6s ease-out;
+        }
+      `}</style>
     </div>
   );
 }

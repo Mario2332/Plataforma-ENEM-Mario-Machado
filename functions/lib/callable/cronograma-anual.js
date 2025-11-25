@@ -163,21 +163,24 @@ exports.toggleTopicoCompleto = functions
             .doc(context.auth.uid)
             .collection("conteudos_progresso")
             .doc(topicoId);
+        const now = admin.firestore.Timestamp.now();
         if (completed) {
             // Marcar como concluído
             await progressoRef.set({
                 concluido: true,
                 topicoId,
-                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                dataConclusao: now,
+                updatedAt: now,
+                createdAt: now,
             }, { merge: true });
         }
         else {
-            // Desmarcar como concluído
+            // Desmarcar como concluído (deletar dataConclusao)
             await progressoRef.set({
                 concluido: false,
                 topicoId,
-                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                dataConclusao: admin.firestore.FieldValue.delete(),
+                updatedAt: now,
             }, { merge: true });
         }
         functions.logger.info("✅ Tópico atualizado e sincronizado", {

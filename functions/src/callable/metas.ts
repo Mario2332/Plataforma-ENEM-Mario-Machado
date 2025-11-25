@@ -6,6 +6,24 @@ import { criarNotificacao } from "./notificacoes";
 const db = admin.firestore();
 
 /**
+ * Helper para converter string de data para Date com horário meio-dia UTC
+ * Evita problemas de fuso horário ao armazenar datas
+ */
+function parseDateWithNoonUTC(dateString: string): Date {
+  // Se já tem horário, usar como está
+  if (dateString.includes('T')) {
+    const date = new Date(dateString);
+    // Ajustar para meio-dia UTC se necessário
+    date.setUTCHours(12, 0, 0, 0);
+    return date;
+  }
+  
+  // Se é apenas data (YYYY-MM-DD), criar com meio-dia UTC
+  const [year, month, day] = dateString.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day, 12, 0, 0, 0));
+}
+
+/**
  * Tipos de metas disponíveis
  */
 export type TipoMeta = 'horas' | 'questoes' | 'simulados' | 'topicos' | 'sequencia' | 'desempenho';
@@ -209,8 +227,17 @@ const createMeta = functions
             
             valorAtual = progressoSnapshot.docs.filter((doc) => {
               const progresso = doc.data();
-              const dataConclusao = progresso.dataConclusao?.toDate();
-              return dataConclusao && dataConclusao >= dataInicioDate && dataConclusao <= dataFimDate;
+              // Usar dataConclusao se existir, senão usar updatedAt ou createdAt
+              const dataConclusao = progresso.dataConclusao?.toDate() || progresso.updatedAt?.toDate() || progresso.createdAt?.toDate();
+              
+              if (!dataConclusao) return false;
+              
+              const matchPeriodo = dataConclusao >= dataInicioDate && dataConclusao <= dataFimDate;
+              
+              // Filtrar por incidencia apenas se a meta especificar E o progresso tiver incidencia
+              const matchIncidencia = !incidencia || !progresso.incidencia || progresso.incidencia === incidencia;
+              
+              return matchPeriodo && matchIncidencia;
             }).length;
             break;
           }
@@ -264,8 +291,8 @@ const createMeta = functions
         valorAlvo: Number(valorAlvo),
         valorAtual,
         unidade,
-        dataInicio: admin.firestore.Timestamp.fromDate(new Date(dataInicio)),
-        dataFim: admin.firestore.Timestamp.fromDate(new Date(dataFim)),
+        dataInicio: admin.firestore.Timestamp.fromDate(parseDateWithNoonUTC(dataInicio)),
+        dataFim: admin.firestore.Timestamp.fromDate(parseDateWithNoonUTC(dataFim)),
         status,
         createdAt: admin.firestore.Timestamp.now(),
         updatedAt: admin.firestore.Timestamp.now(),
@@ -389,10 +416,10 @@ const updateMeta = functions
       if (descricao !== undefined) updateData.descricao = descricao;
       if (valorAlvo !== undefined) updateData.valorAlvo = Number(valorAlvo);
       if (dataInicio !== undefined) {
-        updateData.dataInicio = admin.firestore.Timestamp.fromDate(new Date(dataInicio));
+        updateData.dataInicio = admin.firestore.Timestamp.fromDate(parseDateWithNoonUTC(dataInicio));
       }
       if (dataFim !== undefined) {
-        updateData.dataFim = admin.firestore.Timestamp.fromDate(new Date(dataFim));
+        updateData.dataFim = admin.firestore.Timestamp.fromDate(parseDateWithNoonUTC(dataFim));
       }
       if (status !== undefined) {
         updateData.status = status;
@@ -481,8 +508,17 @@ const updateMeta = functions
             
             valorAtual = progressoSnapshot.docs.filter((doc) => {
               const progresso = doc.data();
-              const dataConclusao = progresso.dataConclusao?.toDate();
-              return dataConclusao && dataConclusao >= dataInicioDate && dataConclusao <= dataFimDate;
+              // Usar dataConclusao se existir, senão usar updatedAt ou createdAt
+              const dataConclusao = progresso.dataConclusao?.toDate() || progresso.updatedAt?.toDate() || progresso.createdAt?.toDate();
+              
+              if (!dataConclusao) return false;
+              
+              const matchPeriodo = dataConclusao >= dataInicioDate && dataConclusao <= dataFimDate;
+              
+              // Filtrar por incidencia apenas se a meta especificar E o progresso tiver incidencia
+              const matchIncidencia = !metaAtual.incidencia || !progresso.incidencia || progresso.incidencia === metaAtual.incidencia;
+              
+              return matchPeriodo && matchIncidencia;
             }).length;
             break;
         }

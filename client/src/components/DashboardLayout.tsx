@@ -387,7 +387,7 @@ function DashboardLayoutContent({
           </SidebarContent>
 
           <SidebarFooter className="p-3 space-y-2 border-t-2 border-blue-100 dark:border-blue-900/30 bg-gradient-to-r from-blue-500/5 to-cyan-500/5">
-            {user?.role === 'aluno' && !isMobile && (
+            {userData?.role === 'aluno' && !isMobile && (
               <div className="flex justify-center group-data-[collapsible=icon]:justify-center">
                 <Notificacoes />
               </div>
@@ -469,7 +469,7 @@ function DashboardLayoutContent({
                 </div>
               </div>
             </div>
-            {user?.role === 'aluno' && (
+            {userData?.role === 'aluno' && (
               <div className="flex items-center gap-2">
                 <Notificacoes />
               </div>

@@ -1,241 +1,275 @@
-import React, { useState, useEffect } from 'react';
-import { Bell, Check, CheckCheck, Trash2, X } from 'lucide-react';
-import { 
-  getNotificacoes, 
-  marcarNotificacaoLida, 
-  marcarTodasNotificacoesLidas,
-  deletarNotificacao,
-  contarNotificacoesNaoLidas,
-  Notificacao 
-} from '../services/api-notificacoes';
+import React, { useState, useEffect, useRef } from 'react';
+import { Bell, Check, Trash2 } from 'lucide-react';
+import { db } from '../lib/firebase';
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore';
+import { toast } from 'sonner';
+import { useAuthContext } from '../contexts/AuthContext';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+
+interface Notificacao {
+  id: string;
+  tipo: string;
+  titulo: string;
+  mensagem: string;
+  lida: boolean;
+  metaId?: string;
+  metaNome?: string;
+  createdAt: Timestamp;
+}
 
 const Notificacoes: React.FC = () => {
+  const { user } = useAuthContext();
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([]);
   const [countNaoLidas, setCountNaoLidas] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const prevCountRef = useRef<number>(0);
 
-  const carregarNotificacoes = async () => {
-    try {
-      setLoading(true);
-      const [notifs, count] = await Promise.all([
-        getNotificacoes(50, false),
-        contarNotificacoesNaoLidas()
-      ]);
-      setNotificacoes(notifs);
-      setCountNaoLidas(count);
-    } catch (error) {
-      console.error('Erro ao carregar notificações:', error);
-      // Falha silenciosa - não quebra a UI
-      setNotificacoes([]);
-      setCountNaoLidas(0);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Listener em tempo real do Firestore
   useEffect(() => {
-    carregarNotificacoes();
-    // Atualizar a cada 30 segundos
-    const interval = setInterval(carregarNotificacoes, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    if (!user?.uid) {
+      console.log('[Notificacoes] Usuário não autenticado');
+      return;
+    }
 
-  const handleMarcarLida = async (notificacaoId: string) => {
+    console.log('[Notificacoes] Iniciando listener para usuário:', user.uid);
+
     try {
-      await marcarNotificacaoLida(notificacaoId);
-      setNotificacoes(prev => 
-        prev.map(n => n.id === notificacaoId ? { ...n, lida: true } : n)
+      const notificacoesRef = collection(db, 'alunos', user.uid, 'notificacoes');
+      const q = query(notificacoesRef, orderBy('createdAt', 'desc'));
+
+      const unsubscribe = onSnapshot(
+        q,
+        (snapshot) => {
+          console.log('[Notificacoes] Snapshot recebido, docs:', snapshot.size);
+          
+          const notifs: Notificacao[] = [];
+          let naoLidas = 0;
+
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            console.log('[Notificacoes] Documento:', docSnap.id, data);
+            
+            notifs.push({
+              id: docSnap.id,
+              tipo: data.tipo || '',
+              titulo: data.titulo || '',
+              mensagem: data.mensagem || '',
+              lida: data.lida || false,
+              metaId: data.metaId,
+              metaNome: data.metaNome,
+              createdAt: data.createdAt,
+            });
+
+            if (!data.lida) {
+              naoLidas++;
+            }
+          });
+
+          console.log('[Notificacoes] Total notificações:', notifs.length, 'Não lidas:', naoLidas);
+
+          // Mostrar toast apenas se houver novas notificações não lidas
+          if (naoLidas > prevCountRef.current && notifs.length > 0) {
+            const novaNotif = notifs[0];
+            const emoji = getEmojiPorTipo(novaNotif.tipo);
+            console.log('[Notificacoes] Mostrando toast para nova notificação');
+            toast(`${emoji} ${novaNotif.titulo}`, {
+              description: novaNotif.mensagem,
+              duration: 5000,
+            });
+          }
+
+          prevCountRef.current = naoLidas;
+          setNotificacoes(notifs);
+          setCountNaoLidas(naoLidas);
+        },
+        (error) => {
+          console.error('[Notificacoes] Erro no listener:', error);
+        }
       );
-      setCountNaoLidas(prev => Math.max(0, prev - 1));
-    } catch (error) {
-      console.error('Erro ao marcar notificação como lida:', error);
-    }
-  };
 
-  const handleMarcarTodasLidas = async () => {
+      return () => {
+        console.log('[Notificacoes] Limpando listener');
+        unsubscribe();
+      };
+    } catch (error) {
+      console.error('[Notificacoes] Erro ao configurar listener:', error);
+    }
+  }, [user?.uid]);
+
+  const handleMarcarLida = async (notificacaoId: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (!user?.uid) return;
+
     try {
-      await marcarTodasNotificacoesLidas();
-      setNotificacoes(prev => prev.map(n => ({ ...n, lida: true })));
-      setCountNaoLidas(0);
-      // Sucesso silencioso
+      const notifRef = doc(db, 'alunos', user.uid, 'notificacoes', notificacaoId);
+      await updateDoc(notifRef, {
+        lida: true,
+        updatedAt: Timestamp.now(),
+      });
+      console.log('[Notificacoes] Marcada como lida:', notificacaoId);
     } catch (error) {
-      console.error('Erro ao marcar todas como lidas:', error);
+      console.error('[Notificacoes] Erro ao marcar como lida:', error);
     }
   };
 
-  const handleDeletar = async (notificacaoId: string) => {
+  const handleMarcarTodasLidas = async (event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (!user?.uid) return;
+
     try {
-      await deletarNotificacao(notificacaoId);
-      setNotificacoes(prev => prev.filter(n => n.id !== notificacaoId));
-      const notif = notificacoes.find(n => n.id === notificacaoId);
-      if (notif && !notif.lida) {
-        setCountNaoLidas(prev => Math.max(0, prev - 1));
-      }
-      // Sucesso silencioso
+      const naoLidas = notificacoes.filter(n => !n.lida);
+      const promises = naoLidas.map(notif => {
+        const notifRef = doc(db, 'alunos', user.uid, 'notificacoes', notif.id);
+        return updateDoc(notifRef, {
+          lida: true,
+          updatedAt: Timestamp.now(),
+        });
+      });
+      await Promise.all(promises);
+      console.log('[Notificacoes] Todas marcadas como lidas');
     } catch (error) {
-      console.error('Erro ao remover notificação:', error);
+      console.error('[Notificacoes] Erro ao marcar todas como lidas:', error);
     }
   };
 
-  const formatarData = (timestamp: { seconds: number }) => {
-    const data = new Date(timestamp.seconds * 1000);
+  const handleDeletar = async (notificacaoId: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (!user?.uid) return;
+
+    try {
+      const notifRef = doc(db, 'alunos', user.uid, 'notificacoes', notificacaoId);
+      await deleteDoc(notifRef);
+      console.log('[Notificacoes] Deletada:', notificacaoId);
+    } catch (error) {
+      console.error('[Notificacoes] Erro ao deletar:', error);
+    }
+  };
+
+  const formatTempo = (timestamp: Timestamp) => {
+    if (!timestamp) return '';
+    
     const agora = new Date();
+    const data = timestamp.toDate();
     const diffMs = agora.getTime() - data.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHoras = Math.floor(diffMs / 3600000);
-    const diffDias = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return 'Agora';
-    if (diffMins < 60) return `${diffMins}m atrás`;
+    const diffMinutos = Math.floor(diffMs / 60000);
+    
+    if (diffMinutos < 1) return 'Agora';
+    if (diffMinutos < 60) return `${diffMinutos}m atrás`;
+    
+    const diffHoras = Math.floor(diffMinutos / 60);
     if (diffHoras < 24) return `${diffHoras}h atrás`;
-    if (diffDias === 1) return 'Ontem';
+    
+    const diffDias = Math.floor(diffHoras / 24);
     if (diffDias < 7) return `${diffDias}d atrás`;
-    return data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    
+    return data.toLocaleDateString('pt-BR');
   };
 
-  const getIconeTipo = (tipo: string) => {
+  const getEmojiPorTipo = (tipo: string) => {
     switch (tipo) {
-      case 'meta_concluida':
-        return '🎉';
-      case 'meta_criada':
-        return '⭐';
-      case 'progresso_25':
-      case 'progresso_50':
-      case 'progresso_75':
-        return '📈';
-      case 'meta_expirada':
-        return '⚠️';
-      case 'meta_proxima_expirar':
-        return '⏰';
-      case 'sequencia_mantida':
-        return '🔥';
-      default:
-        return '📢';
+      case 'meta_criada': return '⭐';
+      case 'meta_concluida': return '🎉';
+      case 'progresso_25': return '📈';
+      case 'progresso_50': return '🎯';
+      case 'progresso_75': return '🚀';
+      default: return '📢';
     }
   };
+
+  console.log('[Notificacoes] Renderizando. User:', !!user, 'Notifs:', notificacoes.length);
 
   return (
-    <div className="relative">
-      {/* Botão de notificações */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
-      >
-        <Bell className="w-6 h-6 text-gray-700" />
-        {countNaoLidas > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-            {countNaoLidas > 9 ? '9+' : countNaoLidas}
-          </span>
-        )}
-      </button>
-
-      {/* Painel de notificações */}
-      {isOpen && (
-        <>
-          {/* Overlay */}
-          <div 
-            className="fixed inset-0 z-40"
-            onClick={() => setIsOpen(false)}
-          />
-          
-          {/* Painel */}
-          <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-[600px] flex flex-col">
-            {/* Header */}
-            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Bell className="w-5 h-5 text-gray-700" />
-                <h3 className="font-semibold text-gray-900">Notificações</h3>
-                {countNaoLidas > 0 && (
-                  <span className="bg-red-100 text-red-600 text-xs font-medium px-2 py-0.5 rounded-full">
-                    {countNaoLidas}
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                {countNaoLidas > 0 && (
-                  <button
-                    onClick={handleMarcarTodasLidas}
-                    className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
-                    title="Marcar todas como lidas"
-                  >
-                    <CheckCheck className="w-4 h-4" />
-                  </button>
-                )}
-                <button
-                  onClick={() => setIsOpen(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
+    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="relative">
+          <Bell className="h-5 w-5" />
+          {countNaoLidas > 0 && (
+            <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-bold">
+              {countNaoLidas > 9 ? '9+' : countNaoLidas}
+            </span>
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-80 p-0">
+        <div className="flex items-center justify-between p-4 border-b">
+          <h3 className="font-semibold text-lg">Notificações</h3>
+          {countNaoLidas > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleMarcarTodasLidas}
+              className="text-xs"
+            >
+              Marcar todas como lidas
+            </Button>
+          )}
+        </div>
+        
+        <div className="max-h-[400px] overflow-y-auto">
+          {notificacoes.length === 0 ? (
+            <div className="p-8 text-center text-gray-500">
+              <Bell className="h-12 w-12 mx-auto mb-2 opacity-30" />
+              <p>Nenhuma notificação</p>
             </div>
-
-            {/* Lista de notificações */}
-            <div className="overflow-y-auto flex-1">
-              {loading ? (
-                <div className="p-8 text-center text-gray-500">
-                  Carregando...
-                </div>
-              ) : notificacoes.length === 0 ? (
-                <div className="p-8 text-center text-gray-500">
-                  <Bell className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                  <p>Nenhuma notificação</p>
-                </div>
-              ) : (
-                <div className="divide-y divide-gray-100">
-                  {notificacoes.map((notif) => (
-                    <div
-                      key={notif.id}
-                      className={`p-4 hover:bg-gray-50 transition-colors ${
-                        !notif.lida ? 'bg-blue-50' : ''
-                      }`}
-                    >
-                      <div className="flex gap-3">
-                        <div className="text-2xl flex-shrink-0">
-                          {getIconeTipo(notif.tipo)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <h4 className="font-medium text-gray-900 text-sm">
-                              {notif.titulo}
-                            </h4>
-                            <span className="text-xs text-gray-500 flex-shrink-0">
-                              {formatarData(notif.createdAt)}
-                            </span>
-                          </div>
-                          <p className="text-sm text-gray-600 mt-1">
-                            {notif.mensagem}
-                          </p>
-                          <div className="flex items-center gap-2 mt-2">
-                            {!notif.lida && (
-                              <button
-                                onClick={() => handleMarcarLida(notif.id)}
-                                className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1"
-                              >
-                                <Check className="w-3 h-3" />
-                                Marcar como lida
-                              </button>
-                            )}
-                            <button
-                              onClick={() => handleDeletar(notif.id)}
-                              className="text-xs text-red-600 hover:text-red-700 flex items-center gap-1"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                              Remover
-                            </button>
-                          </div>
-                        </div>
+          ) : (
+            <div className="divide-y">
+              {notificacoes.map((notif) => (
+                <div
+                  key={notif.id}
+                  className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${
+                    !notif.lida ? 'bg-blue-50 dark:bg-blue-950/20' : ''
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl flex-shrink-0">
+                      {getEmojiPorTipo(notif.tipo)}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <h4 className="font-semibold text-sm">{notif.titulo}</h4>
+                        <span className="text-xs text-gray-500 whitespace-nowrap">
+                          {formatTempo(notif.createdAt)}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        {notif.mensagem}
+                      </p>
+                      <div className="flex items-center gap-2 mt-2">
+                        {!notif.lida && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => handleMarcarLida(notif.id, e)}
+                            className="h-7 text-xs"
+                          >
+                            <Check className="h-3 w-3 mr-1" />
+                            Marcar como lida
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => handleDeletar(notif.id, e)}
+                          className="h-7 text-xs text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-3 w-3 mr-1" />
+                          Remover
+                        </Button>
                       </div>
                     </div>
-                  ))}
+                  </div>
                 </div>
-              )}
+              ))}
             </div>
-          </div>
-        </>
-      )}
-    </div>
+          )}
+        </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 };
 

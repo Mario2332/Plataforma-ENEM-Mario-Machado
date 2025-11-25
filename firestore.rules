@@ -151,6 +151,41 @@ service cloud.firestore {
         // Aluno pode gerenciar seus templates de cronograma
         allow read, create, update, delete: if hasRole('aluno') && isOwner(alunoId);
       }
+      
+      // ============================================
+      // NOTIFICAÇÕES (subcoleção)
+      // ============================================
+      match /notificacoes/{notificacaoId} {
+        // Aluno pode ler, atualizar e deletar suas próprias notificações
+        allow read, update, delete: if hasRole('aluno') && isOwner(alunoId);
+        
+        // Criação apenas via Cloud Functions
+        allow create: if false;
+      }
+      
+      // ============================================
+      // METAS (subcoleção)
+      // ============================================
+      match /metas/{metaId} {
+        // Aluno pode gerenciar suas próprias metas
+        allow read, create, update, delete: if hasRole('aluno') && isOwner(alunoId);
+        
+        // Mentor pode visualizar metas dos seus alunos
+        allow read: if hasRole('mentor') && 
+                       get(/databases/$(database)/documents/alunos/$(alunoId)).data.mentorId == request.auth.uid;
+      }
+      
+      // ============================================
+      // CONTEÚDOS_PROGRESSO (subcoleção)
+      // ============================================
+      match /conteudos_progresso/{progressoId} {
+        // Aluno pode gerenciar seu progresso de conteúdos
+        allow read, create, update, delete: if hasRole('aluno') && isOwner(alunoId);
+        
+        // Mentor pode visualizar progresso dos seus alunos
+        allow read: if hasRole('mentor') && 
+                       get(/databases/$(database)/documents/alunos/$(alunoId)).data.mentorId == request.auth.uid;
+      }
     }
   }
 }

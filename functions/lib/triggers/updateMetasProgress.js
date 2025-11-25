@@ -36,7 +36,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.onConteudoProgressoWrite = exports.onSimuladoWrite = exports.onEstudoWrite = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
-const notificacoes_1 = require("../callable/notificacoes");
+const metaNotificacoes_1 = require("../helpers/metaNotificacoes");
 const db = admin.firestore();
 /**
  * Trigger: Atualizar progresso de metas quando um estudo é criado/atualizado
@@ -181,28 +181,12 @@ exports.onEstudoWrite = functions
                 valorAtual,
                 updatedAt: now,
             };
-            // Verificar se atingiu o alvo
-            if (valorAtual >= meta.valorAlvo && meta.status === 'ativa') {
-                updateData.status = 'concluida';
-                updateData.dataConclusao = now;
-                // Criar notificação de meta concluída
-                await (0, notificacoes_1.criarNotificacao)(alunoId, 'meta_concluida', '🎉 Meta Concluída!', `Parabéns! Você atingiu a meta "${meta.nome}".`, metaDoc.id, meta.nome);
-            }
-            else {
-                // Verificar marcos de progresso (25%, 50%, 75%)
-                const progressoAnterior = meta.valorAtual || 0;
-                const percentualAnterior = (progressoAnterior / meta.valorAlvo) * 100;
-                const percentualAtual = (valorAtual / meta.valorAlvo) * 100;
-                // Notificar apenas quando cruza um marco pela primeira vez
-                if (percentualAnterior < 25 && percentualAtual >= 25) {
-                    await (0, notificacoes_1.criarNotificacao)(alunoId, 'progresso_25', '📈 25% da Meta Atingido', `Você completou 25% da meta "${meta.nome}". Continue assim!`, metaDoc.id, meta.nome);
-                }
-                else if (percentualAnterior < 50 && percentualAtual >= 50) {
-                    await (0, notificacoes_1.criarNotificacao)(alunoId, 'progresso_50', '🎯 50% da Meta Atingido', `Você está na metade do caminho da meta "${meta.nome}"!`, metaDoc.id, meta.nome);
-                }
-                else if (percentualAnterior < 75 && percentualAtual >= 75) {
-                    await (0, notificacoes_1.criarNotificacao)(alunoId, 'progresso_75', '🚀 75% da Meta Atingido', `Falta pouco! Você já completou 75% da meta "${meta.nome}".`, metaDoc.id, meta.nome);
-                }
+            // Verificar e criar notificações
+            const notifResult = await (0, metaNotificacoes_1.verificarECriarNotificacoesMeta)(alunoId, metaDoc.id, meta.nome, meta.status, meta.valorAtual || 0, valorAtual, meta.valorAlvo, 'updateMetasProgress');
+            // Aplicar mudanças de status se meta foi concluída
+            if (notifResult.status) {
+                updateData.status = notifResult.status;
+                updateData.dataConclusao = notifResult.dataConclusao;
             }
             batch.update(metaDoc.ref, updateData);
         }
@@ -334,28 +318,12 @@ exports.onSimuladoWrite = functions
                 valorAtual,
                 updatedAt: now,
             };
-            // Verificar se atingiu o alvo
-            if (valorAtual >= meta.valorAlvo && meta.status === 'ativa') {
-                updateData.status = 'concluida';
-                updateData.dataConclusao = now;
-                // Criar notificação de meta concluída
-                await (0, notificacoes_1.criarNotificacao)(alunoId, 'meta_concluida', '🎉 Meta Concluída!', `Parabéns! Você atingiu a meta "${meta.nome}".`, metaDoc.id, meta.nome);
-            }
-            else {
-                // Verificar marcos de progresso (25%, 50%, 75%)
-                const progressoAnterior = meta.valorAtual || 0;
-                const percentualAnterior = (progressoAnterior / meta.valorAlvo) * 100;
-                const percentualAtual = (valorAtual / meta.valorAlvo) * 100;
-                // Notificar apenas quando cruza um marco pela primeira vez
-                if (percentualAnterior < 25 && percentualAtual >= 25) {
-                    await (0, notificacoes_1.criarNotificacao)(alunoId, 'progresso_25', '📈 25% da Meta Atingido', `Você completou 25% da meta "${meta.nome}". Continue assim!`, metaDoc.id, meta.nome);
-                }
-                else if (percentualAnterior < 50 && percentualAtual >= 50) {
-                    await (0, notificacoes_1.criarNotificacao)(alunoId, 'progresso_50', '🎯 50% da Meta Atingido', `Você está na metade do caminho da meta "${meta.nome}"!`, metaDoc.id, meta.nome);
-                }
-                else if (percentualAnterior < 75 && percentualAtual >= 75) {
-                    await (0, notificacoes_1.criarNotificacao)(alunoId, 'progresso_75', '🚀 75% da Meta Atingido', `Falta pouco! Você já completou 75% da meta "${meta.nome}".`, metaDoc.id, meta.nome);
-                }
+            // Verificar e criar notificações
+            const notifResult = await (0, metaNotificacoes_1.verificarECriarNotificacoesMeta)(alunoId, metaDoc.id, meta.nome, meta.status, meta.valorAtual || 0, valorAtual, meta.valorAlvo, 'updateMetasProgress');
+            // Aplicar mudanças de status se meta foi concluída
+            if (notifResult.status) {
+                updateData.status = notifResult.status;
+                updateData.dataConclusao = notifResult.dataConclusao;
             }
             batch.update(metaDoc.ref, updateData);
         }
@@ -425,11 +393,14 @@ exports.onConteudoProgressoWrite = functions
             const dataFim = meta.dataFim.toDate();
             const valorAtual = progressoSnapshot.docs.filter((doc) => {
                 const data = doc.data();
-                const dataConclusao = data.updatedAt?.toDate() || data.createdAt?.toDate();
+                // Usar dataConclusao se existir, senão usar updatedAt ou createdAt
+                const dataConclusao = data.dataConclusao?.toDate() || data.updatedAt?.toDate() || data.createdAt?.toDate();
                 if (!dataConclusao)
                     return false;
                 const matchPeriodo = dataConclusao >= dataInicio && dataConclusao <= dataFim;
-                const matchIncidencia = !meta.incidencia || data.incidencia === meta.incidencia;
+                // Filtrar por incidencia apenas se a meta especificar E o progresso tiver incidencia
+                // (para não excluir tópicos do cronograma anual que não têm incidencia)
+                const matchIncidencia = !meta.incidencia || !data.incidencia || data.incidencia === meta.incidencia;
                 return matchPeriodo && matchIncidencia;
             }).length;
             // Atualizar meta
@@ -437,28 +408,12 @@ exports.onConteudoProgressoWrite = functions
                 valorAtual,
                 updatedAt: now,
             };
-            // Verificar se atingiu o alvo
-            if (valorAtual >= meta.valorAlvo && meta.status === 'ativa') {
-                updateData.status = 'concluida';
-                updateData.dataConclusao = now;
-                // Criar notificação de meta concluída
-                await (0, notificacoes_1.criarNotificacao)(alunoId, 'meta_concluida', '🎉 Meta Concluída!', `Parabéns! Você atingiu a meta "${meta.nome}".`, metaDoc.id, meta.nome);
-            }
-            else {
-                // Verificar marcos de progresso (25%, 50%, 75%)
-                const progressoAnterior = meta.valorAtual || 0;
-                const percentualAnterior = (progressoAnterior / meta.valorAlvo) * 100;
-                const percentualAtual = (valorAtual / meta.valorAlvo) * 100;
-                // Notificar apenas quando cruza um marco pela primeira vez
-                if (percentualAnterior < 25 && percentualAtual >= 25) {
-                    await (0, notificacoes_1.criarNotificacao)(alunoId, 'progresso_25', '📈 25% da Meta Atingido', `Você completou 25% da meta "${meta.nome}". Continue assim!`, metaDoc.id, meta.nome);
-                }
-                else if (percentualAnterior < 50 && percentualAtual >= 50) {
-                    await (0, notificacoes_1.criarNotificacao)(alunoId, 'progresso_50', '🎯 50% da Meta Atingido', `Você está na metade do caminho da meta "${meta.nome}"!`, metaDoc.id, meta.nome);
-                }
-                else if (percentualAnterior < 75 && percentualAtual >= 75) {
-                    await (0, notificacoes_1.criarNotificacao)(alunoId, 'progresso_75', '🚀 75% da Meta Atingido', `Falta pouco! Você já completou 75% da meta "${meta.nome}".`, metaDoc.id, meta.nome);
-                }
+            // Verificar e criar notificações
+            const notifResult = await (0, metaNotificacoes_1.verificarECriarNotificacoesMeta)(alunoId, metaDoc.id, meta.nome, meta.status, meta.valorAtual || 0, valorAtual, meta.valorAlvo, 'updateMetasProgress');
+            // Aplicar mudanças de status se meta foi concluída
+            if (notifResult.status) {
+                updateData.status = notifResult.status;
+                updateData.dataConclusao = notifResult.dataConclusao;
             }
             batch.update(metaDoc.ref, updateData);
         }

@@ -56,7 +56,8 @@ export default function AlunoAutodiagnostico() {
 
   useEffect(() => {
     loadAutodiagnosticos();
-  }, [alunoApi]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const loadAutodiagnosticos = async () => {
     try {

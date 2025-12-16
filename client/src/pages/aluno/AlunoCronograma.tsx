@@ -62,15 +62,21 @@ export default function AlunoCronograma() {
   const [templateName, setTemplateName] = useState("");
 
   useEffect(() => {
-    loadSchedule();
-    loadTemplates();
+    // Carregar horários e templates em paralelo para melhor performance
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        await Promise.all([loadSchedule(), loadTemplates()]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadData();
   }, []);
 
   const loadSchedule = async () => {
     try {
-      setIsLoading(true);
       const horarios = await api.getHorarios();
-      console.log('Horários carregados do backend:', horarios);
       
       const slots: TimeSlot[] = [];
       horarios.forEach((h: any) => {
@@ -100,8 +106,6 @@ export default function AlunoCronograma() {
       setSchedule(slots);
     } catch (error: any) {
       toast.error(error.message || "Erro ao carregar cronograma");
-    } finally {
-      setIsLoading(false);
     }
   };
 

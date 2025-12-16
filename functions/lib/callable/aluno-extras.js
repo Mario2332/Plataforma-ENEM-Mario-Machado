@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteAutodiagnostico = exports.updateAutodiagnostico = exports.getAutodiagnosticos = exports.createAutodiagnostico = exports.deleteDiarioEmocional = exports.getDiarioEmocional = exports.createDiarioEmocional = exports.updateProgresso = exports.getProgresso = exports.deleteTemplate = exports.loadTemplate = exports.saveTemplate = exports.getTemplates = exports.deleteHorario = exports.updateHorario = exports.createHorario = exports.getHorarios = void 0;
+exports.deleteAutodiagnostico = exports.updateAutodiagnostico = exports.getAutodiagnosticos = exports.createAutodiagnostico = exports.deleteDiarioEmocional = exports.getDiarioEmocional = exports.createDiarioEmocional = exports.updateProgresso = exports.getProgresso = exports.deleteTemplate = exports.loadTemplate = exports.saveTemplate = exports.getTemplates = exports.clearAllHorarios = exports.deleteHorario = exports.updateHorario = exports.createHorario = exports.getHorarios = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
 const auth_1 = require("../utils/auth");
@@ -43,6 +43,7 @@ const db = admin.firestore();
  */
 exports.getHorarios = functions
     .region("southamerica-east1")
+    .runWith({ minInstances: 1, memory: "256MB" })
     .https.onCall(async (data, context) => {
     const auth = await (0, auth_1.getAuthContext)(context);
     (0, auth_1.requireRole)(auth, "aluno");
@@ -163,10 +164,41 @@ exports.deleteHorario = functions
     }
 });
 /**
+ * Limpar todos os horários do cronograma (para salvar novos)
+ */
+exports.clearAllHorarios = functions
+    .region("southamerica-east1")
+    .https.onCall(async (data, context) => {
+    const auth = await (0, auth_1.getAuthContext)(context);
+    (0, auth_1.requireRole)(auth, "aluno");
+    try {
+        const horariosRef = db
+            .collection("alunos")
+            .doc(auth.uid)
+            .collection("horarios");
+        const snapshot = await horariosRef.get();
+        if (snapshot.empty) {
+            return { success: true, deleted: 0 };
+        }
+        // Deletar em batch para melhor performance
+        const batch = db.batch();
+        snapshot.docs.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+        await batch.commit();
+        return { success: true, deleted: snapshot.size };
+    }
+    catch (error) {
+        functions.logger.error("Erro ao limpar horários:", error);
+        throw new functions.https.HttpsError("internal", error.message);
+    }
+});
+/**
  * Obter templates de cronograma
  */
 exports.getTemplates = functions
     .region("southamerica-east1")
+    .runWith({ minInstances: 1, memory: "256MB" })
     .https.onCall(async (data, context) => {
     const auth = await (0, auth_1.getAuthContext)(context);
     (0, auth_1.requireRole)(auth, "aluno");
@@ -297,6 +329,7 @@ exports.deleteTemplate = functions
  */
 exports.getProgresso = functions
     .region("southamerica-east1")
+    .runWith({ minInstances: 1, memory: "256MB" })
     .https.onCall(async (data, context) => {
     const auth = await (0, auth_1.getAuthContext)(context);
     (0, auth_1.requireRole)(auth, "aluno");

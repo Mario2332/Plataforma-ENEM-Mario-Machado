@@ -43,6 +43,7 @@ const db = admin.firestore();
  */
 const getMe = functions
     .region("southamerica-east1")
+    .runWith({ minInstances: 1, memory: "256MB" })
     .https.onCall(async (data, context) => {
     const auth = await (0, auth_1.getAuthContext)(context);
     (0, auth_1.requireRole)(auth, "mentor");
@@ -57,6 +58,7 @@ const getMe = functions
  */
 const getAlunos = functions
     .region("southamerica-east1")
+    .runWith({ minInstances: 1, memory: "256MB" })
     .https.onCall(async (data, context) => {
     const auth = await (0, auth_1.getAuthContext)(context);
     (0, auth_1.requireRole)(auth, "mentor");
@@ -370,6 +372,7 @@ const updateConfig = functions
  */
 const getAlunosMetricas = functions
     .region("southamerica-east1")
+    .runWith({ minInstances: 1, memory: "512MB" })
     .https.onCall(async (data, context) => {
     const auth = await (0, auth_1.getAuthContext)(context);
     (0, auth_1.requireRole)(auth, "mentor");
@@ -780,6 +783,40 @@ const deleteAlunoHorario = functions
     }
     catch (error) {
         functions.logger.error("Erro ao deletar horário do aluno:", error);
+        throw new functions.https.HttpsError("internal", error.message);
+    }
+});
+/**
+ * Limpar todos os horários do cronograma do aluno (para salvar novos)
+ */
+const clearAlunoHorarios = functions
+    .region("southamerica-east1")
+    .https.onCall(async (data, context) => {
+    const auth = await (0, auth_1.getAuthContext)(context);
+    (0, auth_1.requireRole)(auth, "mentor");
+    const { alunoId } = data;
+    if (!alunoId) {
+        throw new functions.https.HttpsError("invalid-argument", "ID do aluno é obrigatório");
+    }
+    try {
+        const horariosRef = db
+            .collection("alunos")
+            .doc(alunoId)
+            .collection("horarios");
+        const snapshot = await horariosRef.get();
+        if (snapshot.empty) {
+            return { success: true, deleted: 0 };
+        }
+        // Deletar em batch para melhor performance
+        const batch = db.batch();
+        snapshot.docs.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+        await batch.commit();
+        return { success: true, deleted: snapshot.size };
+    }
+    catch (error) {
+        functions.logger.error("Erro ao limpar horários do aluno:", error);
         throw new functions.https.HttpsError("internal", error.message);
     }
 });
@@ -1405,6 +1442,7 @@ exports.mentorFunctions = {
     createAlunoHorario,
     updateAlunoHorario,
     deleteAlunoHorario,
+    clearAlunoHorarios,
     // Templates
     saveAlunoTemplate,
     loadAlunoTemplate,

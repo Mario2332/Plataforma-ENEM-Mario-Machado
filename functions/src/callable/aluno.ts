@@ -9,6 +9,7 @@ const db = admin.firestore();
  */
 const getMe = functions
   .region("southamerica-east1")
+  .runWith({ minInstances: 1, memory: "256MB" })
   .https.onCall(async (data, context) => {
     const auth = await getAuthContext(context);
     requireRole(auth, "aluno");
@@ -50,6 +51,7 @@ const getMe = functions
  */
 const getDashboardData = functions
   .region("southamerica-east1")
+  .runWith({ minInstances: 1, memory: "512MB" })
   .https.onCall(async (data, context) => {
     const auth = await getAuthContext(context);
     requireRole(auth, "aluno");
@@ -128,6 +130,7 @@ const getDashboardData = functions
  */
 const getEstudos = functions
   .region("southamerica-east1")
+  .runWith({ minInstances: 1, memory: "256MB" })
   .https.onCall(async (data, context) => {
     const auth = await getAuthContext(context);
     requireRole(auth, "aluno");
@@ -294,6 +297,7 @@ const deleteEstudo = functions
  */
 const getSimulados = functions
   .region("southamerica-east1")
+  .runWith({ minInstances: 1, memory: "256MB" })
   .https.onCall(async (data, context) => {
     const auth = await getAuthContext(context);
     requireRole(auth, "aluno");

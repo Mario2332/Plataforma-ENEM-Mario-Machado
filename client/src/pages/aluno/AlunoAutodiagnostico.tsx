@@ -84,8 +84,8 @@ export default function AlunoAutodiagnostico() {
   };
 
   const addQuestao = () => {
-    // Adicionar nova questão no início do array para melhor UX
-    setQuestoes([{ id: crypto.randomUUID(), numeroQuestao: "", area: "", macroassunto: "", microassunto: "", motivoErro: "", anotacoes: "" }, ...questoes]);
+    // Adicionar nova questão no final do array
+    setQuestoes([...questoes, { id: crypto.randomUUID(), numeroQuestao: "", area: "", macroassunto: "", microassunto: "", motivoErro: "", anotacoes: "" }]);
     // Scroll automático para o topo do container de questões
     setTimeout(() => {
       questoesContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -367,13 +367,15 @@ export default function AlunoAutodiagnostico() {
                 </Button>
               </div>
               <div ref={questoesContainerRef} className="space-y-4">
-                {questoes.map((questao, index) => (
+                {[...questoes].reverse().map((questao, reversedIndex) => {
+                  const originalIndex = questoes.length - 1 - reversedIndex;
+                  return (
                   <Card key={questao.id} className="p-4 border-2 hover:shadow-lg transition-shadow">
                     <div className="space-y-4">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-black bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">Questão {index + 1}</span>
+                        <span className="text-sm font-black bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">Questão {originalIndex + 1}</span>
                         {questoes.length > 1 && (
-                          <Button type="button" onClick={() => removeQuestao(index)} size="sm" variant="ghost" className="text-red-500 hover:text-red-700 hover:bg-red-100">
+                          <Button type="button" onClick={() => removeQuestao(originalIndex)} size="sm" variant="ghost" className="text-red-500 hover:text-red-700 hover:bg-red-100">
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         )}
@@ -381,11 +383,11 @@ export default function AlunoAutodiagnostico() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label className="font-semibold">Número da Questão *</Label>
-                          <Input placeholder="Ex: 45, Q12..." value={questao.numeroQuestao} onChange={(e) => updateQuestao(index, "numeroQuestao", e.target.value)} className="border-2" />
+                          <Input placeholder="Ex: 45, Q12..." value={questao.numeroQuestao} onChange={(e) => updateQuestao(originalIndex, "numeroQuestao", e.target.value)} className="border-2" />
                         </div>
                         <div className="space-y-2">
                           <Label className="font-semibold">Área *</Label>
-                          <Select value={questao.area} onValueChange={(value) => updateQuestao(index, "area", value)}>
+                          <Select value={questao.area} onValueChange={(value) => updateQuestao(originalIndex, "area", value)}>
                             <SelectTrigger className="border-2">
                               <SelectValue placeholder="Selecione a área" />
                             </SelectTrigger>
@@ -396,15 +398,15 @@ export default function AlunoAutodiagnostico() {
                         </div>
                         <div className="space-y-2">
                           <Label className="font-semibold">Macroassunto *</Label>
-                          <Input placeholder="Ex: Ecologia, Termologia..." value={questao.macroassunto} onChange={(e) => updateQuestao(index, "macroassunto", e.target.value)} className="border-2" />
+                          <Input placeholder="Ex: Ecologia, Termologia..." value={questao.macroassunto} onChange={(e) => updateQuestao(originalIndex, "macroassunto", e.target.value)} className="border-2" />
                         </div>
                         <div className="space-y-2">
                           <Label className="font-semibold">Microassunto *</Label>
-                          <Input placeholder="Ex: Relações ecológicas, Calorimetria..." value={questao.microassunto} onChange={(e) => updateQuestao(index, "microassunto", e.target.value)} className="border-2" />
+                          <Input placeholder="Ex: Relações ecológicas, Calorimetria..." value={questao.microassunto} onChange={(e) => updateQuestao(originalIndex, "microassunto", e.target.value)} className="border-2" />
                         </div>
                         <div className="space-y-2 md:col-span-2">
                           <Label className="font-semibold">Motivo do Erro *</Label>
-                          <Select value={questao.motivoErro} onValueChange={(value) => updateQuestao(index, "motivoErro", value)}>
+                          <Select value={questao.motivoErro} onValueChange={(value) => updateQuestao(originalIndex, "motivoErro", value)}>
                             <SelectTrigger className="border-2">
                               <SelectValue placeholder="Selecione o motivo" />
                             </SelectTrigger>
@@ -415,7 +417,7 @@ export default function AlunoAutodiagnostico() {
                         </div>
                         <div className="space-y-2 md:col-span-2">
                           <Label className="font-semibold">Anotações (opcional)</Label>
-                          <Textarea placeholder="Ex: Confundi o narrador com o personagem principal..." value={questao.anotacoes || ""} onChange={(e) => updateQuestao(index, "anotacoes", e.target.value)} rows={3} className="resize-none border-2" />
+                          <Textarea placeholder="Ex: Confundi o narrador com o personagem principal..." value={questao.anotacoes || ""} onChange={(e) => updateQuestao(originalIndex, "anotacoes", e.target.value)} rows={3} className="resize-none border-2" />
                           <p className="text-xs text-muted-foreground">Use este campo para registrar observações sobre o erro, raciocínio, ou pontos de atenção.</p>
                         </div>
                         <div className="space-y-2 md:col-span-2">
@@ -431,8 +433,8 @@ export default function AlunoAutodiagnostico() {
                             </div>
                           ) : (
                             <div className="flex items-center gap-2">
-                              <Input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleImageUpload(index, file); }} disabled={uploadingImages[index]} className="cursor-pointer border-2" />
-                              {uploadingImages[index] && (
+                              <Input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleImageUpload(originalIndex, file); }} disabled={uploadingImages[originalIndex]} className="cursor-pointer border-2" />
+                              {uploadingImages[originalIndex] && (
                                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
                                   Enviando...
@@ -445,7 +447,8 @@ export default function AlunoAutodiagnostico() {
                       </div>
                     </div>
                   </Card>
-                ))}
+                  );
+                })}
               </div>
             </div>
             <div className="flex gap-3">

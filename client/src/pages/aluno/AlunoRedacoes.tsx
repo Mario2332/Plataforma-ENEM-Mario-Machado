@@ -56,6 +56,9 @@ interface Redacao {
   c4: number;
   c5: number;
   notaTotal: number;
+  repertorioIntro?: string;
+  repertorioD1?: string;
+  repertorioD2?: string;
   criadoEm: Date;
 }
 
@@ -69,6 +72,9 @@ interface RedacaoForm {
   c3: string;
   c4: string;
   c5: string;
+  repertorioIntro: string;
+  repertorioD1: string;
+  repertorioD2: string;
 }
 
 const initialForm: RedacaoForm = {
@@ -81,6 +87,9 @@ const initialForm: RedacaoForm = {
   c3: "",
   c4: "",
   c5: "",
+  repertorioIntro: "",
+  repertorioD1: "",
+  repertorioD2: "",
 };
 
 export default function AlunoRedacoes() {
@@ -196,6 +205,10 @@ export default function AlunoRedacoes() {
       toast.error("Informe a data de realização");
       return;
     }
+    if (!form.tempoHoras && !form.tempoMinutos) {
+      toast.error("Informe o tempo gasto na redação");
+      return;
+    }
     if (!form.c1 || !form.c2 || !form.c3 || !form.c4 || !form.c5) {
       toast.error("Informe todas as notas por competência");
       return;
@@ -228,6 +241,9 @@ export default function AlunoRedacoes() {
         c4: parseInt(form.c4),
         c5: parseInt(form.c5),
         notaTotal,
+        repertorioIntro: form.repertorioIntro.trim() || "",
+        repertorioD1: form.repertorioD1.trim() || "",
+        repertorioD2: form.repertorioD2.trim() || "",
         criadoEm: Timestamp.now(),
       };
 
@@ -265,6 +281,9 @@ export default function AlunoRedacoes() {
       c3: redacao.c3.toString(),
       c4: redacao.c4.toString(),
       c5: redacao.c5.toString(),
+      repertorioIntro: redacao.repertorioIntro || "",
+      repertorioD1: redacao.repertorioD1 || "",
+      repertorioD2: redacao.repertorioD2 || "",
     });
     setEditandoId(redacao.id);
     setIsDialogOpen(true);
@@ -638,6 +657,49 @@ export default function AlunoRedacoes() {
                       <div className="flex items-center justify-between">
                         <span className="font-bold text-orange-800 dark:text-orange-300">Nota Total (calculada automaticamente)</span>
                         <span className="text-4xl font-black bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">{notaTotalForm}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Campos de Repertório */}
+                  <div className="space-y-4">
+                    <Label className="font-semibold text-lg">Repertórios Utilizados (Opcional)</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Registre os repertórios que você utilizou em cada parte da redação
+                    </p>
+                    
+                    <div className="space-y-3">
+                      {/* Repertório da Introdução */}
+                      <div className="space-y-2">
+                        <Label className="font-medium text-blue-700 dark:text-blue-400">Repertório da Introdução</Label>
+                        <Input
+                          placeholder="Ex: Citação de Zygmunt Bauman sobre modernidade líquida"
+                          value={form.repertorioIntro}
+                          onChange={(e) => setForm({ ...form, repertorioIntro: e.target.value })}
+                          className="border-2 focus:border-blue-500 transition-colors"
+                        />
+                      </div>
+
+                      {/* Repertório do D1 */}
+                      <div className="space-y-2">
+                        <Label className="font-medium text-purple-700 dark:text-purple-400">Repertório do Desenvolvimento 1</Label>
+                        <Input
+                          placeholder="Ex: Dados do IBGE sobre desigualdade social"
+                          value={form.repertorioD1}
+                          onChange={(e) => setForm({ ...form, repertorioD1: e.target.value })}
+                          className="border-2 focus:border-purple-500 transition-colors"
+                        />
+                      </div>
+
+                      {/* Repertório do D2 */}
+                      <div className="space-y-2">
+                        <Label className="font-medium text-emerald-700 dark:text-emerald-400">Repertório do Desenvolvimento 2</Label>
+                        <Input
+                          placeholder="Ex: Referência ao artigo 5º da Constituição Federal"
+                          value={form.repertorioD2}
+                          onChange={(e) => setForm({ ...form, repertorioD2: e.target.value })}
+                          className="border-2 focus:border-emerald-500 transition-colors"
+                        />
                       </div>
                     </div>
                   </div>

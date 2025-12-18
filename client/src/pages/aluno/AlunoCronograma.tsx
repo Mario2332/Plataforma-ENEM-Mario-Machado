@@ -1,26 +1,18 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import CronogramaCell from "@/components/CronogramaCell";
-import { Label } from "@/components/ui/label";
-import { Calendar, Save, Copy, Palette, Download, Upload, Trash2, FolderOpen, Zap, Clock, Sparkles } from "lucide-react";
+import { Calendar, Save, Copy, Palette, Zap, Clock, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 // Acesso direto ao Firestore (elimina cold start de ~20s)
 import {
   getHorariosDirect,
-  replaceAllHorarios,
-  getTemplatesDirect,
-  saveTemplateDirect,
-  loadTemplateDirect,
-  deleteTemplateDirect
+  replaceAllHorarios
 } from "@/lib/firestore-direct";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -32,13 +24,6 @@ type TimeSlot = {
   minute: number;
   activity: string;
   color: string;
-};
-
-type Template = {
-  id: string;
-  name: string;
-  schedule: TimeSlot[];
-  createdAt: Date;
 };
 
 const DAYS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
@@ -66,20 +51,14 @@ export default function AlunoCronograma() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   
-  const [templates, setTemplates] = useState<Template[]>([]);
-  
   // Estado para Popover global de cores (otimização: evita 336 Popovers)
   const [colorPickerCell, setColorPickerCell] = useState<{ day: number; hour: number; minute: number } | null>(null);
-  const [showSaveDialog, setShowSaveDialog] = useState(false);
-  const [showLoadDialog, setShowLoadDialog] = useState(false);
-  const [templateName, setTemplateName] = useState("");
 
   useEffect(() => {
-    // Carregar horários e templates em paralelo para melhor performance
     const loadData = async () => {
       setIsLoading(true);
       try {
-        await Promise.all([loadSchedule(), loadTemplates()]);
+        await loadSchedule();
       } finally {
         setIsLoading(false);
       }
@@ -120,35 +99,6 @@ export default function AlunoCronograma() {
       setSchedule(slots);
     } catch (error: any) {
       toast.error(error.message || "Erro ao carregar cronograma");
-    }
-  };
-
-  const loadTemplates = async () => {
-    try {
-      // Acesso direto ao Firestore (elimina cold start)
-      const data = await getTemplatesDirect();
-      setTemplates(data.map((t: any) => {
-        let createdAtDate: Date;
-        if (t.createdAt?.toDate) {
-          createdAtDate = t.createdAt.toDate();
-        } else if (t.createdAt?.seconds || t.createdAt?._seconds) {
-          const seconds = t.createdAt.seconds || t.createdAt._seconds;
-          createdAtDate = new Date(seconds * 1000);
-        } else if (t.createdAt) {
-          createdAtDate = new Date(t.createdAt);
-        } else {
-          createdAtDate = new Date();
-        }
-        
-        return {
-          id: t.id,
-          name: t.nome,
-          schedule: t.horarios || [],
-          createdAt: createdAtDate,
-        };
-      }));
-    } catch (error: any) {
-      console.error("Erro ao carregar templates:", error);
     }
   };
 
@@ -242,104 +192,6 @@ export default function AlunoCronograma() {
   const handleColorPickerOpen = useCallback((day: number, hour: number, minute: number) => {
     setColorPickerCell({ day, hour, minute });
   }, []);
-
-  const handleSaveTemplate = async () => {
-    if (!templateName.trim()) {
-      toast.error("Digite um nome para o template");
-      return;
-    }
-
-    try {
-      setIsSaving(true);
-      
-      const horarios = schedule
-        .filter(s => s.activity)
-        .map(s => ({
-          diaSemana: s.day,
-          horaInicio: `${String(s.hour).padStart(2, '0')}:${String(s.minute).padStart(2, '0')}`,
-          horaFim: `${String(s.hour).padStart(2, '0')}:${String(s.minute + 30).padStart(2, '0')}`,
-          materia: s.activity.split(' - ')[0].trim(),
-          descricao: s.activity.split(' - ').slice(1).join(' - ').trim() || '',
-          cor: s.color,
-        }));
-      
-      // Acesso direto ao Firestore
-      await saveTemplateDirect({
-        nome: templateName,
-        horarios,
-      });
-      
-      setTemplateName("");
-      setShowSaveDialog(false);
-      toast.success(`Template "${templateName}" salvo com sucesso!`);
-      await loadTemplates();
-    } catch (error: any) {
-      toast.error(error.message || "Erro ao salvar template");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleLoadTemplate = async (template: Template) => {
-    try {
-      setIsSaving(true);
-      
-      // Carregar template do Firestore
-      const templateData = await loadTemplateDirect(template.id);
-      if (!templateData) {
-        toast.error("Template não encontrado");
-        return;
-      }
-      
-      // Converter horários do template para slots
-      const slots: TimeSlot[] = [];
-      (templateData.horarios || []).forEach((h: any) => {
-        const [horaInicio, minutoInicio] = h.horaInicio.split(':').map(Number);
-        const [horaFim, minutoFim] = h.horaFim.split(':').map(Number);
-        
-        let currentHour = horaInicio;
-        let currentMinute = minutoInicio;
-        
-        while (currentHour < horaFim || (currentHour === horaFim && currentMinute < minutoFim)) {
-          slots.push({
-            day: h.diaSemana,
-            hour: currentHour,
-            minute: currentMinute,
-            activity: h.materia + (h.descricao ? ` - ${h.descricao}` : ''),
-            color: h.cor || "#FFFFFF",
-          });
-          
-          currentMinute += 30;
-          if (currentMinute >= 60) {
-            currentMinute = 0;
-            currentHour++;
-          }
-        }
-      });
-      
-      setSchedule(slots);
-      setShowLoadDialog(false);
-      toast.success(`Template "${template.name}" carregado!`);
-    } catch (error: any) {
-      toast.error(error.message || "Erro ao carregar template");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleDeleteTemplate = async (templateId: string) => {
-    const template = templates.find(t => t.id === templateId);
-    if (confirm(`Deseja realmente excluir o template "${template?.name}"?`)) {
-      try {
-        // Acesso direto ao Firestore
-        await deleteTemplateDirect(templateId);
-        toast.success("Template excluído!");
-        await loadTemplates();
-      } catch (error: any) {
-        toast.error(error.message || "Erro ao excluir template");
-      }
-    }
-  };
 
   const handleSave = async () => {
     try {
@@ -453,22 +305,6 @@ export default function AlunoCronograma() {
             
             <div className="flex flex-wrap gap-3">
               <Button
-                onClick={() => setShowSaveDialog(true)}
-                variant="outline"
-                className="border-2 hover:bg-gradient-to-r hover:from-indigo-500/10 hover:to-cyan-500/10 font-bold"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Salvar Template
-              </Button>
-              <Button
-                onClick={() => setShowLoadDialog(true)}
-                variant="outline"
-                className="border-2 hover:bg-gradient-to-r hover:from-cyan-500/10 hover:to-blue-500/10 font-bold"
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                Carregar Template
-              </Button>
-              <Button
                 onClick={handleSave}
                 disabled={isSaving}
                 className="bg-gradient-to-r from-indigo-500 via-cyan-500 to-blue-500 hover:from-indigo-600 hover:via-cyan-600 hover:to-blue-600 shadow-xl hover:shadow-2xl font-bold"
@@ -479,7 +315,7 @@ export default function AlunoCronograma() {
             </div>
           </div>
           <p className="text-lg text-muted-foreground font-medium">
-            Organize sua rotina semanal com cores, drag and drop e templates salvos 📅
+            Organize sua rotina semanal com cores e drag and drop 📅
           </p>
         </div>
       </div>
@@ -627,96 +463,6 @@ export default function AlunoCronograma() {
                 title={color.name}
               />
             ))}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog Salvar Template */}
-      <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
-        <DialogContent className="border-2">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-black">Salvar como Template</DialogTitle>
-            <DialogDescription className="text-base">
-              Salve o cronograma atual como um template reutilizável
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="templateName" className="font-bold">Nome do Template</Label>
-              <Input
-                id="templateName"
-                placeholder="Ex: Semana de Provas, Rotina Normal..."
-                value={templateName}
-                onChange={(e) => setTemplateName(e.target.value)}
-                className="border-2"
-              />
-            </div>
-          </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setShowSaveDialog(false)} className="border-2">
-              Cancelar
-            </Button>
-            <Button onClick={handleSaveTemplate} className="bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600 font-bold">
-              <Save className="mr-2 h-4 w-4" />
-              Salvar Template
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog Carregar Template */}
-      <Dialog open={showLoadDialog} onOpenChange={setShowLoadDialog}>
-        <DialogContent className="max-w-2xl border-2">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-black">Meus Templates</DialogTitle>
-            <DialogDescription className="text-base">
-              Carregue um template salvo ou exclua templates antigos
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 max-h-[400px] overflow-y-auto">
-            {templates.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="relative mx-auto w-24 h-24 mb-6">
-                  <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-cyan-500 rounded-full blur-xl opacity-30" />
-                  <div className="relative p-6 bg-gradient-to-br from-indigo-500/10 to-cyan-500/10 rounded-full flex items-center justify-center border-2 border-indigo-200 dark:border-indigo-800">
-                    <FolderOpen className="h-12 w-12 text-indigo-500" />
-                  </div>
-                </div>
-                <p className="text-lg font-semibold">Nenhum template salvo ainda</p>
-                <p className="text-sm text-muted-foreground mt-2">Crie seu primeiro template!</p>
-              </div>
-            ) : (
-              templates.map((template) => (
-                <Card key={template.id} className="p-4 border-2 hover:shadow-lg transition-all hover:border-indigo-500/30">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <h4 className="font-black text-lg">{template.name}</h4>
-                      <p className="text-sm text-muted-foreground font-medium">
-                        {template.schedule.filter(s => s.activity).length} atividades • 
-                        Criado em {new Date(template.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        onClick={() => handleLoadTemplate(template)}
-                        className="bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600 font-bold"
-                      >
-                        <Upload className="mr-2 h-4 w-4" />
-                        Carregar
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => handleDeleteTemplate(template.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              ))
-            )}
           </div>
         </DialogContent>
       </Dialog>

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import CronogramaCell from "@/components/CronogramaCell";
 import { Label } from "@/components/ui/label";
 import { Calendar, Save, Copy, Palette, Download, Upload, Trash2, FolderOpen, Zap, Clock, Sparkles } from "lucide-react";
 import { toast } from "sonner";
@@ -183,13 +184,14 @@ export default function AlunoCronograma() {
     }
   }, [scheduleMap]);
 
-  const handleCopy = (day: number, hour: number, minute: number) => {
+  // Handlers otimizados com useCallback para evitar re-renders desnecessários
+  const handleCopy = useCallback((day: number, hour: number, minute: number) => {
     const slot = getSlot(day, hour, minute);
     setCopiedCell(slot);
     toast.success("Célula copiada!");
-  };
+  }, [getSlot]);
 
-  const handlePaste = (day: number, hour: number, minute: number) => {
+  const handlePaste = useCallback((day: number, hour: number, minute: number) => {
     if (!copiedCell) {
       toast.error("Nenhuma célula copiada");
       return;
@@ -199,17 +201,13 @@ export default function AlunoCronograma() {
       color: copiedCell.color,
     });
     toast.success("Célula colada!");
-  };
+  }, [copiedCell, updateSlot]);
 
-  const handleDragStart = (day: number, hour: number, minute: number) => {
+  const handleDragStart = useCallback((day: number, hour: number, minute: number) => {
     setDraggedCell({ day, hour, minute });
-  };
+  }, []);
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
-
-  const handleDrop = (targetDay: number, targetHour: number, targetMinute: number) => {
+  const handleDrop = useCallback((targetDay: number, targetHour: number, targetMinute: number) => {
     if (!draggedCell) return;
 
     const sourceSlot = getSlot(draggedCell.day, draggedCell.hour, draggedCell.minute);
@@ -227,7 +225,24 @@ export default function AlunoCronograma() {
 
     setDraggedCell(null);
     toast.success("Atividade movida!");
-  };
+  }, [draggedCell, getSlot, updateSlot]);
+
+  // Callbacks estáveis para o componente CronogramaCell
+  const handleStartEdit = useCallback((cellKey: string) => {
+    setEditingCell(cellKey);
+  }, []);
+
+  const handleStopEdit = useCallback(() => {
+    setEditingCell(null);
+  }, []);
+
+  const handleActivityChange = useCallback((day: number, hour: number, minute: number, activity: string) => {
+    updateSlot(day, hour, minute, { activity });
+  }, [updateSlot]);
+
+  const handleColorPickerOpen = useCallback((day: number, hour: number, minute: number) => {
+    setColorPickerCell({ day, hour, minute });
+  }, []);
 
   const handleSaveTemplate = async () => {
     if (!templateName.trim()) {
@@ -566,67 +581,23 @@ export default function AlunoCronograma() {
                           const isEditing = editingCell === cellKey;
 
                           return (
-                            <td
+                            <CronogramaCell
                               key={cellKey}
-                              className="border-2 border-border p-0 h-12 relative group transition-all hover:shadow-lg"
-                              style={{ backgroundColor: slot.color }}
-                              draggable={!isEditing && slot.activity !== ""}
+                              day={dayIndex}
+                              hour={hour}
+                              minute={minute}
+                              slot={slot}
+                              isEditing={isEditing}
+                              onStartEdit={() => handleStartEdit(cellKey)}
+                              onStopEdit={handleStopEdit}
+                              onActivityChange={(activity) => handleActivityChange(dayIndex, hour, minute, activity)}
+                              onColorPickerOpen={() => handleColorPickerOpen(dayIndex, hour, minute)}
+                              onCopy={() => handleCopy(dayIndex, hour, minute)}
+                              onPaste={() => handlePaste(dayIndex, hour, minute)}
                               onDragStart={() => handleDragStart(dayIndex, hour, minute)}
-                              onDragOver={handleDragOver}
                               onDrop={() => handleDrop(dayIndex, hour, minute)}
-                              onContextMenu={(e) => {
-                                e.preventDefault();
-                                if (copiedCell) {
-                                  handlePaste(dayIndex, hour, minute);
-                                } else {
-                                  handleCopy(dayIndex, hour, minute);
-                                }
-                              }}
-                            >
-                              {isEditing ? (
-                                <Input
-                                  autoFocus
-                                  value={slot.activity}
-                                  onChange={(e) => updateSlot(dayIndex, hour, minute, { activity: e.target.value })}
-                                  onBlur={() => setEditingCell(null)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") setEditingCell(null);
-                                    if (e.key === "Escape") setEditingCell(null);
-                                  }}
-                                  className="h-full border-0 text-xs p-2 font-semibold"
-                                  style={{ backgroundColor: slot.color }}
-                                />
-                              ) : (
-                                <div
-                                  onClick={() => setEditingCell(cellKey)}
-                                  className="h-full w-full p-2 text-xs cursor-pointer flex items-center justify-between font-semibold"
-                                >
-                                  <span className="truncate flex-1">{slot.activity}</span>
-                                  <div className="opacity-0 group-hover:opacity-100 flex gap-1 transition-opacity">
-                                    {/* Otimização: Botão que abre Popover global em vez de 336 Popovers */}
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setColorPickerCell({ day: dayIndex, hour, minute });
-                                      }}
-                                      className="p-1 hover:bg-black/20 dark:hover:bg-white/20 rounded transition-colors"
-                                    >
-                                      <Palette className="h-3.5 w-3.5" />
-                                    </button>
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleCopy(dayIndex, hour, minute);
-                                      }}
-                                      className="p-1 hover:bg-black/20 dark:hover:bg-white/20 rounded transition-colors"
-                                      title="Copiar"
-                                    >
-                                      <Copy className="h-3.5 w-3.5" />
-                                    </button>
-                                  </div>
-                                </div>
-                              )}
-                            </td>
+                              hasCopiedCell={copiedCell !== null}
+                            />
                           );
                         })}
                       </tr>

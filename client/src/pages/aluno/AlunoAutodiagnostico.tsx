@@ -83,7 +83,8 @@ export default function AlunoAutodiagnostico() {
   };
 
   const addQuestao = () => {
-    setQuestoes([...questoes, { id: crypto.randomUUID(), numeroQuestao: "", area: "", macroassunto: "", microassunto: "", motivoErro: "", anotacoes: "" }]);
+    // Adicionar nova questão no início do array para melhor UX
+    setQuestoes([{ id: crypto.randomUUID(), numeroQuestao: "", area: "", macroassunto: "", microassunto: "", motivoErro: "", anotacoes: "" }, ...questoes]);
   };
 
   const removeQuestao = (index: number) => {

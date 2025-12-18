@@ -176,8 +176,8 @@ const createEstudo = functions
     const auth = await (0, auth_1.getAuthContext)(context);
     (0, auth_1.requireRole)(auth, "aluno");
     const { data: dataEstudo, materia, conteudo, tempoMinutos, questoesFeitas, questoesAcertadas, flashcardsRevisados, } = data;
-    if (!dataEstudo || !materia || !conteudo) {
-        throw new functions.https.HttpsError("invalid-argument", "Data, matéria e conteúdo são obrigatórios");
+    if (!dataEstudo || !materia) {
+        throw new functions.https.HttpsError("invalid-argument", "Data e matéria/atividade são obrigatórios");
     }
     try {
         const estudoRef = await db
@@ -187,7 +187,7 @@ const createEstudo = functions
             .add({
             data: admin.firestore.Timestamp.fromDate(new Date(dataEstudo)),
             materia,
-            conteudo,
+            conteudo: conteudo || "",
             tempoMinutos: tempoMinutos || 0,
             questoesFeitas: questoesFeitas || 0,
             questoesAcertadas: questoesAcertadas || 0,

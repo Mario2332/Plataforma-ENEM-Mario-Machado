@@ -177,10 +177,10 @@ const createEstudo = functions
       flashcardsRevisados,
     } = data;
 
-    if (!dataEstudo || !materia || !conteudo) {
+    if (!dataEstudo || !materia) {
       throw new functions.https.HttpsError(
         "invalid-argument",
-        "Data, matéria e conteúdo são obrigatórios"
+        "Data e matéria/atividade são obrigatórios"
       );
     }
 
@@ -192,7 +192,7 @@ const createEstudo = functions
         .add({
           data: admin.firestore.Timestamp.fromDate(new Date(dataEstudo)),
           materia,
-          conteudo,
+          conteudo: conteudo || "",
           tempoMinutos: tempoMinutos || 0,
           questoesFeitas: questoesFeitas || 0,
           questoesAcertadas: questoesAcertadas || 0,

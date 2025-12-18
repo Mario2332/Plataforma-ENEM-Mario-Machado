@@ -92,6 +92,7 @@ export default function AlunoRedacoes() {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [form, setForm] = useState<RedacaoForm>(initialForm);
   const [metaNota, setMetaNota] = useState<number>(900);
+  const [metaNotaInput, setMetaNotaInput] = useState<string>("900");
   const [filtroPeriodo, setFiltroPeriodo] = useState<string>("todo");
   const [showHistorico, setShowHistorico] = useState(false);
 
@@ -156,7 +157,9 @@ export default function AlunoRedacoes() {
       const snapshot = await getDocs(collection(db, "alunos", alunoId, "configuracoes"));
       const metaDoc = snapshot.docs.find(d => d.id === "redacoes");
       if (metaDoc) {
-        setMetaNota(metaDoc.data().metaNota || 900);
+        const meta = metaDoc.data().metaNota || 900;
+        setMetaNota(meta);
+        setMetaNotaInput(meta.toString());
       }
     } catch (error) {
       console.error("Erro ao carregar meta:", error);
@@ -171,6 +174,7 @@ export default function AlunoRedacoes() {
       const metaRef = doc(db, "alunos", alunoId, "configuracoes", "redacoes");
       await setDoc(metaRef, { metaNota: novaMeta }, { merge: true });
       setMetaNota(novaMeta);
+      setMetaNotaInput(novaMeta.toString());
       toast.success("Meta atualizada!");
     } catch (error) {
       console.error("Erro ao salvar meta:", error);
@@ -843,13 +847,20 @@ export default function AlunoRedacoes() {
               min={0}
               max={1000}
               step={20}
-              value={metaNota}
-              onChange={(e) => setMetaNota(parseInt(e.target.value) || 0)}
+              value={metaNotaInput}
+              onChange={(e) => setMetaNotaInput(e.target.value)}
               className="w-32 border-2 focus:border-orange-500 transition-colors"
             />
             <Button 
               variant="outline" 
-              onClick={() => saveMeta(metaNota)}
+              onClick={() => {
+                const valor = parseInt(metaNotaInput) || 0;
+                if (valor >= 0 && valor <= 1000) {
+                  saveMeta(valor);
+                } else {
+                  toast.error("A meta deve estar entre 0 e 1000");
+                }
+              }}
               className="border-2 hover:border-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950/30 transition-all"
             >
               Salvar Meta

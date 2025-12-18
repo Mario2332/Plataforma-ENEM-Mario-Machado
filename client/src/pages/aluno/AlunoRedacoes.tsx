@@ -665,8 +665,8 @@ export default function AlunoRedacoes() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {/* Card Média Geral */}
         <Card className="relative overflow-hidden border-2 hover:border-blue-500 transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/20 group animate-slide-up" style={{ animationDelay: '0.1s' }}>
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-          <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-blue-500/20 to-transparent rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700" />
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+          <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-blue-500/20 to-transparent rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700 pointer-events-none" />
           
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
             <CardTitle className="text-sm font-semibold">Média Geral (últimas 5)</CardTitle>
@@ -692,8 +692,8 @@ export default function AlunoRedacoes() {
 
         {/* Card Melhor Nota */}
         <Card className="relative overflow-hidden border-2 hover:border-yellow-500 transition-all duration-500 hover:shadow-2xl hover:shadow-yellow-500/20 group animate-slide-up" style={{ animationDelay: '0.2s' }}>
-          <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-          <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-yellow-500/20 to-transparent rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700" />
+          <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+          <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-yellow-500/20 to-transparent rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700 pointer-events-none" />
           
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
             <div className="space-y-1">
@@ -724,8 +724,8 @@ export default function AlunoRedacoes() {
 
         {/* Card Total de Redações */}
         <Card className="relative overflow-hidden border-2 hover:border-emerald-500 transition-all duration-500 hover:shadow-2xl hover:shadow-emerald-500/20 group animate-slide-up" style={{ animationDelay: '0.3s' }}>
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-          <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-emerald-500/20 to-transparent rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700" />
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+          <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-emerald-500/20 to-transparent rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700 pointer-events-none" />
           
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
             <CardTitle className="text-sm font-semibold">Redações Produzidas</CardTitle>
@@ -763,14 +763,14 @@ export default function AlunoRedacoes() {
               : estatisticas.tempoAlerta 
                 ? "from-yellow-500/10" 
                 : "from-purple-500/10"
-          } via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
+          } via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none`} />
           <div className={`absolute top-0 right-0 w-40 h-40 bg-gradient-to-br ${
             estatisticas.tempoExcessivo 
               ? "from-red-500/20" 
               : estatisticas.tempoAlerta 
                 ? "from-yellow-500/20" 
                 : "from-purple-500/20"
-          } to-transparent rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700`} />
+          } to-transparent rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700 pointer-events-none`} />
           
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
             <CardTitle className={`text-sm font-semibold flex items-center gap-2 ${
@@ -823,8 +823,8 @@ export default function AlunoRedacoes() {
       </div>
 
       {/* Meta de Nota */}
-      <Card className="relative overflow-hidden border-2 hover:border-orange-500 transition-all duration-500 hover:shadow-xl group animate-slide-up" style={{ animationDelay: '0.5s' }}>
-        <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+      <Card className="relative overflow-hidden border-2 hover:border-orange-500 transition-all duration-500 hover:shadow-xl group animate-slide-up z-10" style={{ animationDelay: '0.5s' }}>
+        <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
         
         <CardHeader className="pb-3">
           <CardTitle className="text-lg font-bold flex items-center gap-2">
@@ -875,7 +875,7 @@ export default function AlunoRedacoes() {
       {/* Gráfico de Evolução */}
       {redacoesFiltradas.length > 0 && (
         <Card className="relative overflow-hidden border-2 hover:border-blue-500 transition-all duration-500 hover:shadow-xl animate-slide-up" style={{ animationDelay: '0.6s' }}>
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-transparent pointer-events-none" />
           
           <CardHeader>
             <CardTitle className="text-lg font-bold flex items-center gap-2">
@@ -940,7 +940,7 @@ export default function AlunoRedacoes() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Gráfico de Radar */}
           <Card className="relative overflow-hidden border-2 hover:border-purple-500 transition-all duration-500 hover:shadow-xl animate-slide-up" style={{ animationDelay: '0.7s' }}>
-            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-transparent pointer-events-none" />
             
             <CardHeader>
               <CardTitle className="text-lg font-bold flex items-center gap-2">
@@ -993,7 +993,7 @@ export default function AlunoRedacoes() {
 
           {/* Gráfico de Barras */}
           <Card className="relative overflow-hidden border-2 hover:border-emerald-500 transition-all duration-500 hover:shadow-xl animate-slide-up" style={{ animationDelay: '0.8s' }}>
-            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-transparent pointer-events-none" />
             
             <CardHeader>
               <CardTitle className="text-lg font-bold flex items-center gap-2">

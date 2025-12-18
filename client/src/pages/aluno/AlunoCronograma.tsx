@@ -259,7 +259,7 @@ export default function AlunoCronograma() {
           horaInicio: `${String(s.hour).padStart(2, '0')}:${String(s.minute).padStart(2, '0')}`,
           horaFim: `${String(s.hour).padStart(2, '0')}:${String(s.minute + 30).padStart(2, '0')}`,
           materia: s.activity.split(' - ')[0].trim(),
-          descricao: s.activity.split(' - ').slice(1).join(' - ').trim() || undefined,
+          descricao: s.activity.split(' - ').slice(1).join(' - ').trim() || '',
           cor: s.color,
         }));
       
@@ -397,7 +397,7 @@ export default function AlunoCronograma() {
         horaInicio: `${String(g.startHour).padStart(2, '0')}:${String(g.startMinute).padStart(2, '0')}`,
         horaFim: `${String(g.endHour).padStart(2, '0')}:${String(g.endMinute).padStart(2, '0')}`,
         materia: g.activity.split(' - ')[0].trim(),
-        descricao: g.activity.split(' - ').slice(1).join(' - ').trim() || undefined,
+        descricao: g.activity.split(' - ').slice(1).join(' - ').trim() || '',
         cor: g.color,
       }));
       

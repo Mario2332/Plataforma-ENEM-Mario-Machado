@@ -141,7 +141,37 @@ export default function AlunoMetricas() {
       return acc;
     }, {} as Record<string, any>);
     
-    return Object.values(porDia).map((d: any) => ({
+    // Ordenar por data (mais antiga primeiro)
+    const dadosOrdenados = Object.entries(porDia)
+      .sort(([dataA], [dataB]) => {
+        // Converter strings de data de volta para Date para comparação
+        const parseData = (str: string) => {
+          try {
+            // Formato: "DD de MMM" (ex: "18 de dez")
+            const meses: Record<string, number> = {
+              'jan': 0, 'fev': 1, 'mar': 2, 'abr': 3, 'mai': 4, 'jun': 5,
+              'jul': 6, 'ago': 7, 'set': 8, 'out': 9, 'nov': 10, 'dez': 11
+            };
+            const partes = str.split(' de ');
+            if (partes.length === 2) {
+              const dia = parseInt(partes[0]);
+              const mes = meses[partes[1].toLowerCase()];
+              const ano = new Date().getFullYear();
+              return new Date(ano, mes, dia);
+            }
+            return new Date(0);
+          } catch {
+            return new Date(0);
+          }
+        };
+        
+        const dateA = parseData(dataA);
+        const dateB = parseData(dataB);
+        return dateA.getTime() - dateB.getTime();
+      })
+      .map(([_, d]) => d);
+    
+    return dadosOrdenados.map((d: any) => ({
       ...d,
       percentual: d.questoes > 0 ? Math.round((d.acertos / d.questoes) * 100) : 0,
     }));

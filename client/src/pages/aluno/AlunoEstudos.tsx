@@ -505,7 +505,7 @@ export default function AlunoEstudos() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="conteudo" className="text-sm font-semibold">Conteúdo Estudado</Label>
+                    <Label htmlFor="conteudo" className="text-sm font-semibold">Conteúdo Estudado <span className="text-muted-foreground font-normal">(opcional)</span></Label>
                     <Input
                       id="conteudo"
                       value={formData.conteudo}

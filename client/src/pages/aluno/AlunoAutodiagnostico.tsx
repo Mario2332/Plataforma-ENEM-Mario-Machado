@@ -9,7 +9,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { useAlunoApi } from "@/hooks/useAlunoApi";
 import { storage } from "@/lib/firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { Plus, Trash2, FileText, BarChart3, AlertCircle, Filter, Upload, X, Image as ImageIcon, Zap, Target, TrendingDown } from "lucide-react";
+import { Plus, Trash2, FileText, BarChart3, AlertCircle, Filter, Upload, X, Image as ImageIcon, Zap, Target, TrendingDown, Lightbulb } from "lucide-react";
 import { criarPlanosDeAutodiagnostico } from "@/lib/firestore-direct";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from "recharts";
@@ -332,6 +332,24 @@ export default function AlunoAutodiagnostico() {
       {/* Elementos decorativos */}
       <div className="fixed top-20 right-10 w-72 h-72 bg-blue-500/5 rounded-full blur-3xl animate-float pointer-events-none" />
       <div className="fixed bottom-20 left-10 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl animate-float-delayed pointer-events-none" />
+
+      {/* Box Motivacional */}
+      <Card className="border-2 border-blue-200 dark:border-blue-800 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30 rounded-2xl animate-slide-up shadow-lg">
+        <CardContent className="pt-6">
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0">
+              <div className="p-3 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl shadow-lg">
+                <Lightbulb className="w-6 h-6 text-white" />
+              </div>
+            </div>
+            <div className="flex-1">
+              <p className="text-base leading-relaxed text-gray-700 dark:text-gray-200">
+                <strong className="font-black text-blue-700 dark:text-blue-400">Não encare seus erros como fracasso, mas sim como o GPS da sua aprovação.</strong> Cada questão errada mostra uma lacuna específica no seu conhecimento, funcionando como um mapa que ajuda a direcionar corretamente sua energia. Ao registrar seus erros aqui e corrigi-los, você transforma uma falha momentânea em retenção de longo prazo e garante que o seu esforço seja cirúrgico. <strong className="font-black text-cyan-700 dark:text-cyan-400">Quem mapeia o erro hoje, maximiza as chances de acerto no ENEM.</strong>
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Formulário Premium */}
       <Card className="border-2 hover:shadow-2xl transition-shadow rounded-2xl animate-slide-up">

@@ -5,7 +5,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar, Save, Copy, Palette, Download, Upload, Trash2, FolderOpen, Zap, Clock, Sparkles } from "lucide-react";
 import { toast } from "sonner";
-import { useAlunoApi } from "@/hooks/useAlunoApi";
+// Acesso direto ao Firestore (elimina cold start de ~20s)
+import {
+  getHorariosDirect,
+  clearAllHorariosDirect,
+  saveHorariosBatch,
+  getTemplatesDirect,
+  saveTemplateDirect,
+  loadTemplateDirect,
+  deleteTemplateDirect
+} from "@/lib/firestore-direct";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Dialog,
@@ -49,7 +58,7 @@ const COLORS = [
 ];
 
 export default function AlunoCronograma() {
-  const api = useAlunoApi();
+  // Removido useAlunoApi - usando acesso direto ao Firestore para eliminar cold start
   const [schedule, setSchedule] = useState<TimeSlot[]>([]);
   const [copiedCell, setCopiedCell] = useState<TimeSlot | null>(null);
   const [editingCell, setEditingCell] = useState<string | null>(null);
@@ -80,7 +89,8 @@ export default function AlunoCronograma() {
 
   const loadSchedule = async () => {
     try {
-      const horarios = await api.getHorarios();
+      // Acesso direto ao Firestore (elimina cold start de ~20s)
+      const horarios = await getHorariosDirect();
       
       const slots: TimeSlot[] = [];
       horarios.forEach((h: any) => {
@@ -115,7 +125,8 @@ export default function AlunoCronograma() {
 
   const loadTemplates = async () => {
     try {
-      const data = await api.getTemplates();
+      // Acesso direto ao Firestore (elimina cold start)
+      const data = await getTemplatesDirect();
       setTemplates(data.map((t: any) => {
         let createdAtDate: Date;
         if (t.createdAt?.toDate) {
@@ -238,7 +249,8 @@ export default function AlunoCronograma() {
           cor: s.color,
         }));
       
-      await api.saveTemplate({
+      // Acesso direto ao Firestore
+      await saveTemplateDirect({
         nome: templateName,
         horarios,
       });
@@ -257,10 +269,43 @@ export default function AlunoCronograma() {
   const handleLoadTemplate = async (template: Template) => {
     try {
       setIsSaving(true);
-      await api.loadTemplate(template.id);
+      
+      // Carregar template do Firestore
+      const templateData = await loadTemplateDirect(template.id);
+      if (!templateData) {
+        toast.error("Template não encontrado");
+        return;
+      }
+      
+      // Converter horários do template para slots
+      const slots: TimeSlot[] = [];
+      (templateData.horarios || []).forEach((h: any) => {
+        const [horaInicio, minutoInicio] = h.horaInicio.split(':').map(Number);
+        const [horaFim, minutoFim] = h.horaFim.split(':').map(Number);
+        
+        let currentHour = horaInicio;
+        let currentMinute = minutoInicio;
+        
+        while (currentHour < horaFim || (currentHour === horaFim && currentMinute < minutoFim)) {
+          slots.push({
+            day: h.diaSemana,
+            hour: currentHour,
+            minute: currentMinute,
+            activity: h.materia + (h.descricao ? ` - ${h.descricao}` : ''),
+            color: h.cor || "#FFFFFF",
+          });
+          
+          currentMinute += 30;
+          if (currentMinute >= 60) {
+            currentMinute = 0;
+            currentHour++;
+          }
+        }
+      });
+      
+      setSchedule(slots);
       setShowLoadDialog(false);
       toast.success(`Template "${template.name}" carregado!`);
-      await loadSchedule();
     } catch (error: any) {
       toast.error(error.message || "Erro ao carregar template");
     } finally {
@@ -272,7 +317,8 @@ export default function AlunoCronograma() {
     const template = templates.find(t => t.id === templateId);
     if (confirm(`Deseja realmente excluir o template "${template?.name}"?`)) {
       try {
-        await api.deleteTemplate(templateId);
+        // Acesso direto ao Firestore
+        await deleteTemplateDirect(templateId);
         toast.success("Template excluído!");
         await loadTemplates();
       } catch (error: any) {
@@ -285,8 +331,8 @@ export default function AlunoCronograma() {
     try {
       setIsSaving(true);
       
-      // Primeiro, limpar todos os horários existentes
-      await api.clearAllHorarios();
+      // Primeiro, limpar todos os horários existentes (acesso direto ao Firestore)
+      await clearAllHorariosDirect();
       
       const sortedSchedule = [...schedule]
         .filter(s => s.activity)
@@ -344,8 +390,8 @@ export default function AlunoCronograma() {
         cor: g.color,
       }));
       
-      // Otimização: Salvar todos os horários em PARALELO (muito mais rápido)
-      await Promise.all(horarios.map(horario => api.createHorario(horario)));
+      // Otimização: Salvar todos os horários em BATCH (muito mais rápido - uma única operação)
+      await saveHorariosBatch(horarios);
       toast.success("Cronograma salvo com sucesso!");
     } catch (error: any) {
       toast.error(error.message || "Erro ao salvar cronograma");

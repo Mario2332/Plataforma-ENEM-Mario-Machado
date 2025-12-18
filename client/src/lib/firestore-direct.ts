@@ -1,0 +1,211 @@
+/**
+ * Acesso direto ao Firestore (sem Cloud Functions)
+ * 
+ * Isso elimina o cold start das Cloud Functions, reduzindo
+ * o tempo de carregamento de ~20-30s para ~1-3s.
+ * 
+ * As regras de segurança do Firestore garantem que apenas
+ * usuários autenticados podem acessar seus próprios dados.
+ */
+
+import { 
+  collection, 
+  doc, 
+  getDocs, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  query, 
+  orderBy,
+  writeBatch,
+  Timestamp
+} from "firebase/firestore";
+import { db, auth } from "./firebase";
+
+// ============================================
+// HORÁRIOS (Cronograma Semanal)
+// ============================================
+
+export interface Horario {
+  id?: string;
+  diaSemana: number;
+  horaInicio: string;
+  horaFim: string;
+  materia: string;
+  descricao?: string;
+  cor?: string;
+  createdAt?: Date;
+}
+
+/**
+ * Buscar todos os horários do aluno logado
+ * Acesso direto ao Firestore - sem cold start!
+ */
+export async function getHorariosDirect(): Promise<Horario[]> {
+  const userId = auth.currentUser?.uid;
+  if (!userId) throw new Error("Usuário não autenticado");
+
+  const horariosRef = collection(db, "alunos", userId, "horarios");
+  const q = query(horariosRef, orderBy("diaSemana"), orderBy("horaInicio"));
+  
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  })) as Horario[];
+}
+
+/**
+ * Criar um novo horário
+ */
+export async function createHorarioDirect(horario: Omit<Horario, 'id'>): Promise<string> {
+  const userId = auth.currentUser?.uid;
+  if (!userId) throw new Error("Usuário não autenticado");
+
+  const horariosRef = collection(db, "alunos", userId, "horarios");
+  const docRef = await addDoc(horariosRef, {
+    ...horario,
+    createdAt: Timestamp.now()
+  });
+  
+  return docRef.id;
+}
+
+/**
+ * Atualizar um horário existente
+ */
+export async function updateHorarioDirect(horarioId: string, updates: Partial<Horario>): Promise<void> {
+  const userId = auth.currentUser?.uid;
+  if (!userId) throw new Error("Usuário não autenticado");
+
+  const horarioRef = doc(db, "alunos", userId, "horarios", horarioId);
+  await updateDoc(horarioRef, updates);
+}
+
+/**
+ * Deletar um horário
+ */
+export async function deleteHorarioDirect(horarioId: string): Promise<void> {
+  const userId = auth.currentUser?.uid;
+  if (!userId) throw new Error("Usuário não autenticado");
+
+  const horarioRef = doc(db, "alunos", userId, "horarios", horarioId);
+  await deleteDoc(horarioRef);
+}
+
+/**
+ * Limpar todos os horários do aluno
+ * Usa batch para melhor performance
+ */
+export async function clearAllHorariosDirect(): Promise<void> {
+  const userId = auth.currentUser?.uid;
+  if (!userId) throw new Error("Usuário não autenticado");
+
+  const horariosRef = collection(db, "alunos", userId, "horarios");
+  const snapshot = await getDocs(horariosRef);
+  
+  if (snapshot.empty) return;
+
+  const batch = writeBatch(db);
+  snapshot.docs.forEach(doc => {
+    batch.delete(doc.ref);
+  });
+  
+  await batch.commit();
+}
+
+/**
+ * Salvar múltiplos horários de uma vez (batch)
+ * Muito mais rápido que salvar um por um
+ */
+export async function saveHorariosBatch(horarios: Omit<Horario, 'id'>[]): Promise<void> {
+  const userId = auth.currentUser?.uid;
+  if (!userId) throw new Error("Usuário não autenticado");
+
+  const horariosRef = collection(db, "alunos", userId, "horarios");
+  const batch = writeBatch(db);
+  
+  horarios.forEach(horario => {
+    const newDocRef = doc(horariosRef);
+    batch.set(newDocRef, {
+      ...horario,
+      createdAt: Timestamp.now()
+    });
+  });
+  
+  await batch.commit();
+}
+
+// ============================================
+// TEMPLATES
+// ============================================
+
+export interface Template {
+  id?: string;
+  nome: string;
+  horarios: Horario[];
+  createdAt?: Date;
+}
+
+/**
+ * Buscar todos os templates do aluno
+ */
+export async function getTemplatesDirect(): Promise<Template[]> {
+  const userId = auth.currentUser?.uid;
+  if (!userId) throw new Error("Usuário não autenticado");
+
+  const templatesRef = collection(db, "alunos", userId, "templates");
+  const q = query(templatesRef, orderBy("createdAt", "desc"));
+  
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  })) as Template[];
+}
+
+/**
+ * Salvar um novo template
+ */
+export async function saveTemplateDirect(template: { nome: string; horarios: any[] }): Promise<string> {
+  const userId = auth.currentUser?.uid;
+  if (!userId) throw new Error("Usuário não autenticado");
+
+  const templatesRef = collection(db, "alunos", userId, "templates");
+  const docRef = await addDoc(templatesRef, {
+    ...template,
+    createdAt: Timestamp.now()
+  });
+  
+  return docRef.id;
+}
+
+/**
+ * Carregar um template específico
+ */
+export async function loadTemplateDirect(templateId: string): Promise<Template | null> {
+  const userId = auth.currentUser?.uid;
+  if (!userId) throw new Error("Usuário não autenticado");
+
+  const templatesRef = collection(db, "alunos", userId, "templates");
+  const snapshot = await getDocs(templatesRef);
+  
+  const templateDoc = snapshot.docs.find(doc => doc.id === templateId);
+  if (!templateDoc) return null;
+  
+  return {
+    id: templateDoc.id,
+    ...templateDoc.data()
+  } as Template;
+}
+
+/**
+ * Deletar um template
+ */
+export async function deleteTemplateDirect(templateId: string): Promise<void> {
+  const userId = auth.currentUser?.uid;
+  if (!userId) throw new Error("Usuário não autenticado");
+
+  const templateRef = doc(db, "alunos", userId, "templates", templateId);
+  await deleteDoc(templateRef);
+}

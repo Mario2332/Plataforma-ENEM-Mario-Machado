@@ -20,7 +20,10 @@ import {
   Zap,
   Star,
   Award,
-  TrendingDown
+  TrendingDown,
+  Gift,
+  Snowflake,
+  TreePine
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useAuthContext } from "@/contexts/AuthContext";
@@ -310,42 +313,91 @@ export default function AlunoHome() {
       <div className="fixed top-20 right-10 w-72 h-72 bg-primary/5 rounded-full blur-3xl animate-float pointer-events-none" />
       <div className="fixed bottom-20 left-10 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl animate-float-delayed pointer-events-none" />
 
-      {/* Header Premium com Glassmorphism */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/20 via-purple-500/10 to-blue-500/10 p-10 border-2 border-white/20 dark:border-white/10 backdrop-blur-xl shadow-2xl animate-slide-up">
-        {/* Efeitos de luz */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-primary/20 to-transparent rounded-full blur-3xl animate-pulse-slow" />
-        <div className="absolute bottom-0 left-0 w-72 h-72 bg-gradient-to-tr from-purple-500/20 to-transparent rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '1s' }} />
+      {/* 🎄 Header Natalino com Luzinhas */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-red-600/20 via-green-600/10 to-red-500/10 p-10 border-2 border-red-500/30 dark:border-red-400/20 backdrop-blur-xl shadow-2xl animate-slide-up">
+        {/* Luzinhas de Natal no topo */}
+        <div className="absolute top-0 left-0 right-0 h-8 flex items-center justify-center overflow-hidden">
+          <div className="flex gap-6 animate-christmas-lights">
+            {[...Array(20)].map((_, i) => (
+              <div 
+                key={i} 
+                className={`w-3 h-3 rounded-full shadow-lg ${
+                  i % 4 === 0 ? 'bg-red-500 shadow-red-500/50' :
+                  i % 4 === 1 ? 'bg-yellow-400 shadow-yellow-400/50' :
+                  i % 4 === 2 ? 'bg-green-500 shadow-green-500/50' :
+                  'bg-blue-400 shadow-blue-400/50'
+                }`}
+                style={{ 
+                  animation: `christmas-glow 1s ease-in-out infinite`,
+                  animationDelay: `${i * 0.15}s`
+                }}
+              />
+            ))}
+          </div>
+          {/* Fio das luzinhas */}
+          <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-gray-600 to-transparent" />
+        </div>
         
-        {/* Partículas decorativas */}
-        <div className="absolute top-10 right-20 w-2 h-2 bg-primary rounded-full animate-ping" />
-        <div className="absolute top-20 right-40 w-1.5 h-1.5 bg-purple-500 rounded-full animate-ping" style={{ animationDelay: '0.5s' }} />
-        <div className="absolute bottom-10 left-20 w-2 h-2 bg-blue-500 rounded-full animate-ping" style={{ animationDelay: '1s' }} />
+        {/* Efeitos de luz natalinos */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-red-500/20 to-transparent rounded-full blur-3xl animate-pulse-slow" />
+        <div className="absolute bottom-0 left-0 w-72 h-72 bg-gradient-to-tr from-green-500/20 to-transparent rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '1s' }} />
         
-        <div className="relative space-y-4">
+        {/* Flocos de neve caindo */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {[...Array(15)].map((_, i) => (
+            <Snowflake 
+              key={i}
+              className="absolute text-white/40 animate-snowfall"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `-20px`,
+                fontSize: `${Math.random() * 12 + 8}px`,
+                animationDuration: `${Math.random() * 5 + 5}s`,
+                animationDelay: `${Math.random() * 5}s`,
+              }}
+              size={Math.random() * 16 + 10}
+            />
+          ))}
+        </div>
+        
+        {/* Árvore de Natal decorativa */}
+        <div className="absolute bottom-4 right-8 opacity-20">
+          <TreePine className="h-24 w-24 text-green-500" />
+        </div>
+        
+        {/* Presente decorativo */}
+        <div className="absolute bottom-6 right-36 opacity-30">
+          <Gift className="h-12 w-12 text-red-500 animate-bounce-subtle" />
+        </div>
+        
+        <div className="relative space-y-4 pt-4">
           <div className="flex items-center gap-4">
             <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-primary to-purple-500 rounded-2xl blur-xl opacity-50 animate-pulse-slow" />
-              <div className="relative bg-gradient-to-br from-primary via-purple-500 to-blue-500 p-4 rounded-2xl shadow-2xl">
-                <Trophy className="h-10 w-10 text-white" />
+              <div className="absolute inset-0 bg-gradient-to-r from-red-500 to-green-500 rounded-2xl blur-xl opacity-50 animate-pulse-slow" />
+              <div className="relative bg-gradient-to-br from-red-600 via-red-500 to-green-600 p-4 rounded-2xl shadow-2xl">
+                <Gift className="h-10 w-10 text-white" />
               </div>
             </div>
             <div>
-              <h1 className="text-5xl font-black tracking-tight bg-gradient-to-r from-primary via-purple-600 to-blue-600 bg-clip-text text-transparent animate-gradient">
-                Olá, {userData?.name?.split(' ')[0] || "Aluno"}!
+              <h1 className="text-5xl font-black tracking-tight bg-gradient-to-r from-red-600 via-green-600 to-red-500 bg-clip-text text-transparent animate-gradient">
+                Feliz Natal, {userData?.name?.split(' ')[0] || "Aluno"}! 🎄
               </h1>
               <div className="flex items-center gap-2 mt-2">
-                <span className="text-6xl animate-wave inline-block">👋</span>
+                <span className="text-5xl animate-bounce-subtle inline-block">🎅</span>
                 {streak > 0 && (
-                  <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500/20 to-red-500/20 rounded-full border border-orange-500/30 backdrop-blur-sm animate-bounce-subtle">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-500/20 to-green-500/20 rounded-full border border-red-500/30 backdrop-blur-sm animate-bounce-subtle">
                     <Flame className="h-5 w-5 text-orange-500" />
-                    <span className="text-sm font-bold text-orange-600 dark:text-orange-400">{streak} dias de foco!</span>
+                    <span className="text-sm font-bold text-red-600 dark:text-red-400">{streak} dias de foco!</span>
                   </div>
                 )}
               </div>
             </div>
           </div>
-          <p className="text-xl text-muted-foreground font-medium">
-            Continue sua jornada rumo à aprovação no ENEM 🎯
+          <p className="text-xl text-muted-foreground font-medium flex items-center gap-2">
+            <span>🎁</span> Continue sua jornada rumo à aprovação no ENEM! <span>🌟</span>
+          </p>
+          <p className="text-sm text-green-600 dark:text-green-400 font-semibold flex items-center gap-2">
+            <Snowflake className="h-4 w-4" /> Boas festas e bons estudos!
           </p>
         </div>
       </div>

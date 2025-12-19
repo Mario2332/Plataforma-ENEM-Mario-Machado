@@ -313,64 +313,121 @@ export default function AlunoHome() {
       <div className="fixed top-20 right-10 w-72 h-72 bg-primary/5 rounded-full blur-3xl animate-float pointer-events-none" />
       <div className="fixed bottom-20 left-10 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl animate-float-delayed pointer-events-none" />
 
-      {/* 🎄 Header Natalino com Luzinhas */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-red-600/20 via-green-600/10 to-red-500/10 p-10 border-2 border-red-500/30 dark:border-red-400/20 backdrop-blur-xl shadow-2xl animate-slide-up">
-        {/* Luzinhas de Natal no topo */}
-        <div className="absolute top-0 left-0 right-0 h-8 flex items-center justify-center overflow-hidden">
-          <div className="flex gap-6 animate-christmas-lights">
-            {[...Array(20)].map((_, i) => (
-              <div 
-                key={i} 
-                className={`w-3 h-3 rounded-full shadow-lg ${
-                  i % 4 === 0 ? 'bg-red-500 shadow-red-500/50' :
-                  i % 4 === 1 ? 'bg-yellow-400 shadow-yellow-400/50' :
-                  i % 4 === 2 ? 'bg-green-500 shadow-green-500/50' :
-                  'bg-blue-400 shadow-blue-400/50'
-                }`}
-                style={{ 
-                  animation: `christmas-glow 1s ease-in-out infinite`,
-                  animationDelay: `${i * 0.15}s`
-                }}
-              />
-            ))}
-          </div>
-          {/* Fio das luzinhas */}
-          <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-gray-600 to-transparent" />
+      {/* 🎄 Header Natalino com Candy Cane e Luzinhas em Arcos */}
+      <div className="relative overflow-hidden rounded-3xl p-10 border-4 border-red-500/50 dark:border-red-400/30 backdrop-blur-xl shadow-2xl animate-slide-up"
+        style={{
+          background: `
+            repeating-linear-gradient(
+              -45deg,
+              rgba(220, 38, 38, 0.15),
+              rgba(220, 38, 38, 0.15) 20px,
+              rgba(255, 255, 255, 0.9) 20px,
+              rgba(255, 255, 255, 0.9) 40px
+            )
+          `
+        }}
+      >
+        {/* Overlay para dark mode */}
+        <div className="absolute inset-0 bg-gradient-to-br from-white/80 via-white/60 to-white/80 dark:from-gray-900/90 dark:via-gray-900/80 dark:to-gray-900/90 rounded-3xl" />
+        
+        {/* 🎄 Luzinhas de Natal em Arcos Pendentes */}
+        <div className="absolute top-0 left-0 right-0 h-16 overflow-visible">
+          <svg className="w-full h-24 -mt-2" viewBox="0 0 1200 100" preserveAspectRatio="none">
+            {/* Fio das luzinhas - curva em arcos */}
+            <path 
+              d="M0,10 Q150,60 300,10 Q450,60 600,10 Q750,60 900,10 Q1050,60 1200,10" 
+              fill="none" 
+              stroke="#374151" 
+              strokeWidth="2"
+              className="dark:stroke-gray-500"
+            />
+            {/* Luzinhas nos arcos */}
+            {[...Array(40)].map((_, i) => {
+              const t = i / 39;
+              const x = t * 1200;
+              const segmentT = (t * 4) % 1;
+              const y = 10 + Math.sin(segmentT * Math.PI) * 50;
+              const colors = ['#ef4444', '#facc15', '#22c55e', '#3b82f6'];
+              const color = colors[i % 4];
+              return (
+                <g key={i}>
+                  <circle 
+                    cx={x} 
+                    cy={y} 
+                    r="6" 
+                    fill={color}
+                    style={{
+                      animation: `christmas-glow 1.5s ease-in-out infinite`,
+                      animationDelay: `${i * 0.1}s`
+                    }}
+                  />
+                  <circle 
+                    cx={x} 
+                    cy={y} 
+                    r="10" 
+                    fill={color}
+                    opacity="0.3"
+                    style={{
+                      animation: `christmas-glow 1.5s ease-in-out infinite`,
+                      animationDelay: `${i * 0.1}s`
+                    }}
+                  />
+                </g>
+              );
+            })}
+          </svg>
         </div>
         
         {/* Efeitos de luz natalinos */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-red-500/20 to-transparent rounded-full blur-3xl animate-pulse-slow" />
-        <div className="absolute bottom-0 left-0 w-72 h-72 bg-gradient-to-tr from-green-500/20 to-transparent rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-red-500/20 to-transparent rounded-full blur-3xl animate-pulse-slow pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-72 h-72 bg-gradient-to-tr from-green-500/20 to-transparent rounded-full blur-3xl animate-pulse-slow pointer-events-none" style={{ animationDelay: '1s' }} />
         
         {/* Flocos de neve caindo */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {[...Array(15)].map((_, i) => (
+          {[...Array(12)].map((_, i) => (
             <Snowflake 
               key={i}
-              className="absolute text-white/40 animate-snowfall"
+              className="absolute text-red-300/50 dark:text-white/30 animate-snowfall"
               style={{
-                left: `${Math.random() * 100}%`,
+                left: `${(i * 8) + 4}%`,
                 top: `-20px`,
-                fontSize: `${Math.random() * 12 + 8}px`,
-                animationDuration: `${Math.random() * 5 + 5}s`,
-                animationDelay: `${Math.random() * 5}s`,
+                animationDuration: `${6 + (i % 4)}s`,
+                animationDelay: `${i * 0.5}s`,
               }}
-              size={Math.random() * 16 + 10}
+              size={14 + (i % 3) * 4}
             />
           ))}
         </div>
         
+        {/* Bengalas de Natal decorativas nos cantos */}
+        <div className="absolute bottom-4 right-4 opacity-30 pointer-events-none">
+          <svg width="60" height="80" viewBox="0 0 60 80">
+            <path d="M30,80 L30,25 Q30,5 45,5 Q55,5 55,15 Q55,25 45,25" 
+              fill="none" stroke="#dc2626" strokeWidth="8" strokeLinecap="round"/>
+            <path d="M30,80 L30,25 Q30,5 45,5 Q55,5 55,15 Q55,25 45,25" 
+              fill="none" stroke="white" strokeWidth="8" strokeLinecap="round" strokeDasharray="12 12"/>
+          </svg>
+        </div>
+        <div className="absolute bottom-4 left-4 opacity-30 pointer-events-none" style={{ transform: 'scaleX(-1)' }}>
+          <svg width="60" height="80" viewBox="0 0 60 80">
+            <path d="M30,80 L30,25 Q30,5 45,5 Q55,5 55,15 Q55,25 45,25" 
+              fill="none" stroke="#dc2626" strokeWidth="8" strokeLinecap="round"/>
+            <path d="M30,80 L30,25 Q30,5 45,5 Q55,5 55,15 Q55,25 45,25" 
+              fill="none" stroke="white" strokeWidth="8" strokeLinecap="round" strokeDasharray="12 12"/>
+          </svg>
+        </div>
+        
         {/* Árvore de Natal decorativa */}
-        <div className="absolute bottom-4 right-8 opacity-20">
-          <TreePine className="h-24 w-24 text-green-500" />
+        <div className="absolute bottom-4 right-20 opacity-20 pointer-events-none">
+          <TreePine className="h-20 w-20 text-green-600" />
         </div>
         
         {/* Presente decorativo */}
-        <div className="absolute bottom-6 right-36 opacity-30">
-          <Gift className="h-12 w-12 text-red-500 animate-bounce-subtle" />
+        <div className="absolute bottom-6 right-44 opacity-25 pointer-events-none">
+          <Gift className="h-10 w-10 text-red-600 animate-bounce-subtle" />
         </div>
         
-        <div className="relative space-y-4 pt-4">
+        <div className="relative space-y-4 pt-8 z-10">
           <div className="flex items-center gap-4">
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-red-500 to-green-500 rounded-2xl blur-xl opacity-50 animate-pulse-slow" />
@@ -393,7 +450,7 @@ export default function AlunoHome() {
               </div>
             </div>
           </div>
-          <p className="text-xl text-muted-foreground font-medium flex items-center gap-2">
+          <p className="text-xl text-gray-700 dark:text-gray-300 font-medium flex items-center gap-2">
             <span>🎁</span> Continue sua jornada rumo à aprovação no ENEM! <span>🌟</span>
           </p>
           <p className="text-sm text-green-600 dark:text-green-400 font-semibold flex items-center gap-2">

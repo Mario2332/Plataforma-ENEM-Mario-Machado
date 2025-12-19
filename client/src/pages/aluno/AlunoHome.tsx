@@ -420,32 +420,23 @@ export default function AlunoHome() {
         <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-br from-red-500/10 to-transparent rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-gradient-to-tr from-green-500/10 to-transparent rounded-full blur-3xl pointer-events-none" />
         
-        {/* Bengalas de Natal decorativas nos cantos */}
-        <div className="absolute bottom-4 right-4 opacity-20 pointer-events-none">
-          <svg width="50" height="70" viewBox="0 0 60 80">
-            <path d="M30,80 L30,25 Q30,5 45,5 Q55,5 55,15 Q55,25 45,25" 
-              fill="none" stroke="#dc2626" strokeWidth="8" strokeLinecap="round"/>
-            <path d="M30,80 L30,25 Q30,5 45,5 Q55,5 55,15 Q55,25 45,25" 
-              fill="none" stroke="white" strokeWidth="8" strokeLinecap="round" strokeDasharray="12 12"/>
-          </svg>
-        </div>
-        <div className="absolute bottom-4 left-4 opacity-20 pointer-events-none" style={{ transform: 'scaleX(-1)' }}>
-          <svg width="50" height="70" viewBox="0 0 60 80">
-            <path d="M30,80 L30,25 Q30,5 45,5 Q55,5 55,15 Q55,25 45,25" 
-              fill="none" stroke="#dc2626" strokeWidth="8" strokeLinecap="round"/>
-            <path d="M30,80 L30,25 Q30,5 45,5 Q55,5 55,15 Q55,25 45,25" 
-              fill="none" stroke="white" strokeWidth="8" strokeLinecap="round" strokeDasharray="12 12"/>
-          </svg>
+        {/* 🎄 Elementos 3D de Natal decorativos - lado direito */}
+        {/* Árvore de Natal 3D - maior e mais visível */}
+        <div className="absolute bottom-2 right-4 pointer-events-none drop-shadow-2xl">
+          <img 
+            src="/images/natal/arvore-3d.jpg" 
+            alt="Árvore de Natal 3D" 
+            className="h-32 w-auto object-contain opacity-90"
+          />
         </div>
         
-        {/* Árvore de Natal decorativa */}
-        <div className="absolute bottom-4 right-20 opacity-15 pointer-events-none">
-          <TreePine className="h-16 w-16 text-green-600" />
-        </div>
-        
-        {/* Presente decorativo */}
-        <div className="absolute bottom-6 right-40 opacity-20 pointer-events-none">
-          <Gift className="h-8 w-8 text-red-600" />
+        {/* Presente 3D decorativo */}
+        <div className="absolute bottom-4 right-36 pointer-events-none drop-shadow-xl">
+          <img 
+            src="/images/natal/presente-3d.png" 
+            alt="Presente 3D" 
+            className="h-20 w-auto object-contain opacity-85"
+          />
         </div>
         
         <div className="relative space-y-4 pt-8 z-10">

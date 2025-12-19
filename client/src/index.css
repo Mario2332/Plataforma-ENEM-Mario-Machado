@@ -295,3 +295,26 @@
 .animate-light-blink {
   animation: light-blink 1.5s ease-in-out infinite;
 }
+
+/* Borda Candy Cane com suporte a Dark Mode */
+.candy-cane-border {
+  border: 4px solid transparent;
+  border-radius: 12px;
+  background: 
+    linear-gradient(hsl(var(--card)), hsl(var(--card))) padding-box,
+    repeating-linear-gradient(45deg, #dc2626, #dc2626 10px, #ffffff 10px, #ffffff 20px) border-box;
+}
+
+.candy-cane-border-header {
+  border: 4px solid transparent;
+  border-radius: 16px;
+  background: 
+    linear-gradient(to bottom right, #fef2f2, #ffffff, #f0fdf4) padding-box,
+    repeating-linear-gradient(45deg, #dc2626, #dc2626 10px, #ffffff 10px, #ffffff 20px) border-box;
+}
+
+.dark .candy-cane-border-header {
+  background: 
+    linear-gradient(to bottom right, hsl(var(--card)), hsl(var(--card)), hsl(var(--card))) padding-box,
+    repeating-linear-gradient(45deg, #dc2626, #dc2626 10px, #ffffff 10px, #ffffff 20px) border-box;
+}

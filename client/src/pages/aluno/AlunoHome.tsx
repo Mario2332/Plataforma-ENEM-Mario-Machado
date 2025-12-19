@@ -375,7 +375,7 @@ export default function AlunoHome() {
               strokeWidth="2"
               className="dark:stroke-gray-500"
             />
-            {/* Luzinhas nos arcos - formato oval (lâmpadas) */}
+            {/* Luzinhas nos arcos - formato oval (lâmpadas) - COLADAS NO CABO */}
             {[...Array(40)].map((_, i) => {
               const t = i / 39;
               const x = t * 1200;
@@ -388,21 +388,21 @@ export default function AlunoHome() {
               const filterId = filters[i % 4];
               return (
                 <g key={i}>
-                  {/* Base da lâmpada (conector) - diretamente no cabo */}
+                  {/* Base da lâmpada (conector) - COLADO no cabo */}
                   <rect
-                    x={x - 2}
-                    y={cableY - 1}
-                    width="4"
-                    height="3"
+                    x={x - 1.5}
+                    y={cableY}
+                    width="3"
+                    height="2"
                     fill="#6b7280"
-                    rx="1"
+                    rx="0.5"
                   />
-                  {/* Lâmpada oval com filtro de brilho - colada no conector */}
+                  {/* Lâmpada oval - IMEDIATAMENTE abaixo do conector */}
                   <ellipse 
                     cx={x} 
-                    cy={cableY + 7} 
+                    cy={cableY + 6} 
                     rx="4" 
-                    ry="6"
+                    ry="5"
                     fill={color}
                     filter={`url(#${filterId})`}
                     className="animate-light-blink"

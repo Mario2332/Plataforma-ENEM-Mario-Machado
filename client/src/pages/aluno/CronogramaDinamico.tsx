@@ -1709,19 +1709,29 @@ const SettingsStep = ({
 
         const toggleDay = (intensIdx: number, dayIdx: number) => {
             const intens = config.intensifications[intensIdx];
-            const days = intens.days.includes(dayIdx)
+            const isSelected = intens.days.includes(dayIdx);
+            const newDays = isSelected
                 ? intens.days.filter(x => x !== dayIdx)
                 : [...intens.days, dayIdx];
-            updateIntensification(intensIdx, 'days', days);
             
-            // Atualizar durações
+            // Atualizar durações junto com os dias em uma única chamada
             const newDurations = { ...(intens.durations || {}) };
-            if (days.includes(dayIdx) && !newDurations[dayIdx]) {
+            if (!isSelected) {
+                // Adicionando dia - definir duração padrão de 60 min
                 newDurations[dayIdx] = 60;
-            } else if (!days.includes(dayIdx)) {
+            } else {
+                // Removendo dia - remover duração
                 delete newDurations[dayIdx];
             }
-            updateIntensification(intensIdx, 'durations', newDurations);
+            
+            // Atualizar tudo de uma vez
+            const newIntensifications = [...config.intensifications];
+            newIntensifications[intensIdx] = { 
+                ...newIntensifications[intensIdx], 
+                days: newDays, 
+                durations: newDurations 
+            };
+            updateFn({...config, intensifications: newIntensifications});
         };
 
         const updateDuration = (intensIdx: number, dayIdx: number, duration: number) => {
@@ -1818,7 +1828,7 @@ const SettingsStep = ({
                                                 <button
                                                     key={i}
                                                     onClick={() => toggleDay(intensIdx, i)}
-                                                    className={`w-7 h-7 rounded-full text-xs font-bold transition-colors ${intens.days.includes(i) ? `bg-${colorClass.split('-')[1]}-500 text-white` : 'bg-gray-200 text-gray-400 hover:bg-gray-300'}`}
+                                                    className={`w-7 h-7 rounded-full text-xs font-bold transition-colors ${intens.days.includes(i) ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-400 hover:bg-gray-300'}`}
                                                 >
                                                     {d}
                                                 </button>

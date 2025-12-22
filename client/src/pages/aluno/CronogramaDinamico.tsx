@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { BookOpen, Calendar as CalendarIcon, Settings, CheckCircle, Clock, ChevronDown, ChevronRight, ChevronLeft, BarChart2, AlertCircle, RefreshCw, Save, Layers, LayoutGrid, List as ListIcon, CheckSquare, Square, Edit3, Repeat, X, Map, RotateCcw, FileText, Zap, CheckCircle2, AlertTriangle, Eye, CheckCheck, PenTool, CalendarOff, Loader2 } from 'lucide-react';
+import { BookOpen, Calendar as CalendarIcon, Settings, CheckCircle, Clock, ChevronDown, ChevronRight, ChevronLeft, BarChart2, AlertCircle, RefreshCw, Save, Layers, LayoutGrid, List as ListIcon, CheckSquare, Square, Edit3, Repeat, X, Map, RotateCcw, FileText, Zap, CheckCircle2, AlertTriangle, Eye, CheckCheck, PenTool, CalendarOff, Loader2, Check } from 'lucide-react';
 import { db, auth } from "@/lib/firebase";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { toast } from "sonner";
@@ -1073,20 +1073,52 @@ const idealWeeklyTargets: { [key: string]: number } = {
 
 // --- COMPONENTES AUXILIARES ---
 
-const StepIndicator = ({ step }: { step: number }) => (
-  <div className="flex justify-between items-center mb-8 px-4">
-    {[1, 2, 3, 4].map((s) => (
-      <div key={s} className={`flex flex-col items-center ${s <= step ? 'text-blue-600' : 'text-gray-400'}`}>
-        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold mb-2 ${s <= step ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'}`}>
-          {s}
-        </div>
-        <span className="text-xs font-medium uppercase hidden sm:block">
-          {s === 1 ? 'Matérias' : s === 2 ? 'Ajustes' : s === 3 ? 'Geração' : 'Cronograma'}
-        </span>
+const StepIndicator = ({ step }: { step: number }) => {
+  const steps = [
+    { num: 1, label: 'Matérias', icon: BookOpen },
+    { num: 2, label: 'Ajustes', icon: Settings },
+    { num: 3, label: 'Geração', icon: RefreshCw },
+    { num: 4, label: 'Cronograma', icon: CalendarIcon }
+  ];
+  
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-8">
+      <div className="flex justify-between items-center relative">
+        {/* Linha de conexão */}
+        <div className="absolute top-5 left-0 right-0 h-0.5 bg-gray-200 z-0" style={{ left: '10%', right: '10%' }} />
+        <div 
+          className="absolute top-5 h-0.5 bg-blue-600 z-0 transition-all duration-500" 
+          style={{ left: '10%', width: `${Math.max(0, (step - 1) * 26.67)}%` }} 
+        />
+        
+        {steps.map((s) => {
+          const Icon = s.icon;
+          const isActive = s.num === step;
+          const isCompleted = s.num < step;
+          
+          return (
+            <div key={s.num} className="flex flex-col items-center z-10">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold mb-2 transition-all duration-300 ${
+                isActive 
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-200 scale-110' 
+                  : isCompleted 
+                    ? 'bg-blue-600 text-white' 
+                    : 'bg-gray-100 text-gray-400 border border-gray-200'
+              }`}>
+                {isCompleted ? <Check className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
+              </div>
+              <span className={`text-xs font-semibold uppercase tracking-wide hidden sm:block transition-colors ${
+                isActive ? 'text-blue-600' : isCompleted ? 'text-blue-600' : 'text-gray-400'
+              }`}>
+                {s.label}
+              </span>
+            </div>
+          );
+        })}
       </div>
-    ))}
-  </div>
-);
+    </div>
+  );
+};
 
 // Componente para Etapa 1: Seleção de Tópicos
 const TopicsStep = ({ 
@@ -1137,56 +1169,75 @@ const TopicsStep = ({
 
     return (
         <div className="space-y-6">
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 flex flex-col md:flex-row gap-6 items-center justify-between">
-                <div>
-                    <h2 className="text-xl font-bold mb-2 flex items-center gap-2">
-                        <FileText className="text-blue-600" />
-                        Modalidade do Cronograma
-                    </h2>
-                    <p className="text-gray-600 text-sm">
-                        Escolha a base de conteúdos que melhor se adapta ao seu tempo.
-                    </p>
-                </div>
-                <div className="flex bg-gray-100 p-1.5 rounded-lg">
-                    <button
-                        onClick={() => onScheduleTypeChange('extensivo')}
-                        className={`px-6 py-2 rounded-md text-sm font-bold transition-all ${
-                            scheduleType === 'extensivo' 
-                            ? 'bg-white text-blue-700 shadow-sm ring-1 ring-black/5' 
-                            : 'text-gray-500 hover:text-gray-700'
-                        }`}
-                    >
-                        Extensivo
-                    </button>
-                    <button
-                        onClick={() => onScheduleTypeChange('intensivo')}
-                        className={`px-6 py-2 rounded-md text-sm font-bold transition-all flex items-center gap-2 ${
-                            scheduleType === 'intensivo' 
-                            ? 'bg-white text-purple-700 shadow-sm ring-1 ring-black/5' 
-                            : 'text-gray-500 hover:text-gray-700'
-                        }`}
-                    >
-                        <Zap className="w-4 h-4" /> Intensivo
-                    </button>
+            {/* Header com gradiente - padrão da plataforma */}
+            <div className="bg-gradient-to-r from-blue-50 via-cyan-50 to-blue-50 rounded-2xl p-6 shadow-sm border border-blue-100/50">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200">
+                            <BookOpen className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-bold text-gray-800">Seleção de Matérias</h1>
+                            <p className="text-gray-600 text-sm">Escolha os conteúdos e defina as dificuldades do seu cronograma</p>
+                        </div>
+                    </div>
+                    <div className="bg-white px-4 py-2 rounded-xl border border-blue-100 shadow-sm flex items-center gap-3">
+                        <div className="text-right">
+                            <span className="text-xs font-medium text-gray-500 uppercase tracking-wider block">Tópicos</span>
+                            <span className="text-xl font-bold text-blue-600">{selectedTopicsCount}<span className="text-gray-400 text-sm font-medium">/{totalTopics}</span></span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+            {/* Modalidade do Cronograma */}
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <div className="flex flex-col md:flex-row gap-6 items-center justify-between">
+                    <div>
+                        <h2 className="text-lg font-bold mb-1 flex items-center gap-2 text-gray-800">
+                            <FileText className="text-blue-600 w-5 h-5" />
+                            Modalidade do Cronograma
+                        </h2>
+                        <p className="text-gray-500 text-sm">
+                            Escolha a base de conteúdos que melhor se adapta ao seu tempo.
+                        </p>
+                    </div>
+                    <div className="flex bg-gray-100 p-1.5 rounded-xl">
+                        <button
+                            onClick={() => onScheduleTypeChange('extensivo')}
+                            className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${
+                                scheduleType === 'extensivo' 
+                                ? 'bg-white text-blue-700 shadow-md' 
+                                : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                        >
+                            Extensivo
+                        </button>
+                        <button
+                            onClick={() => onScheduleTypeChange('intensivo')}
+                            className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${
+                                scheduleType === 'intensivo' 
+                                ? 'bg-white text-purple-700 shadow-md' 
+                                : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                        >
+                            <Zap className="w-4 h-4" /> Intensivo
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Conteúdos e Dificuldades */}
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 border-b border-gray-100 pb-4">
                     <div>
-                        <h2 className="text-xl font-bold flex items-center gap-2">
-                            <BookOpen className="text-blue-600" />
+                        <h2 className="text-lg font-bold flex items-center gap-2 text-gray-800">
+                            <Layers className="text-blue-600 w-5 h-5" />
                             Conteúdos e Dificuldades
                         </h2>
                         <p className="text-gray-500 text-sm mt-1">
-                            Personalize o que vai cair no seu plano.
+                            Personalize o que vai cair no seu plano de estudos.
                         </p>
-                    </div>
-                    <div className="bg-blue-50 px-4 py-2 rounded-full border border-blue-100 flex items-center gap-2">
-                        <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">Tópicos selecionados</span>
-                        <span className="text-lg font-bold text-blue-700">
-                            {selectedTopicsCount} <span className="text-blue-400 text-sm font-medium">/ {totalTopics}</span>
-                        </span>
                     </div>
                 </div>
                 
@@ -1289,9 +1340,9 @@ const TopicsStep = ({
             <div className="flex justify-end">
                 <button 
                     onClick={onNext}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors"
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all shadow-lg shadow-blue-200 hover:shadow-xl hover:shadow-blue-300"
                 >
-                    Próximo: Ajustes <ChevronRight className="w-4 h-4" />
+                    Próximo: Ajustes <ChevronRight className="w-5 h-5" />
                 </button>
             </div>
         </div>
@@ -1625,7 +1676,7 @@ const SettingsStep = ({
 
     // Componente simples para Revisão e Redação (sem datas e intensificação)
     const renderSimpleActivityConfig = (title: string, icon: any, colorClass: string, config: SimpleActivityConfig, updateFn: (c: SimpleActivityConfig) => void) => (
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
             <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-bold flex items-center gap-2 text-gray-800">
                     {icon}
@@ -1885,9 +1936,9 @@ const SettingsStep = ({
         };
 
         return (
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                 <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-bold flex items-center gap-2 text-gray-800">
+                    <h2 className="text-lg font-bold flex items-center gap-2 text-gray-800">
                         <CalendarOff className="text-gray-600 w-5 h-5" />
                         Dias Livres
                     </h2>
@@ -1926,9 +1977,25 @@ const SettingsStep = ({
 
     return (
         <div className="space-y-6">
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                    <Clock className="text-blue-600" />
+            {/* Header com gradiente - padrão da plataforma */}
+            <div className="bg-gradient-to-r from-green-50 via-emerald-50 to-green-50 rounded-2xl p-6 shadow-sm border border-green-100/50">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-green-600 rounded-xl flex items-center justify-center shadow-lg shadow-green-200">
+                            <Settings className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-bold text-gray-800">Configurações do Cronograma</h1>
+                            <p className="text-gray-600 text-sm">Defina sua disponibilidade e atividades extras</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Disponibilidade Semanal */}
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <h2 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-800">
+                    <Clock className="text-blue-600 w-5 h-5" />
                     Disponibilidade Semanal
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -1977,9 +2044,9 @@ const SettingsStep = ({
                 {renderAdvancedActivityConfig("Preenchimento de Lacunas - Fragmentado", <PenTool className="text-yellow-400 w-5 h-5" />, "text-yellow-400", state.gapsFragmented, onUpdateGapsFragmented, true)}
             </div>
 
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                    <CalendarIcon className="text-gray-600" />
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <h2 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-800">
+                    <CalendarIcon className="text-gray-600 w-5 h-5" />
                     Data Limite (Opcional)
                 </h2>
                 <div className="flex flex-col sm:flex-row gap-4 items-center">
@@ -1996,9 +2063,11 @@ const SettingsStep = ({
             </div>
 
             <div className="flex justify-between pt-4">
-                <button onClick={onBack} className="text-gray-600 hover:text-gray-900 px-4 py-2 font-medium">Voltar</button>
-                <button onClick={onGenerate} className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-lg shadow-green-200">
-                    <RefreshCw className="w-4 h-4" /> Gerar Cronograma
+                <button onClick={onBack} className="text-gray-600 hover:text-gray-800 px-6 py-3 font-medium flex items-center gap-2 rounded-xl hover:bg-gray-100 transition-all">
+                    <ChevronLeft className="w-5 h-5" /> Voltar
+                </button>
+                <button onClick={onGenerate} className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all shadow-lg shadow-green-200 hover:shadow-xl hover:shadow-green-300">
+                    <RefreshCw className="w-5 h-5" /> Gerar Cronograma
                 </button>
             </div>
         </div>
@@ -2148,7 +2217,7 @@ const CalendarView = ({ schedule, onToggleCheck, checkedItems }: { schedule: any
                                     <div className="text-sm text-gray-500 mb-2">Tempo total: {selectedDayData.tasks.reduce((acc: number, t: any) => acc + t.duration, 0)} minutos</div>
                                     {selectedDayData.tasks.map((task: any, idx: number) => {
                                         const style = getSubjectStyle(task.subject);
-                                        const taskId = `${selectedDate.toISOString()}-${idx}`;
+                                        const taskId = `${selectedDayData.date.toISOString()}-${idx}`;
                                         const isChecked = checkedItems.has(taskId);
                                         return (
                                             <div key={idx} onClick={() => onToggleCheck(taskId, task.originalIndex)} className={`flex items-center justify-between p-3 rounded-lg border-l-4 cursor-pointer hover:bg-gray-50 ${style.bg} ${style.border} ${isChecked ? 'opacity-50 grayscale' : ''}`}>
@@ -2314,32 +2383,44 @@ const ScheduleView = ({
                 </div>
             )}
 
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-                <div>
-                    <h2 className="text-2xl font-bold text-gray-800">Seu Cronograma</h2>
-                    <p className="text-gray-600 mt-1">
-                        Gerado para {schedule.length} dias de estudo. <span className="font-semibold text-blue-600">Terminando no dia {finalDateFormatted}</span>.
-                    </p>
+            {/* Header com gradiente - padrão da plataforma */}
+            <div className="bg-gradient-to-r from-purple-50 via-indigo-50 to-purple-50 rounded-2xl p-6 shadow-sm border border-purple-100/50">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-purple-200">
+                            <CalendarIcon className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-bold text-gray-800">Seu Cronograma</h1>
+                            <p className="text-gray-600 text-sm">
+                                {schedule.length} dias de estudo • <span className="font-semibold text-purple-600">Até {finalDateFormatted}</span>
+                            </p>
+                        </div>
+                    </div>
                 </div>
-                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                    <button onClick={handleRecalculate} className="bg-orange-100 text-orange-700 px-4 py-2 rounded-lg font-medium hover:bg-orange-200 transition-colors flex items-center gap-2 justify-center">
+            </div>
+
+            {/* Barra de ações */}
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4">
+                <div className="flex flex-wrap gap-2 w-full md:w-auto justify-center md:justify-start">
+                    <button onClick={handleRecalculate} className="bg-orange-100 text-orange-700 px-4 py-2.5 rounded-xl font-medium hover:bg-orange-200 transition-all flex items-center gap-2 justify-center">
                         <RotateCcw className="w-4 h-4" /> Recalcular Rota
                     </button>
-                    <div className="flex bg-gray-100 p-1 rounded-lg">
-                        <button onClick={() => setViewMode('list')} className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === 'list' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><ListIcon className="w-4 h-4" /> Lista</button>
-                        <button onClick={() => setViewMode('calendar')} className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === 'calendar' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><LayoutGrid className="w-4 h-4" /> Calendário</button>
+                    <div className="flex bg-gray-100 p-1 rounded-xl">
+                        <button onClick={() => setViewMode('list')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${viewMode === 'list' ? 'bg-white text-purple-600 shadow-md' : 'text-gray-500 hover:text-gray-700'}`}><ListIcon className="w-4 h-4" /> Lista</button>
+                        <button onClick={() => setViewMode('calendar')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${viewMode === 'calendar' ? 'bg-white text-purple-600 shadow-md' : 'text-gray-500 hover:text-gray-700'}`}><LayoutGrid className="w-4 h-4" /> Calendário</button>
                     </div>
-                    <div className="flex gap-2">
-                        <button onClick={onReconfigure} className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-200 transition-colors">Reconfigurar</button>
-                        <button 
-                            onClick={onSave} 
-                            disabled={isSaving}
-                            className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                            <span className="hidden sm:inline">{isSaving ? 'Salvando...' : 'Salvar'}</span>
-                        </button>
-                    </div>
+                </div>
+                <div className="flex gap-2 w-full md:w-auto justify-center md:justify-end">
+                    <button onClick={onReconfigure} className="bg-gray-100 text-gray-700 px-4 py-2.5 rounded-xl font-medium hover:bg-gray-200 transition-all">Reconfigurar</button>
+                    <button 
+                        onClick={onSave} 
+                        disabled={isSaving}
+                        className="bg-purple-600 text-white px-6 py-2.5 rounded-xl font-semibold hover:bg-purple-700 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-200"
+                    >
+                        {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                        <span>{isSaving ? 'Salvando...' : 'Salvar'}</span>
+                    </button>
                 </div>
             </div>
 

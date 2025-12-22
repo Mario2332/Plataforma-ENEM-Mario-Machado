@@ -93,16 +93,33 @@ export function RankingModal({ open, onOpenChange, alunoAtual }: RankingModalPro
             const userSnap = await getDoc(userRef);
             const userData = userSnap.data();
             
-            // Só adicionar se for aluno
-            if (userData?.role === "aluno") {
-              todosAlunos.push({
-                id: docSnap.id,
-                nome: userData?.name || userData?.nome || "Aluno",
-                photoURL: userData?.photoURL,
-                nivel: data.nivel,
-                pontosSemanais: data.pontosSemanais || 0,
-              });
+            // Verificar se o usuário existe e é aluno
+            if (!userSnap.exists() || userData?.role !== "aluno") {
+              continue; // Pular usuários que não existem ou não são alunos
             }
+            
+            // Verificar se o aluno existe na coleção 'alunos' (não foi excluído)
+            const alunoRef = doc(db, "alunos", docSnap.id);
+            const alunoSnap = await getDoc(alunoRef);
+            
+            // Só adicionar se o documento do aluno existir e tiver dados
+            if (!alunoSnap.exists()) {
+              continue; // Aluno foi excluído, pular
+            }
+            
+            const alunoData = alunoSnap.data();
+            // Verificar se o documento não está vazio e o aluno está ativo
+            if (!alunoData || Object.keys(alunoData).length === 0 || alunoData.ativo === false) {
+              continue; // Documento vazio ou aluno inativo, pular
+            }
+            
+            todosAlunos.push({
+              id: docSnap.id,
+              nome: alunoData?.nome || userData?.name || "Aluno",
+              photoURL: alunoData?.photoURL || userData?.photoURL,
+              nivel: data.nivel,
+              pontosSemanais: data.pontosSemanais || 0,
+            });
           }
         }
         

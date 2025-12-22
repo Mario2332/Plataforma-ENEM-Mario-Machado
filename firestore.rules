@@ -77,8 +77,8 @@ service cloud.firestore {
       allow read: if hasRole('mentor') && 
                      get(/databases/$(database)/documents/alunos/$(alunoId)).data.mentorId == request.auth.uid;
       
-      // Aluno pode ler seus próprios dados
-      allow read: if hasRole('aluno') && isOwner(alunoId);
+      // Aluno pode ler dados de outros alunos (necessário para o ranking)
+      allow read: if hasRole('aluno');
       
       // Aluno pode atualizar seu perfil (exceto campos críticos)
       allow update: if hasRole('aluno') && 

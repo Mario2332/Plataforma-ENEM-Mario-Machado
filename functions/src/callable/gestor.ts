@@ -265,7 +265,21 @@ const updateAluno = functions
   });
 
 /**
- * Deletar aluno
+ * Função auxiliar para deletar todas as subcoleções de um documento
+ */
+async function deleteSubcollections(docRef: admin.firestore.DocumentReference) {
+  const subcollections = await docRef.listCollections();
+  for (const subcollection of subcollections) {
+    const docs = await subcollection.listDocuments();
+    for (const doc of docs) {
+      await deleteSubcollections(doc); // Recursivo para subcoleções aninhadas
+      await doc.delete();
+    }
+  }
+}
+
+/**
+ * Deletar aluno - Remove TODOS os dados do aluno da plataforma
  */
 const deleteAluno = functions
   .region("southamerica-east1")
@@ -280,15 +294,34 @@ const deleteAluno = functions
     }
 
     try {
+      // Verificar se o aluno existe (pode já ter sido parcialmente excluído)
+      const alunoDoc = await db.collection("alunos").doc(alunoId).get();
+      
+      // Deletar todas as subcoleções do aluno (estudos, simulados, metas, etc.)
+      if (alunoDoc.exists) {
+        await deleteSubcollections(db.collection("alunos").doc(alunoId));
+      }
+
       // Deletar documento do aluno
       await db.collection("alunos").doc(alunoId).delete();
 
       // Deletar documento do usuário
       await db.collection("users").doc(alunoId).delete();
 
-      // Deletar usuário do Firebase Auth
-      await admin.auth().deleteUser(alunoId);
+      // Deletar registro do ranking
+      await db.collection("ranking").doc(alunoId).delete();
 
+      // Deletar usuário do Firebase Auth
+      try {
+        await admin.auth().deleteUser(alunoId);
+      } catch (authError: any) {
+        // Ignorar erro se usuário já não existe no Auth
+        if (authError.code !== "auth/user-not-found") {
+          throw authError;
+        }
+      }
+
+      functions.logger.info(`Aluno ${alunoId} excluído completamente pelo gestor`);
       return { success: true };
     } catch (error: any) {
       functions.logger.error("Erro ao deletar aluno:", error);

@@ -289,7 +289,7 @@ export function RankingModal({ open, onOpenChange, alunoAtual }: RankingModalPro
               </div>
 
               {/* Lista do Ranking */}
-              <ScrollArea className="h-[300px] sm:h-[350px] pr-2">
+              <ScrollArea className="h-[300px] sm:h-[350px]">
                 {isLoading ? (
                   <div className="flex items-center justify-center h-40">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -300,7 +300,7 @@ export function RankingModal({ open, onOpenChange, alunoAtual }: RankingModalPro
                     <p>Nenhum aluno neste nível ainda</p>
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-2 pr-4">
                     {ranking.map((aluno) => {
                       const isCurrentUser = aluno.id === userId;
                       const zona = getZona(aluno.posicao!);

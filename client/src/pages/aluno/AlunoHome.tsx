@@ -29,6 +29,7 @@ import { useLocation } from "wouter";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
+import { RankingModal, RankingResumo } from "@/components/RankingModal";
 
 // Função auxiliar para formatar data no fuso horário brasileiro (GMT-3)
 const formatarDataBrasil = (date: Date): string => {
@@ -60,6 +61,7 @@ export default function AlunoHome() {
   const [simulados, setSimulados] = useState<any[]>([]);
   const [metas, setMetas] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [rankingModalOpen, setRankingModalOpen] = useState(false);
 
   const loadData = async () => {
     try {
@@ -442,34 +444,47 @@ export default function AlunoHome() {
         </div>
         
         <div className="relative space-y-4 pt-8 z-10">
-          <div className="flex items-center gap-4">
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-red-500 to-green-500 rounded-2xl blur-xl opacity-50 animate-pulse-slow" />
-              <div className="relative bg-gradient-to-br from-red-600 via-red-500 to-green-600 p-4 rounded-2xl shadow-2xl">
-                <Gift className="h-10 w-10 text-white" />
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-red-500 to-green-500 rounded-2xl blur-xl opacity-50 animate-pulse-slow" />
+                <div className="relative bg-gradient-to-br from-red-600 via-red-500 to-green-600 p-4 rounded-2xl shadow-2xl">
+                  <Gift className="h-10 w-10 text-white" />
+                </div>
+              </div>
+              <div>
+                <h1 className="text-5xl font-black tracking-tight bg-gradient-to-r from-red-600 via-green-600 to-red-500 bg-clip-text text-transparent animate-gradient">
+                  Feliz Natal, {userData?.name?.split(' ')[0] || "Aluno"}! 🎄
+                </h1>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-5xl animate-bounce-subtle inline-block">🎅</span>
+                  {streak > 0 && (
+                    <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-500/20 to-green-500/20 rounded-full border border-red-500/30 backdrop-blur-sm animate-bounce-subtle">
+                      <Flame className="h-5 w-5 text-orange-500" />
+                      <span className="text-sm font-bold text-red-600 dark:text-red-400">{streak} dias de foco!</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-            <div>
-              <h1 className="text-5xl font-black tracking-tight bg-gradient-to-r from-red-600 via-green-600 to-red-500 bg-clip-text text-transparent animate-gradient">
-                Feliz Natal, {userData?.name?.split(' ')[0] || "Aluno"}! 🎄
-              </h1>
-              <div className="flex items-center gap-2 mt-2">
-                <span className="text-5xl animate-bounce-subtle inline-block">🎅</span>
-                {streak > 0 && (
-                  <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-500/20 to-green-500/20 rounded-full border border-red-500/30 backdrop-blur-sm animate-bounce-subtle">
-                    <Flame className="h-5 w-5 text-orange-500" />
-                    <span className="text-sm font-bold text-red-600 dark:text-red-400">{streak} dias de foco!</span>
-                  </div>
-                )}
-              </div>
+            
+            {/* 🏆 Botão de Ranking - lado direito */}
+            <div className="hidden md:block">
+              <RankingResumo onClick={() => setRankingModalOpen(true)} />
             </div>
           </div>
           <p className="text-xl text-gray-700 dark:text-gray-300 font-medium flex items-center gap-2">
             <span>🎁</span> Continue sua jornada rumo à aprovação no ENEM! <span>🌟</span>
           </p>
-          <p className="text-sm text-green-600 dark:text-green-400 font-semibold flex items-center gap-2">
-            <Snowflake className="h-4 w-4" /> Boas festas e bons estudos!
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-green-600 dark:text-green-400 font-semibold flex items-center gap-2">
+              <Snowflake className="h-4 w-4" /> Boas festas e bons estudos!
+            </p>
+            {/* Botão de ranking para mobile */}
+            <div className="md:hidden">
+              <RankingResumo onClick={() => setRankingModalOpen(true)} />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1035,6 +1050,12 @@ export default function AlunoHome() {
           animation: slide-up 0.6s ease-out;
         }
       `}</style>
+      
+      {/* Modal de Ranking */}
+      <RankingModal 
+        open={rankingModalOpen} 
+        onOpenChange={setRankingModalOpen} 
+      />
     </div>
   );
 }

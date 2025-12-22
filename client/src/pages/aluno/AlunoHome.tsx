@@ -478,19 +478,24 @@ export default function AlunoHome() {
             <span>🎁</span> Continue sua jornada rumo à aprovação no ENEM! <span>🌟</span>
           </p>
           <div className="flex items-center justify-between flex-wrap gap-3">
-            <p className="text-sm text-green-600 dark:text-green-400 font-semibold flex items-center gap-2">
-              <Snowflake className="h-4 w-4" /> Boas festas e bons estudos!
-            </p>
-            
-            {/* 📓 Lembrete do Diário de Bordo */}
-            <button 
-              onClick={() => setLocation('/aluno/diario')}
-              className="group flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-pink-500/10 to-purple-500/10 hover:from-pink-500/20 hover:to-purple-500/20 border border-pink-500/30 hover:border-pink-500/50 rounded-full transition-all duration-300 hover:shadow-lg hover:shadow-pink-500/20"
-            >
-              <Heart className="h-4 w-4 text-pink-500 group-hover:scale-110 transition-transform" />
-              <span className="text-sm font-semibold text-pink-600 dark:text-pink-400">Preencher Diário de Bordo</span>
-              <ArrowRight className="h-4 w-4 text-pink-500 group-hover:translate-x-1 transition-transform" />
-            </button>
+            <div className="flex items-center gap-4 flex-wrap">
+              <p className="text-sm text-green-600 dark:text-green-400 font-semibold flex items-center gap-2">
+                <Snowflake className="h-4 w-4" /> Boas festas e bons estudos!
+              </p>
+              
+              {/* 📓 Lembrete do Diário de Bordo */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-pink-600 dark:text-pink-400 font-medium">Lembre de preencher o diário de bordo!</span>
+                <button 
+                  onClick={() => setLocation('/aluno/diario')}
+                  className="group flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-pink-500/10 to-purple-500/10 hover:from-pink-500/20 hover:to-purple-500/20 border border-pink-500/30 hover:border-pink-500/50 rounded-full transition-all duration-300 hover:shadow-lg hover:shadow-pink-500/20"
+                >
+                  <Heart className="h-4 w-4 text-pink-500 group-hover:scale-110 transition-transform" />
+                  <span className="text-sm font-semibold text-pink-600 dark:text-pink-400">Preencher</span>
+                  <ArrowRight className="h-4 w-4 text-pink-500 group-hover:translate-x-1 transition-transform" />
+                </button>
+              </div>
+            </div>
             
             {/* Botão de ranking para mobile */}
             <div className="md:hidden">

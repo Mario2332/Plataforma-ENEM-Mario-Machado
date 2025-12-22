@@ -1429,6 +1429,7 @@ const SimulationConfigSection = ({
                                     + Adicionar Intensificação
                                 </button>
                             </div>
+                            <p className="text-xs text-gray-500 italic">Obs: Cada novo período substitui o anterior (não acumula).</p>
 
                             {state.simulations.complete.intensifications.map((intens, intensIdx) => (
                                 <div key={intensIdx} className="border border-purple-200 rounded-lg p-3 bg-white">
@@ -1526,6 +1527,7 @@ const SimulationConfigSection = ({
                                     + Adicionar Intensificação
                                 </button>
                             </div>
+                            <p className="text-xs text-gray-500 italic">Obs: Cada novo período substitui o anterior (não acumula).</p>
 
                             {state.simulations.fragmented.intensifications.map((intens, intensIdx) => (
                                 <div key={intensIdx} className="border border-purple-200 rounded-lg p-3 bg-white">
@@ -1792,6 +1794,7 @@ const SettingsStep = ({
                                     + Adicionar Período
                                 </button>
                             </div>
+                            <p className="text-xs text-gray-500 italic">Obs: Cada novo período substitui o anterior (não acumula).</p>
 
                             {config.intensifications.map((intens, intensIdx) => (
                                 <div key={intensIdx} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
@@ -2520,19 +2523,25 @@ const generateSchedule = (state: AppState): ScheduleResult => {
         }
 
         // Função auxiliar para obter duração de atividades com intensificação
+        // A intensificação SUBSTITUI a frequência anterior (não adiciona)
         const getActivityDuration = (config: FixedActivityConfig, dayOfWeek: number): number => {
             // Verificar data de início e término
             if (config.startDate && studyDate < new Date(config.startDate + 'T00:00:00')) return 0;
             if (config.endDate && studyDate > new Date(config.endDate + 'T23:59:59')) return 0;
             
-            // Encontrar o período de intensificação ativo
+            // Encontrar o período de intensificação mais recente que está ativo
+            // A intensificação substitui completamente a frequência anterior
             for (let i = config.intensifications.length - 1; i >= 0; i--) {
                 const intens = config.intensifications[i];
-                if (i === 0 || (intens.startDate && studyDate >= new Date(intens.startDate + 'T00:00:00'))) {
+                // Verificar se este período está ativo (startDate passou ou é o período inicial)
+                const isPeriodActive = i === 0 || (intens.startDate && studyDate >= new Date(intens.startDate + 'T00:00:00'));
+                
+                if (isPeriodActive) {
+                    // Este é o período ativo mais recente - usar apenas ele
                     if (intens.days.includes(dayOfWeek)) {
                         return intens.durations?.[dayOfWeek] || 60;
                     }
-                    return 0;
+                    return 0; // Dia não está no período ativo
                 }
             }
             return 0;

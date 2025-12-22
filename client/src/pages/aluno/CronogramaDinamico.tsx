@@ -1167,58 +1167,130 @@ const TopicsStep = ({
         onBulkDifficultyChange(subject, val);
     };
 
+    // Calcular estatísticas por área
+    const statsPerArea = useMemo(() => {
+        const areas = {
+            'Ciências da Natureza': ['Biologia', 'Física', 'Química'],
+            'Ciências Humanas': ['História', 'Geografia', 'Filosofia', 'Sociologia'],
+            'Linguagens': ['Linguagens'],
+            'Matemática': ['Matemática']
+        };
+        
+        const stats: {[key: string]: {total: number, selected: number, color: string, icon: string}} = {};
+        const colors: {[key: string]: string} = {
+            'Ciências da Natureza': 'green',
+            'Ciências Humanas': 'amber',
+            'Linguagens': 'purple',
+            'Matemática': 'blue'
+        };
+        
+        Object.entries(areas).forEach(([area, subjects]) => {
+            let total = 0;
+            let selected = 0;
+            topics.forEach((t, idx) => {
+                if (subjects.includes(t.subject)) {
+                    total++;
+                    if (topicPrefs[`topic-${idx}`]?.included) selected++;
+                }
+            });
+            stats[area] = { total, selected, color: colors[area], icon: area };
+        });
+        
+        return stats;
+    }, [topics, topicPrefs]);
+
     return (
         <div className="space-y-6">
-            {/* Header com gradiente - padrão da plataforma */}
-            <div className="bg-gradient-to-r from-blue-50 via-cyan-50 to-blue-50 rounded-2xl p-6 shadow-sm border border-blue-100/50">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200">
-                            <BookOpen className="w-6 h-6 text-white" />
+            {/* Header Principal - Estilo Estudos/Metas */}
+            <div className="bg-gradient-to-br from-blue-500 via-blue-600 to-cyan-600 rounded-2xl p-8 shadow-xl">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                    <div className="flex items-center gap-5">
+                        <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center shadow-lg">
+                            <BookOpen className="w-8 h-8 text-white" />
                         </div>
                         <div>
-                            <h1 className="text-2xl font-bold text-gray-800">Seleção de Matérias</h1>
-                            <p className="text-gray-600 text-sm">Escolha os conteúdos e defina as dificuldades do seu cronograma</p>
+                            <h1 className="text-3xl font-bold text-white">Seleção de Matérias</h1>
+                            <p className="text-blue-100 text-sm mt-1">Personalize seu cronograma escolhendo os conteúdos e dificuldades 📚</p>
                         </div>
                     </div>
-                    <div className="bg-white px-4 py-2 rounded-xl border border-blue-100 shadow-sm flex items-center gap-3">
-                        <div className="text-right">
-                            <span className="text-xs font-medium text-gray-500 uppercase tracking-wider block">Tópicos</span>
-                            <span className="text-xl font-bold text-blue-600">{selectedTopicsCount}<span className="text-gray-400 text-sm font-medium">/{totalTopics}</span></span>
+                    <div className="bg-white/10 backdrop-blur-sm px-6 py-4 rounded-2xl border border-white/20">
+                        <div className="text-center">
+                            <span className="text-xs font-medium text-blue-100 uppercase tracking-wider block">Tópicos Selecionados</span>
+                            <div className="flex items-baseline justify-center gap-1 mt-1">
+                                <span className="text-4xl font-bold text-white">{selectedTopicsCount}</span>
+                                <span className="text-blue-200 text-lg font-medium">/ {totalTopics}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
+            {/* Cards de Estatísticas por Área */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {Object.entries(statsPerArea).map(([area, data]) => {
+                    const percentage = data.total > 0 ? Math.round((data.selected / data.total) * 100) : 0;
+                    const colorClasses: {[key: string]: {bg: string, text: string, border: string, progress: string}} = {
+                        'green': { bg: 'bg-green-50', text: 'text-green-600', border: 'border-green-100', progress: 'bg-green-500' },
+                        'amber': { bg: 'bg-amber-50', text: 'text-amber-600', border: 'border-amber-100', progress: 'bg-amber-500' },
+                        'purple': { bg: 'bg-purple-50', text: 'text-purple-600', border: 'border-purple-100', progress: 'bg-purple-500' },
+                        'blue': { bg: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-100', progress: 'bg-blue-500' }
+                    };
+                    const colors = colorClasses[data.color];
+                    
+                    return (
+                        <div key={area} className={`${colors.bg} rounded-xl p-4 border ${colors.border} transition-all hover:shadow-md`}>
+                            <div className="flex items-center gap-2 mb-2">
+                                <span className={`text-xs font-semibold ${colors.text} uppercase tracking-wide`}>
+                                    {area === 'Ciências da Natureza' ? 'Natureza' : 
+                                     area === 'Ciências Humanas' ? 'Humanas' : area}
+                                </span>
+                            </div>
+                            <div className="flex items-baseline gap-1">
+                                <span className={`text-2xl font-bold ${colors.text}`}>{data.selected}</span>
+                                <span className="text-gray-400 text-sm">/ {data.total}</span>
+                            </div>
+                            <div className="mt-2 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                <div 
+                                    className={`h-full ${colors.progress} rounded-full transition-all duration-500`}
+                                    style={{ width: `${percentage}%` }}
+                                />
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
             {/* Modalidade do Cronograma */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-shadow">
                 <div className="flex flex-col md:flex-row gap-6 items-center justify-between">
-                    <div>
-                        <h2 className="text-lg font-bold mb-1 flex items-center gap-2 text-gray-800">
-                            <FileText className="text-blue-600 w-5 h-5" />
-                            Modalidade do Cronograma
-                        </h2>
-                        <p className="text-gray-500 text-sm">
-                            Escolha a base de conteúdos que melhor se adapta ao seu tempo.
-                        </p>
+                    <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                            <FileText className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-bold text-gray-800">Modalidade do Cronograma</h2>
+                            <p className="text-gray-500 text-sm mt-0.5">
+                                Escolha a base de conteúdos que melhor se adapta ao seu tempo.
+                            </p>
+                        </div>
                     </div>
                     <div className="flex bg-gray-100 p-1.5 rounded-xl">
                         <button
                             onClick={() => onScheduleTypeChange('extensivo')}
-                            className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${
+                            className={`px-6 py-3 rounded-lg text-sm font-bold transition-all ${
                                 scheduleType === 'extensivo' 
-                                ? 'bg-white text-blue-700 shadow-md' 
-                                : 'text-gray-500 hover:text-gray-700'
+                                ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-200' 
+                                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                             }`}
                         >
-                            Extensivo
+                            📖 Extensivo
                         </button>
                         <button
                             onClick={() => onScheduleTypeChange('intensivo')}
-                            className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${
+                            className={`px-6 py-3 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${
                                 scheduleType === 'intensivo' 
-                                ? 'bg-white text-purple-700 shadow-md' 
-                                : 'text-gray-500 hover:text-gray-700'
+                                ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg shadow-purple-200' 
+                                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                             }`}
                         >
                             <Zap className="w-4 h-4" /> Intensivo
@@ -1228,16 +1300,18 @@ const TopicsStep = ({
             </div>
 
             {/* Conteúdos e Dificuldades */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 border-b border-gray-100 pb-4">
-                    <div>
-                        <h2 className="text-lg font-bold flex items-center gap-2 text-gray-800">
-                            <Layers className="text-blue-600 w-5 h-5" />
-                            Conteúdos e Dificuldades
-                        </h2>
-                        <p className="text-gray-500 text-sm mt-1">
-                            Personalize o que vai cair no seu plano de estudos.
-                        </p>
+                    <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                            <Layers className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-bold text-gray-800">Conteúdos e Dificuldades</h2>
+                            <p className="text-gray-500 text-sm mt-0.5">
+                                Personalize o que vai cair no seu plano de estudos.
+                            </p>
+                        </div>
                     </div>
                 </div>
                 
@@ -1337,12 +1411,16 @@ const TopicsStep = ({
                     ))}
                 </div>
             </div>
+            {/* Botão Próximo */}
             <div className="flex justify-end">
                 <button 
                     onClick={onNext}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all shadow-lg shadow-blue-200 hover:shadow-xl hover:shadow-blue-300"
+                    className="group bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white px-10 py-4 rounded-2xl font-bold text-lg flex items-center gap-3 transition-all shadow-xl shadow-blue-300/50 hover:shadow-2xl hover:shadow-blue-400/50 hover:scale-[1.02] active:scale-[0.98]"
                 >
-                    Próximo: Ajustes <ChevronRight className="w-5 h-5" />
+                    Próximo: Ajustes 
+                    <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center group-hover:translate-x-1 transition-transform">
+                        <ChevronRight className="w-5 h-5" />
+                    </div>
                 </button>
             </div>
         </div>
@@ -1675,23 +1753,34 @@ const SettingsStep = ({
     const shortDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
     // Componente simples para Revisão e Redação (sem datas e intensificação)
-    const renderSimpleActivityConfig = (title: string, icon: any, colorClass: string, config: SimpleActivityConfig, updateFn: (c: SimpleActivityConfig) => void) => (
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold flex items-center gap-2 text-gray-800">
-                    {icon}
-                    {title}
-                </h2>
-                <label className="flex items-center gap-2 cursor-pointer">
-                    <input 
-                        type="checkbox" 
-                        checked={config.enabled}
-                        onChange={(e) => updateFn({...config, enabled: e.target.checked})}
-                        className={`w-4 h-4 rounded focus:ring-2 ${colorClass.replace('text-', 'text-').replace('w-5', '').replace('h-5', '')} text-${colorClass.split('-')[1]}-500`}
-                    />
-                    <span className="text-sm font-medium text-gray-600">Ativar</span>
-                </label>
-            </div>
+    const renderSimpleActivityConfig = (title: string, icon: any, colorClass: string, config: SimpleActivityConfig, updateFn: (c: SimpleActivityConfig) => void) => {
+        const colorName = colorClass.split('-')[1];
+        const gradientColors: {[key: string]: string} = {
+            'pink': 'from-pink-500 to-rose-600',
+            'blue': 'from-blue-500 to-indigo-600'
+        };
+        
+        return (
+            <div className={`bg-white p-6 rounded-2xl shadow-lg border-2 transition-all ${
+                config.enabled ? `border-${colorName}-200` : 'border-gray-100'
+            }`}>
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 bg-gradient-to-br ${gradientColors[colorName] || 'from-gray-500 to-gray-600'} rounded-xl flex items-center justify-center shadow-md`}>
+                            {React.cloneElement(icon, { className: 'w-5 h-5 text-white' })}
+                        </div>
+                        <h2 className="text-lg font-bold text-gray-800">{title}</h2>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                        <input 
+                            type="checkbox" 
+                            checked={config.enabled}
+                            onChange={(e) => updateFn({...config, enabled: e.target.checked})}
+                            className="sr-only peer"
+                        />
+                        <div className={`w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-${colorName}-100 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-${colorName}-500`}></div>
+                    </label>
+                </div>
             {config.enabled && (
                 <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
                     <div>
@@ -1740,8 +1829,9 @@ const SettingsStep = ({
                     </div>
                 </div>
             )}
-        </div>
-    );
+            </div>
+        );
+    };
 
     // Componente avançado para Correção e Lacunas (com datas e intensificação)
     // showEndDate: true para versões Fragmentado (que têm data de término)
@@ -1797,21 +1887,31 @@ const SettingsStep = ({
             updateIntensification(intensIdx, 'durations', newDurations);
         };
 
+        const colorName = colorClass.split('-')[1];
+        const gradientColors: {[key: string]: string} = {
+            'purple': 'from-purple-500 to-violet-600',
+            'yellow': 'from-yellow-500 to-amber-600'
+        };
+
         return (
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+            <div className={`bg-white p-6 rounded-2xl shadow-lg border-2 transition-all ${
+                config.enabled ? `border-${colorName}-200` : 'border-gray-100'
+            }`}>
                 <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-bold flex items-center gap-2 text-gray-800">
-                        {icon}
-                        {title}
-                    </h2>
-                    <label className="flex items-center gap-2 cursor-pointer">
+                    <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 bg-gradient-to-br ${gradientColors[colorName] || 'from-gray-500 to-gray-600'} rounded-xl flex items-center justify-center shadow-md`}>
+                            {React.cloneElement(icon, { className: 'w-5 h-5 text-white' })}
+                        </div>
+                        <h2 className="text-base font-bold text-gray-800">{title}</h2>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
                         <input 
                             type="checkbox" 
                             checked={config.enabled}
                             onChange={(e) => updateFn({...config, enabled: e.target.checked})}
-                            className="w-4 h-4 rounded focus:ring-2"
+                            className="sr-only peer"
                         />
-                        <span className="text-sm font-medium text-gray-600">Ativar</span>
+                        <div className={`w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-${colorName}-100 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-${colorName}-500`}></div>
                     </label>
                 </div>
                 {config.enabled && (
@@ -1975,44 +2075,87 @@ const SettingsStep = ({
         );
     };
 
+    // Calcular total de horas semanais (com verificação de segurança)
+    const weeklyHoursArray = Array.isArray(state.weeklyHours) ? state.weeklyHours : [0, 2, 2, 2, 2, 6, 0];
+    const totalWeeklyHours = weeklyHoursArray.reduce((acc, h) => acc + h, 0);
+    const activitiesCount = [
+        state.revision.enabled,
+        state.writing.enabled,
+        state.simulations.enabled,
+        state.correctionComplete.enabled,
+        state.correctionFragmented.enabled,
+        state.gapsComplete.enabled,
+        state.gapsFragmented.enabled
+    ].filter(Boolean).length;
+
     return (
         <div className="space-y-6">
-            {/* Header com gradiente - padrão da plataforma */}
-            <div className="bg-gradient-to-r from-green-50 via-emerald-50 to-green-50 rounded-2xl p-6 shadow-sm border border-green-100/50">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-green-600 rounded-xl flex items-center justify-center shadow-lg shadow-green-200">
-                            <Settings className="w-6 h-6 text-white" />
+            {/* Header Principal - Estilo Estudos/Metas */}
+            <div className="bg-gradient-to-br from-emerald-500 via-green-600 to-teal-600 rounded-2xl p-8 shadow-xl">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                    <div className="flex items-center gap-5">
+                        <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center shadow-lg">
+                            <Settings className="w-8 h-8 text-white" />
                         </div>
                         <div>
-                            <h1 className="text-2xl font-bold text-gray-800">Configurações do Cronograma</h1>
-                            <p className="text-gray-600 text-sm">Defina sua disponibilidade e atividades extras</p>
+                            <h1 className="text-3xl font-bold text-white">Configurações</h1>
+                            <p className="text-green-100 text-sm mt-1">Defina sua disponibilidade e atividades extras ⚙️</p>
+                        </div>
+                    </div>
+                    <div className="flex gap-4">
+                        <div className="bg-white/10 backdrop-blur-sm px-5 py-3 rounded-xl border border-white/20">
+                            <span className="text-xs font-medium text-green-100 uppercase tracking-wider block">Horas/Semana</span>
+                            <span className="text-2xl font-bold text-white">{totalWeeklyHours}h</span>
+                        </div>
+                        <div className="bg-white/10 backdrop-blur-sm px-5 py-3 rounded-xl border border-white/20">
+                            <span className="text-xs font-medium text-green-100 uppercase tracking-wider block">Atividades</span>
+                            <span className="text-2xl font-bold text-white">{activitiesCount}</span>
                         </div>
                     </div>
                 </div>
             </div>
 
             {/* Disponibilidade Semanal */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                <h2 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-800">
-                    <Clock className="text-blue-600 w-5 h-5" />
-                    Disponibilidade Semanal
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {dayNames.map((day, idx) => (
-                        <div key={day} className="bg-gray-50 p-4 rounded-lg">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">{day}</label>
-                            <div className="flex items-center gap-3">
+            <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
+                <div className="flex items-start gap-4 mb-6">
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl flex items-center justify-center shadow-lg">
+                        <Clock className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                        <h2 className="text-lg font-bold text-gray-800">Disponibilidade Semanal</h2>
+                        <p className="text-gray-500 text-sm">Quantas horas você pode estudar em cada dia da semana?</p>
+                    </div>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+                    {dayNames.map((day, idx) => {
+                        const hours = state.weeklyHours[idx];
+                        const isActive = hours > 0;
+                        return (
+                            <div key={day} className={`p-4 rounded-xl border-2 transition-all ${
+                                isActive 
+                                    ? 'bg-blue-50 border-blue-200' 
+                                    : 'bg-gray-50 border-gray-100'
+                            }`}>
+                                <label className={`block text-xs font-bold uppercase tracking-wide mb-2 ${
+                                    isActive ? 'text-blue-600' : 'text-gray-400'
+                                }`}>{day.slice(0, 3)}</label>
+                                <div className="text-center mb-2">
+                                    <span className={`text-2xl font-bold ${
+                                        isActive ? 'text-blue-600' : 'text-gray-300'
+                                    }`}>{hours}</span>
+                                    <span className={`text-sm ${
+                                        isActive ? 'text-blue-400' : 'text-gray-300'
+                                    }`}>h</span>
+                                </div>
                                 <input 
                                     type="range" min="0" max="15" step="0.5"
-                                    value={state.weeklyHours[idx]}
+                                    value={hours}
                                     onChange={(e) => onUpdateHours(idx, parseFloat(e.target.value))}
-                                    className="w-full accent-blue-600"
+                                    className="w-full h-2 accent-blue-600 cursor-pointer"
                                 />
-                                <span className="text-sm font-bold text-blue-600 w-12 text-right">{state.weeklyHours[idx]}h</span>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
 
@@ -2044,30 +2187,50 @@ const SettingsStep = ({
                 {renderAdvancedActivityConfig("Preenchimento de Lacunas - Fragmentado", <PenTool className="text-yellow-400 w-5 h-5" />, "text-yellow-400", state.gapsFragmented, onUpdateGapsFragmented, true)}
             </div>
 
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                <h2 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-800">
-                    <CalendarIcon className="text-gray-600 w-5 h-5" />
-                    Data Limite (Opcional)
-                </h2>
-                <div className="flex flex-col sm:flex-row gap-4 items-center">
+            {/* Data Limite */}
+            <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
+                <div className="flex items-start gap-4 mb-4">
+                    <div className="w-12 h-12 bg-gradient-to-br from-gray-500 to-gray-600 rounded-xl flex items-center justify-center shadow-lg">
+                        <CalendarIcon className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                        <h2 className="text-lg font-bold text-gray-800">Data Limite (Opcional)</h2>
+                        <p className="text-gray-500 text-sm">Defina uma data final para seu cronograma</p>
+                    </div>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-4 items-center bg-gray-50 p-4 rounded-xl">
                     <input 
                         type="date"
-                        className="border border-gray-300 rounded px-3 py-2 w-full sm:w-auto"
+                        className="border-2 border-gray-200 rounded-xl px-4 py-3 w-full sm:w-auto focus:border-blue-500 focus:outline-none transition-colors"
                         onChange={(e) => onUpdateEndDate(e.target.value)}
                         value={state.endDate || ''}
                     />
                     <span className="text-sm text-gray-500">
-                        Se deixado em branco, o sistema gerará o cronograma até concluir todos os tópicos.
+                        💡 Se deixado em branco, o sistema gerará o cronograma até concluir todos os tópicos.
                     </span>
                 </div>
             </div>
 
-            <div className="flex justify-between pt-4">
-                <button onClick={onBack} className="text-gray-600 hover:text-gray-800 px-6 py-3 font-medium flex items-center gap-2 rounded-xl hover:bg-gray-100 transition-all">
-                    <ChevronLeft className="w-5 h-5" /> Voltar
+            {/* Botões de Ação */}
+            <div className="flex justify-between pt-6">
+                <button 
+                    onClick={onBack} 
+                    className="group text-gray-600 hover:text-gray-800 px-6 py-3 font-semibold flex items-center gap-2 rounded-xl hover:bg-gray-100 transition-all border border-gray-200"
+                >
+                    <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center group-hover:-translate-x-1 transition-transform">
+                        <ChevronLeft className="w-5 h-5" />
+                    </div>
+                    Voltar
                 </button>
-                <button onClick={onGenerate} className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all shadow-lg shadow-green-200 hover:shadow-xl hover:shadow-green-300">
-                    <RefreshCw className="w-5 h-5" /> Gerar Cronograma
+                <button 
+                    onClick={onGenerate} 
+                    className="group bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white px-10 py-4 rounded-2xl font-bold text-lg flex items-center gap-3 transition-all shadow-xl shadow-green-300/50 hover:shadow-2xl hover:shadow-green-400/50 hover:scale-[1.02] active:scale-[0.98]"
+                >
+                    <RefreshCw className="w-6 h-6" /> 
+                    Gerar Cronograma
+                    <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                        ✨
+                    </div>
                 </button>
             </div>
         </div>

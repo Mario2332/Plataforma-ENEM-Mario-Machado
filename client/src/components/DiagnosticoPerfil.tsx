@@ -287,7 +287,7 @@ export function DiagnosticoPerfil({ open, onOpenChange, onComplete }: Diagnostic
           <>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-3 text-2xl">
-                <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl">
+                <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl">
                   <Brain className="h-6 w-6 text-white" />
                 </div>
                 Diagnóstico de Perfil de Estudante
@@ -299,18 +299,18 @@ export function DiagnosticoPerfil({ open, onOpenChange, onComplete }: Diagnostic
 
             <div className="space-y-6 py-4">
               <div className="grid grid-cols-2 gap-4">
-                <Card className="border-2 border-purple-200 dark:border-purple-800">
+                <Card className="border-2 border-blue-200 dark:border-blue-800">
                   <CardContent className="p-4 flex items-start gap-3">
-                    <Target className="h-5 w-5 text-purple-500 mt-0.5" />
+                    <Target className="h-5 w-5 text-blue-500 mt-0.5" />
                     <div>
                       <p className="font-semibold text-sm">12 Perguntas</p>
                       <p className="text-xs text-muted-foreground">Rápido e objetivo</p>
                     </div>
                   </CardContent>
                 </Card>
-                <Card className="border-2 border-pink-200 dark:border-pink-800">
+                <Card className="border-2 border-cyan-200 dark:border-cyan-800">
                   <CardContent className="p-4 flex items-start gap-3">
-                    <Sparkles className="h-5 w-5 text-pink-500 mt-0.5" />
+                    <Sparkles className="h-5 w-5 text-cyan-500 mt-0.5" />
                     <div>
                       <p className="font-semibold text-sm">4 Perfis</p>
                       <p className="text-xs text-muted-foreground">Resultado personalizado</p>
@@ -319,9 +319,9 @@ export function DiagnosticoPerfil({ open, onOpenChange, onComplete }: Diagnostic
                 </Card>
               </div>
 
-              <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 rounded-xl p-4 border border-purple-200 dark:border-purple-800">
+              <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
                 <h4 className="font-bold text-sm mb-2 flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-purple-500" />
+                  <Shield className="h-4 w-4 text-blue-500" />
                   Como funciona?
                 </h4>
                 <ul className="text-sm text-muted-foreground space-y-1">
@@ -334,7 +334,7 @@ export function DiagnosticoPerfil({ open, onOpenChange, onComplete }: Diagnostic
 
               <Button 
                 onClick={() => setEtapa('questionario')}
-                className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold py-6"
+                className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-bold py-6"
               >
                 Começar Diagnóstico
                 <ChevronRight className="ml-2 h-5 w-5" />
@@ -371,14 +371,14 @@ export function DiagnosticoPerfil({ open, onOpenChange, onComplete }: Diagnostic
                     className={cn(
                       "w-full justify-start py-4 px-4 h-auto text-left transition-all",
                       respostas[perguntas[perguntaAtual]?.id] === opcao.valor
-                        ? "border-purple-500 bg-purple-50 dark:bg-purple-950/30"
-                        : "hover:border-purple-300 hover:bg-purple-50/50 dark:hover:bg-purple-950/20"
+                        ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30"
+                        : "hover:border-blue-300 hover:bg-blue-50/50 dark:hover:bg-blue-950/20"
                     )}
                   >
                     <div className={cn(
                       "w-8 h-8 rounded-full flex items-center justify-center mr-3 font-bold text-sm",
                       respostas[perguntas[perguntaAtual]?.id] === opcao.valor
-                        ? "bg-purple-500 text-white"
+                        ? "bg-blue-500 text-white"
                         : "bg-gray-100 dark:bg-gray-800"
                     )}>
                       {opcao.valor}
@@ -402,7 +402,7 @@ export function DiagnosticoPerfil({ open, onOpenChange, onComplete }: Diagnostic
                   <Button
                     onClick={finalizarQuestionario}
                     disabled={isLoading}
-                    className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                    className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600"
                   >
                     {isLoading ? (
                       <>
@@ -487,7 +487,7 @@ export function DiagnosticoPerfil({ open, onOpenChange, onComplete }: Diagnostic
                 </Button>
                 <Button
                   onClick={() => onOpenChange(false)}
-                  className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                  className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600"
                 >
                   <CheckCircle2 className="mr-2 h-4 w-4" />
                   Entendi!
@@ -563,7 +563,7 @@ export function PerfilResumo({ onClick }: PerfilResumoProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-4">
-        <Loader2 className="h-5 w-5 animate-spin text-purple-500" />
+        <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
       </div>
     );
   }

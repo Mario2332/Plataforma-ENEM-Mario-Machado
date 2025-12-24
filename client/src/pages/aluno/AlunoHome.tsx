@@ -32,6 +32,8 @@ import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { RankingModal, RankingResumo } from "@/components/RankingModal";
 import { DiagnosticoPerfil, PerfilResumo, PERFIS_PADRAO } from "@/components/DiagnosticoPerfil";
+import { db, auth } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
 
 // Função auxiliar para formatar data no fuso horário brasileiro (GMT-3)
 const formatarDataBrasil = (date: Date): string => {
@@ -65,6 +67,7 @@ export default function AlunoHome() {
   const [isLoading, setIsLoading] = useState(true);
   const [rankingModalOpen, setRankingModalOpen] = useState(false);
   const [diagnosticoModalOpen, setDiagnosticoModalOpen] = useState(false);
+  const [perfilEstudante, setPerfilEstudante] = useState<string | null>(null);
 
   const loadData = async () => {
     try {
@@ -87,6 +90,27 @@ export default function AlunoHome() {
 
   useEffect(() => {
     loadData();
+  }, []);
+
+  // Carregar perfil do aluno
+  useEffect(() => {
+    const loadPerfil = async () => {
+      const userId = auth.currentUser?.uid;
+      if (!userId) return;
+      
+      try {
+        const perfilRef = doc(db, "alunos", userId, "diagnostico", "perfil");
+        const perfilSnap = await getDoc(perfilRef);
+        
+        if (perfilSnap.exists()) {
+          setPerfilEstudante(perfilSnap.data().perfilId || null);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar perfil:", error);
+      }
+    };
+
+    loadPerfil();
   }, []);
 
   if (isLoading) {
@@ -1082,6 +1106,8 @@ export default function AlunoHome() {
       <DiagnosticoPerfil
         open={diagnosticoModalOpen}
         onOpenChange={setDiagnosticoModalOpen}
+        perfilExistente={perfilEstudante}
+        onComplete={(novoPerfilId) => setPerfilEstudante(novoPerfilId)}
       />
     </div>
   );

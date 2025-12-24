@@ -165,9 +165,10 @@ interface DiagnosticoPerfilProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onComplete?: (perfilId: string) => void;
+  perfilExistente?: string | null;
 }
 
-export function DiagnosticoPerfil({ open, onOpenChange, onComplete }: DiagnosticoPerfilProps) {
+export function DiagnosticoPerfil({ open, onOpenChange, onComplete, perfilExistente }: DiagnosticoPerfilProps) {
   const [etapa, setEtapa] = useState<'intro' | 'questionario' | 'resultado'>('intro');
   const [perguntaAtual, setPerguntaAtual] = useState(0);
   const [respostas, setRespostas] = useState<Record<number, number>>({});
@@ -203,15 +204,22 @@ export function DiagnosticoPerfil({ open, onOpenChange, onComplete }: Diagnostic
     }
   }, [open]);
 
-  // Reset ao abrir
+  // Ao abrir: mostrar resultado se já tiver perfil, senão mostrar intro
   useEffect(() => {
     if (open) {
-      setEtapa('intro');
-      setPerguntaAtual(0);
-      setRespostas({});
-      setPerfilResultado(null);
+      if (perfilExistente && perfis[perfilExistente]) {
+        // Se já tem perfil, mostrar diretamente o resultado
+        setEtapa('resultado');
+        setPerfilResultado(perfilExistente);
+      } else {
+        // Se não tem perfil, mostrar intro
+        setEtapa('intro');
+        setPerguntaAtual(0);
+        setRespostas({});
+        setPerfilResultado(null);
+      }
     }
-  }, [open]);
+  }, [open, perfilExistente, perfis]);
 
   const handleResponder = (valor: number) => {
     const pergunta = perguntas[perguntaAtual];

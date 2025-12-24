@@ -322,10 +322,19 @@ export const updateTopico = functions
     timeoutSeconds: 60,
   })
   .https.onCall(async (data, context) => {
-    const auth = await getAuthContext(context);
-    requireRole(auth, "mentor");
+    functions.logger.info("updateTopico chamado", { data, hasAuth: !!context.auth });
+    
+    try {
+      const auth = await getAuthContext(context);
+      functions.logger.info("Auth context obtido", { uid: auth.uid, role: auth.role });
+      requireRole(auth, "mentor");
+    } catch (authError: any) {
+      functions.logger.error("Erro de autenticação", { error: authError.message });
+      throw authError;
+    }
 
     const { materiaKey, topicoId, name, incidenceLevel } = data;
+    functions.logger.info("Dados recebidos", { materiaKey, topicoId, name, incidenceLevel });
 
     if (!materiaKey || !topicoId) {
       throw new functions.https.HttpsError(
@@ -342,6 +351,8 @@ export const updateTopico = functions
     }
 
     try {
+      functions.logger.info("Iniciando atualização do tópico");
+      
       const topicoRef = db
         .collection("conteudos_customizados")
         .doc(materiaKey)
@@ -349,6 +360,7 @@ export const updateTopico = functions
         .doc(topicoId);
 
       const topicoDoc = await topicoRef.get();
+      functions.logger.info("Documento obtido", { exists: topicoDoc.exists });
 
       const updates: any = {
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -359,9 +371,12 @@ export const updateTopico = functions
         updates.incidenceLevel = incidenceLevel;
         updates.incidenceValue = INCIDENCE_MAP[incidenceLevel];
       }
+      
+      functions.logger.info("Updates preparados", { updates });
 
       if (topicoDoc.exists) {
         await topicoRef.update(updates);
+        functions.logger.info("Documento atualizado com sucesso");
       } else {
         await topicoRef.set({
           id: topicoId,
@@ -370,12 +385,17 @@ export const updateTopico = functions
           isDeleted: false,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
+        functions.logger.info("Documento criado com sucesso");
       }
 
       return { success: true };
     } catch (error: any) {
-      functions.logger.error("Erro ao atualizar tópico:", error);
-      throw new functions.https.HttpsError("internal", error.message);
+      functions.logger.error("Erro ao atualizar tópico:", {
+        message: error.message,
+        code: error.code,
+        stack: error.stack,
+      });
+      throw new functions.https.HttpsError("internal", error.message || "Erro desconhecido");
     }
   });
 

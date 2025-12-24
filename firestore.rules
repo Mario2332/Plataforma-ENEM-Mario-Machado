@@ -343,5 +343,36 @@ service cloud.firestore {
       // Mentores e Gestores podem escrever
       allow write: if isMentorOrGestor();
     }
+    
+    // ============================================
+    // CONTEÚDOS BASE (dados padrão das matérias)
+    // ============================================
+    match /conteudos_base/{materiaKey} {
+      // Qualquer usuário autenticado pode ler
+      allow read: if isAuthenticated();
+      
+      // Apenas mentores e gestores podem escrever
+      allow write: if isMentorOrGestor();
+    }
+    
+    // ============================================
+    // CONTEÚDOS CUSTOMIZADOS (tópicos personalizados)
+    // ============================================
+    match /conteudos_customizados/{materiaKey} {
+      // Qualquer usuário autenticado pode ler
+      allow read: if isAuthenticated();
+      
+      // Apenas mentores e gestores podem escrever
+      allow write: if isMentorOrGestor();
+      
+      // Subcoleção de tópicos
+      match /topicos/{topicoId} {
+        // Qualquer usuário autenticado pode ler
+        allow read: if isAuthenticated();
+        
+        // Apenas mentores e gestores podem escrever
+        allow write: if isMentorOrGestor();
+      }
+    }
   }
 }

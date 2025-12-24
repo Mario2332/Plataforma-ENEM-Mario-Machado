@@ -26,7 +26,8 @@ import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
-import Notificacoes from './Notificacoes';
+// BACKUP: Sistema de notificações removido temporariamente - ver pasta backup_notificacoes
+// import Notificacoes from './Notificacoes';
 
 const getMenuItems = (role?: string) => {
   if (!role) return [];
@@ -388,11 +389,13 @@ function DashboardLayoutContent({
           </SidebarContent>
 
           <SidebarFooter className="p-3 space-y-2 border-t-2 border-blue-100 dark:border-blue-900/30 bg-gradient-to-r from-blue-500/5 to-cyan-500/5">
+            {/* BACKUP: Sistema de notificações removido temporariamente - ver pasta backup_notificacoes
             {userData?.role === 'aluno' && !isMobile && (
               <div className="flex justify-center group-data-[collapsible=icon]:justify-center">
                 <Notificacoes />
               </div>
             )}
+            */}
             <Button
               variant="ghost"
               size="sm"
@@ -486,11 +489,13 @@ function DashboardLayoutContent({
                 </div>
               </div>
             </div>
+            {/* BACKUP: Sistema de notificações removido temporariamente - ver pasta backup_notificacoes
             {userData?.role === 'aluno' && (
               <div className="flex items-center gap-2">
                 <Notificacoes />
               </div>
             )}
+            */}
           </div>
         )}
         <main className="flex-1 p-4">{children}</main>

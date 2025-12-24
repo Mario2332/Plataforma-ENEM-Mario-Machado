@@ -22,6 +22,11 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
     
+    // Função auxiliar para verificar se é mentor ou gestor
+    function isMentorOrGestor() {
+      return hasRole('mentor') || hasRole('gestor');
+    }
+    
     // ============================================
     // USERS
     // ============================================
@@ -31,8 +36,10 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       
       // Apenas o próprio usuário pode atualizar seus dados básicos
+      // Mentor e Gestor também podem atualizar dados de usuários
       allow update: if isOwner(userId) && 
                        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'uid']);
+      allow update: if isMentorOrGestor();
       
       // Permitir criação durante cadastro de aluno
       allow create: if isAuthenticated() && request.auth.uid == userId;
@@ -70,11 +77,11 @@ service cloud.firestore {
     // ALUNOS
     // ============================================
     match /alunos/{alunoId} {
-      // Gestor pode ler todos os alunos
-      allow read: if hasRole('gestor');
+      // Gestor pode ler e escrever todos os alunos
+      allow read, write: if hasRole('gestor');
       
-      // Mentor pode ler todos os alunos (para visualizar perfis de diagnóstico)
-      allow read: if hasRole('mentor');
+      // Mentor pode ler e escrever todos os alunos
+      allow read, write: if hasRole('mentor');
       
       // Aluno pode ler dados de outros alunos (necessário para o ranking)
       allow read: if hasRole('aluno');
@@ -87,8 +94,8 @@ service cloud.firestore {
       // Permitir criação durante cadastro (usuário autenticado criando seu próprio documento)
       allow create: if isAuthenticated() && request.auth.uid == alunoId;
       
-      // Deleção apenas via Cloud Functions
-      allow delete: if false;
+      // Deleção apenas via Cloud Functions ou por mentor/gestor
+      allow delete: if isMentorOrGestor();
       
       // ============================================
       // ESTUDOS (subcoleção)
@@ -97,12 +104,11 @@ service cloud.firestore {
         // Aluno pode ler, criar, atualizar e deletar seus próprios estudos
         allow read, create, update, delete: if hasRole('aluno') && isOwner(alunoId);
         
-        // Mentor pode ler estudos dos seus alunos
-        allow read: if hasRole('mentor') && 
-                       get(/databases/$(database)/documents/alunos/$(alunoId)).data.mentorId == request.auth.uid;
+        // Mentor pode ler e escrever estudos de qualquer aluno
+        allow read, create, update, delete: if hasRole('mentor');
         
-        // Gestor pode ler todos os estudos
-        allow read: if hasRole('gestor');
+        // Gestor pode ler e escrever todos os estudos
+        allow read, create, update, delete: if hasRole('gestor');
       }
       
       // ============================================
@@ -112,12 +118,11 @@ service cloud.firestore {
         // Aluno pode ler, criar, atualizar e deletar seus próprios simulados
         allow read, create, update, delete: if hasRole('aluno') && isOwner(alunoId);
         
-        // Mentor pode ler simulados dos seus alunos
-        allow read: if hasRole('mentor') && 
-                       get(/databases/$(database)/documents/alunos/$(alunoId)).data.mentorId == request.auth.uid;
+        // Mentor pode ler e escrever simulados de qualquer aluno
+        allow read, create, update, delete: if hasRole('mentor');
         
-        // Gestor pode ler todos os simulados
-        allow read: if hasRole('gestor');
+        // Gestor pode ler e escrever todos os simulados
+        allow read, create, update, delete: if hasRole('gestor');
       }
       
       // ============================================
@@ -127,9 +132,11 @@ service cloud.firestore {
         // Aluno pode gerenciar seu cronograma
         allow read, create, update, delete: if hasRole('aluno') && isOwner(alunoId);
         
-        // Mentor pode visualizar cronograma dos seus alunos
-        allow read: if hasRole('mentor') && 
-                       get(/databases/$(database)/documents/alunos/$(alunoId)).data.mentorId == request.auth.uid;
+        // Mentor pode ler e escrever horários de qualquer aluno
+        allow read, create, update, delete: if hasRole('mentor');
+        
+        // Gestor pode ler e escrever todos os horários
+        allow read, create, update, delete: if hasRole('gestor');
       }
       
       // ============================================
@@ -137,11 +144,13 @@ service cloud.firestore {
       // ============================================
       match /conteudos/{conteudoId} {
         // Aluno pode gerenciar seu progresso de conteúdos
-        allow read, create, update: if hasRole('aluno') && isOwner(alunoId);
+        allow read, create, update, delete: if hasRole('aluno') && isOwner(alunoId);
         
-        // Mentor pode visualizar progresso dos seus alunos
-        allow read: if hasRole('mentor') && 
-                       get(/databases/$(database)/documents/alunos/$(alunoId)).data.mentorId == request.auth.uid;
+        // Mentor pode ler e escrever conteúdos de qualquer aluno
+        allow read, create, update, delete: if hasRole('mentor');
+        
+        // Gestor pode ler e escrever todos os conteúdos
+        allow read, create, update, delete: if hasRole('gestor');
       }
       
       // ============================================
@@ -150,6 +159,12 @@ service cloud.firestore {
       match /templates/{templateId} {
         // Aluno pode gerenciar seus templates de cronograma
         allow read, create, update, delete: if hasRole('aluno') && isOwner(alunoId);
+        
+        // Mentor pode ler e escrever templates de qualquer aluno
+        allow read, create, update, delete: if hasRole('mentor');
+        
+        // Gestor pode ler e escrever todos os templates
+        allow read, create, update, delete: if hasRole('gestor');
       }
       
       // ============================================
@@ -159,8 +174,11 @@ service cloud.firestore {
         // Aluno pode ler, atualizar e deletar suas próprias notificações
         allow read, update, delete: if hasRole('aluno') && isOwner(alunoId);
         
-        // Criação apenas via Cloud Functions
-        allow create: if false;
+        // Mentor pode ler e escrever notificações de qualquer aluno
+        allow read, create, update, delete: if hasRole('mentor');
+        
+        // Gestor pode ler e escrever todas as notificações
+        allow read, create, update, delete: if hasRole('gestor');
       }
       
       // ============================================
@@ -170,9 +188,11 @@ service cloud.firestore {
         // Aluno pode gerenciar suas próprias metas
         allow read, create, update, delete: if hasRole('aluno') && isOwner(alunoId);
         
-        // Mentor pode visualizar metas dos seus alunos
-        allow read: if hasRole('mentor') && 
-                       get(/databases/$(database)/documents/alunos/$(alunoId)).data.mentorId == request.auth.uid;
+        // Mentor pode ler e escrever metas de qualquer aluno
+        allow read, create, update, delete: if hasRole('mentor');
+        
+        // Gestor pode ler e escrever todas as metas
+        allow read, create, update, delete: if hasRole('gestor');
       }
       
       // ============================================
@@ -182,9 +202,11 @@ service cloud.firestore {
         // Aluno pode gerenciar seu progresso de conteúdos
         allow read, create, update, delete: if hasRole('aluno') && isOwner(alunoId);
         
-        // Mentor pode visualizar progresso dos seus alunos
-        allow read: if hasRole('mentor') && 
-                       get(/databases/$(database)/documents/alunos/$(alunoId)).data.mentorId == request.auth.uid;
+        // Mentor pode ler e escrever progresso de qualquer aluno
+        allow read, create, update, delete: if hasRole('mentor');
+        
+        // Gestor pode ler e escrever todo o progresso
+        allow read, create, update, delete: if hasRole('gestor');
       }
       
       // ============================================
@@ -194,9 +216,11 @@ service cloud.firestore {
         // Aluno pode gerenciar seus próprios planos de ação
         allow read, create, update, delete: if hasRole('aluno') && isOwner(alunoId);
         
-        // Mentor pode visualizar planos de ação dos seus alunos
-        allow read: if hasRole('mentor') && 
-                       get(/databases/$(database)/documents/alunos/$(alunoId)).data.mentorId == request.auth.uid;
+        // Mentor pode ler e escrever planos de ação de qualquer aluno
+        allow read, create, update, delete: if hasRole('mentor');
+        
+        // Gestor pode ler e escrever todos os planos de ação
+        allow read, create, update, delete: if hasRole('gestor');
       }
       
       // ============================================
@@ -206,9 +230,11 @@ service cloud.firestore {
         // Aluno pode gerenciar seu próprio diagnóstico de perfil
         allow read, create, update, delete: if hasRole('aluno') && isOwner(alunoId);
         
-        // Mentor pode visualizar diagnóstico de perfil dos seus alunos
-        allow read: if hasRole('mentor') && 
-                       get(/databases/$(database)/documents/alunos/$(alunoId)).data.mentorId == request.auth.uid;
+        // Mentor pode ler e escrever diagnóstico de qualquer aluno
+        allow read, create, update, delete: if hasRole('mentor');
+        
+        // Gestor pode ler e escrever todos os diagnósticos
+        allow read, create, update, delete: if hasRole('gestor');
       }
       
       // ============================================
@@ -218,9 +244,11 @@ service cloud.firestore {
         // Aluno pode gerenciar seus próprios autodiagnósticos
         allow read, create, update, delete: if hasRole('aluno') && isOwner(alunoId);
         
-        // Mentor pode visualizar autodiagnósticos dos seus alunos
-        allow read: if hasRole('mentor') && 
-                       get(/databases/$(database)/documents/alunos/$(alunoId)).data.mentorId == request.auth.uid;
+        // Mentor pode ler e escrever autodiagnósticos de qualquer aluno
+        allow read, create, update, delete: if hasRole('mentor');
+        
+        // Gestor pode ler e escrever todos os autodiagnósticos
+        allow read, create, update, delete: if hasRole('gestor');
       }
       
       // ============================================
@@ -230,9 +258,11 @@ service cloud.firestore {
         // Aluno pode gerenciar suas próprias redações
         allow read, create, update, delete: if hasRole('aluno') && isOwner(alunoId);
         
-        // Mentor pode visualizar redações dos seus alunos
-        allow read: if hasRole('mentor') && 
-                       get(/databases/$(database)/documents/alunos/$(alunoId)).data.mentorId == request.auth.uid;
+        // Mentor pode ler e escrever redações de qualquer aluno
+        allow read, create, update, delete: if hasRole('mentor');
+        
+        // Gestor pode ler e escrever todas as redações
+        allow read, create, update, delete: if hasRole('gestor');
       }
       
       // ============================================
@@ -242,9 +272,11 @@ service cloud.firestore {
         // Aluno pode gerenciar suas próprias configurações
         allow read, create, update, delete: if hasRole('aluno') && isOwner(alunoId);
         
-        // Mentor pode visualizar configurações dos seus alunos
-        allow read: if hasRole('mentor') && 
-                       get(/databases/$(database)/documents/alunos/$(alunoId)).data.mentorId == request.auth.uid;
+        // Mentor pode ler e escrever configurações de qualquer aluno
+        allow read, create, update, delete: if hasRole('mentor');
+        
+        // Gestor pode ler e escrever todas as configurações
+        allow read, create, update, delete: if hasRole('gestor');
       }
       
       // ============================================
@@ -254,9 +286,11 @@ service cloud.firestore {
         // Aluno pode gerenciar seu próprio diário emocional
         allow read, create, update, delete: if hasRole('aluno') && isOwner(alunoId);
         
-        // Mentor pode visualizar diário emocional dos seus alunos
-        allow read: if hasRole('mentor') && 
-                       get(/databases/$(database)/documents/alunos/$(alunoId)).data.mentorId == request.auth.uid;
+        // Mentor pode ler e escrever diário emocional de qualquer aluno
+        allow read, create, update, delete: if hasRole('mentor');
+        
+        // Gestor pode ler e escrever todos os diários emocionais
+        allow read, create, update, delete: if hasRole('gestor');
       }
       
       // ============================================
@@ -266,9 +300,11 @@ service cloud.firestore {
         // Aluno pode gerenciar seu próprio cronograma dinâmico
         allow read, create, update, delete: if hasRole('aluno') && isOwner(alunoId);
         
-        // Mentor pode visualizar cronograma dos seus alunos
-        allow read: if hasRole('mentor') && 
-                       get(/databases/$(database)/documents/alunos/$(alunoId)).data.mentorId == request.auth.uid;
+        // Mentor pode ler e escrever cronograma de qualquer aluno
+        allow read, create, update, delete: if hasRole('mentor');
+        
+        // Gestor pode ler e escrever todos os cronogramas
+        allow read, create, update, delete: if hasRole('gestor');
       }
     }
     
@@ -282,8 +318,8 @@ service cloud.firestore {
       // Aluno pode atualizar apenas seu próprio registro de ranking
       allow update: if hasRole('aluno') && isOwner(rankingId);
       
-      // Criação e deleção apenas via Cloud Functions
-      allow create, delete: if false;
+      // Mentor e Gestor podem ler e escrever qualquer registro de ranking
+      allow read, create, update, delete: if isMentorOrGestor();
     }
     
     // ============================================
@@ -293,8 +329,8 @@ service cloud.firestore {
       // Qualquer usuário autenticado pode ler o histórico
       allow read: if isAuthenticated();
       
-      // Escrita apenas via Cloud Functions
-      allow write: if false;
+      // Mentor e Gestor podem escrever no histórico
+      allow write: if isMentorOrGestor();
     }
     
     // ============================================
@@ -304,8 +340,8 @@ service cloud.firestore {
       // Qualquer usuário autenticado pode ler a configuração
       allow read: if isAuthenticated();
       
-      // Apenas mentores podem escrever
-      allow write: if hasRole('mentor');
+      // Mentores e Gestores podem escrever
+      allow write: if isMentorOrGestor();
     }
   }
 }

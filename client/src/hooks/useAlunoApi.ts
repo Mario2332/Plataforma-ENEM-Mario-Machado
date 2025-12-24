@@ -175,6 +175,36 @@ export function useAlunoApi() {
         return result;
       },
       
+      // Metas
+      getMetas: () => cache.getOrFetch(
+        CACHE_KEYS.MENTOR_ALUNO_DATA(alunoId, "metas"),
+        () => mentorApi.getAlunoData({ alunoId, collection: "metas" }),
+        CACHE_TTL.MEDIUM
+      ),
+      createMeta: async (data: any) => {
+        const result = await mentorApi.createAlunoMeta({ ...data, alunoId });
+        cache.delete(CACHE_KEYS.MENTOR_ALUNO_DATA(alunoId, "metas"));
+        return result;
+      },
+      updateMeta: async (data: any) => {
+        const result = await mentorApi.updateAlunoMeta({ ...data, alunoId });
+        cache.delete(CACHE_KEYS.MENTOR_ALUNO_DATA(alunoId, "metas"));
+        return result;
+      },
+      deleteMeta: async (metaId: string) => {
+        const result = await mentorApi.deleteAlunoMeta({ alunoId, metaId });
+        cache.delete(CACHE_KEYS.MENTOR_ALUNO_DATA(alunoId, "metas"));
+        return result;
+      },
+      updateMetaProgress: async (data: any) => {
+        // No modo mentor, não precisa atualizar progresso automaticamente
+        return { success: true };
+      },
+      checkExpiredMetas: async () => {
+        // No modo mentor, não precisa verificar metas expiradas
+        return { success: true };
+      },
+      
       // Profile
       getMe: () => cache.getOrFetch(
         CACHE_KEYS.MENTOR_ALUNO_DATA(alunoId, "profile"),

@@ -31,6 +31,7 @@ import { useAuthContext } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { RankingModal, RankingResumo } from "@/components/RankingModal";
+import { DiagnosticoPerfil, PerfilResumo, PERFIS_PADRAO } from "@/components/DiagnosticoPerfil";
 
 // Função auxiliar para formatar data no fuso horário brasileiro (GMT-3)
 const formatarDataBrasil = (date: Date): string => {
@@ -63,6 +64,7 @@ export default function AlunoHome() {
   const [metas, setMetas] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [rankingModalOpen, setRankingModalOpen] = useState(false);
+  const [diagnosticoModalOpen, setDiagnosticoModalOpen] = useState(false);
 
   const loadData = async () => {
     try {
@@ -469,8 +471,9 @@ export default function AlunoHome() {
               </div>
             </div>
             
-            {/* 🏆 Botão de Ranking - lado direito */}
-            <div className="hidden md:block">
+            {/* 🏆 Botão de Ranking e Perfil - lado direito */}
+            <div className="hidden md:flex gap-3">
+              <PerfilResumo onClick={() => setDiagnosticoModalOpen(true)} />
               <RankingResumo onClick={() => setRankingModalOpen(true)} />
             </div>
           </div>
@@ -497,8 +500,9 @@ export default function AlunoHome() {
               </div>
             </div>
             
-            {/* Botão de ranking para mobile */}
-            <div className="md:hidden">
+            {/* Botão de ranking e perfil para mobile */}
+            <div className="md:hidden flex flex-wrap gap-2">
+              <PerfilResumo onClick={() => setDiagnosticoModalOpen(true)} />
               <RankingResumo onClick={() => setRankingModalOpen(true)} />
             </div>
           </div>
@@ -1072,6 +1076,12 @@ export default function AlunoHome() {
       <RankingModal 
         open={rankingModalOpen} 
         onOpenChange={setRankingModalOpen} 
+      />
+      
+      {/* Modal de Diagnóstico de Perfil */}
+      <DiagnosticoPerfil
+        open={diagnosticoModalOpen}
+        onOpenChange={setDiagnosticoModalOpen}
       />
     </div>
   );

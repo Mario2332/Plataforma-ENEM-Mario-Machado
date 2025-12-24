@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { APP_LOGO, APP_TITLE, getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { BarChart3, BookOpen, ChevronDown, FileText, GraduationCap, Heart, Home, LayoutDashboard, LogOut, Moon, PanelLeft, PenTool, Settings, Sun, Users, Sparkles, Target } from "lucide-react";
+import { BarChart3, BookOpen, Brain, ChevronDown, FileText, GraduationCap, Heart, Home, LayoutDashboard, LogOut, Moon, PanelLeft, PenTool, Settings, Sun, Users, Sparkles, Target } from "lucide-react";
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -65,6 +65,7 @@ const getMenuItems = (role?: string) => {
     case "mentor":
       return [
         { icon: Users, label: "Alunos", path: "/mentor/alunos" },
+        { icon: Brain, label: "Diagnóstico de Perfil", path: "/mentor/diagnostico-perfil" },
         { 
           icon: BookOpen, 
           label: "Conteúdos", 

@@ -329,10 +329,13 @@ exports.getProgresso = functions
     .region("southamerica-east1")
     .https.onCall(async (data, context) => {
     const auth = await (0, auth_1.getAuthContext)(context);
-    (0, auth_1.requireRole)(auth, "aluno");
+    (0, auth_1.requireAnyRole)(auth, ["aluno", "mentor"]);
+    // Se for mentor, usar o alunoId passado; se for aluno, usar o próprio uid
+    const { alunoId } = data || {};
+    const targetUserId = auth.role === "mentor" && alunoId ? alunoId : auth.uid;
     const progressosSnapshot = await db
         .collection("alunos")
-        .doc(auth.uid)
+        .doc(targetUserId)
         .collection("conteudos")
         .get();
     // Retornar como mapa topicoId -> progresso
@@ -355,8 +358,10 @@ exports.updateProgresso = functions
     .region("southamerica-east1")
     .https.onCall(async (data, context) => {
     const auth = await (0, auth_1.getAuthContext)(context);
-    (0, auth_1.requireRole)(auth, "aluno");
-    const { topicoId, estudado, questoesFeitas, questoesAcertos, anotacoes } = data;
+    (0, auth_1.requireAnyRole)(auth, ["aluno", "mentor"]);
+    const { topicoId, estudado, questoesFeitas, questoesAcertos, anotacoes, alunoId } = data;
+    // Se for mentor, usar o alunoId passado; se for aluno, usar o próprio uid
+    const targetUserId = auth.role === "mentor" && alunoId ? alunoId : auth.uid;
     if (!topicoId) {
         throw new functions.https.HttpsError("invalid-argument", "ID do tópico é obrigatório");
     }
@@ -364,7 +369,7 @@ exports.updateProgresso = functions
         // Buscar documento existente
         const conteudosQuery = await db
             .collection("alunos")
-            .doc(auth.uid)
+            .doc(targetUserId)
             .collection("conteudos")
             .where("topicoId", "==", topicoId)
             .limit(1)
@@ -385,7 +390,7 @@ exports.updateProgresso = functions
             // Criar novo documento
             await db
                 .collection("alunos")
-                .doc(auth.uid)
+                .doc(targetUserId)
                 .collection("conteudos")
                 .add({
                 ...updates,

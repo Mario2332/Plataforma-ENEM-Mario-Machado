@@ -1,6 +1,6 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
-import { getAuthContext, requireRole } from "../utils/auth";
+import { getAuthContext, requireRole, requireAnyRole } from "../utils/auth";
 
 const db = admin.firestore();
 
@@ -341,11 +341,15 @@ export const getProgresso = functions
   .region("southamerica-east1")
   .https.onCall(async (data, context) => {
     const auth = await getAuthContext(context);
-    requireRole(auth, "aluno");
+    requireAnyRole(auth, ["aluno", "mentor"]);
+
+    // Se for mentor, usar o alunoId passado; se for aluno, usar o próprio uid
+    const { alunoId } = data || {};
+    const targetUserId = auth.role === "mentor" && alunoId ? alunoId : auth.uid;
 
     const progressosSnapshot = await db
       .collection("alunos")
-      .doc(auth.uid)
+      .doc(targetUserId)
       .collection("conteudos")
       .get();
 
@@ -372,9 +376,12 @@ export const updateProgresso = functions
   .region("southamerica-east1")
   .https.onCall(async (data, context) => {
     const auth = await getAuthContext(context);
-    requireRole(auth, "aluno");
+    requireAnyRole(auth, ["aluno", "mentor"]);
 
-    const { topicoId, estudado, questoesFeitas, questoesAcertos, anotacoes } = data;
+    const { topicoId, estudado, questoesFeitas, questoesAcertos, anotacoes, alunoId } = data;
+    
+    // Se for mentor, usar o alunoId passado; se for aluno, usar o próprio uid
+    const targetUserId = auth.role === "mentor" && alunoId ? alunoId : auth.uid;
 
     if (!topicoId) {
       throw new functions.https.HttpsError("invalid-argument", "ID do tópico é obrigatório");
@@ -384,7 +391,7 @@ export const updateProgresso = functions
       // Buscar documento existente
       const conteudosQuery = await db
         .collection("alunos")
-        .doc(auth.uid)
+        .doc(targetUserId)
         .collection("conteudos")
         .where("topicoId", "==", topicoId)
         .limit(1)
@@ -404,7 +411,7 @@ export const updateProgresso = functions
         // Criar novo documento
         await db
           .collection("alunos")
-          .doc(auth.uid)
+          .doc(targetUserId)
           .collection("conteudos")
           .add({
             ...updates,

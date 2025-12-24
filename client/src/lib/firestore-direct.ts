@@ -41,8 +41,8 @@ export interface Horario {
  * Buscar todos os horários do aluno logado
  * Acesso direto ao Firestore - sem cold start!
  */
-export async function getHorariosDirect(): Promise<Horario[]> {
-  const userId = auth.currentUser?.uid;
+export async function getHorariosDirect(overrideUserId?: string | null): Promise<Horario[]> {
+  const userId = overrideUserId || auth.currentUser?.uid;
   if (!userId) throw new Error("Usuário não autenticado");
 
   const horariosRef = collection(db, "alunos", userId, "horarios");
@@ -58,8 +58,8 @@ export async function getHorariosDirect(): Promise<Horario[]> {
 /**
  * Criar um novo horário
  */
-export async function createHorarioDirect(horario: Omit<Horario, 'id'>): Promise<string> {
-  const userId = auth.currentUser?.uid;
+export async function createHorarioDirect(horario: Omit<Horario, 'id'>, overrideUserId?: string | null): Promise<string> {
+  const userId = overrideUserId || auth.currentUser?.uid;
   if (!userId) throw new Error("Usuário não autenticado");
 
   const horariosRef = collection(db, "alunos", userId, "horarios");
@@ -74,8 +74,8 @@ export async function createHorarioDirect(horario: Omit<Horario, 'id'>): Promise
 /**
  * Atualizar um horário existente
  */
-export async function updateHorarioDirect(horarioId: string, updates: Partial<Horario>): Promise<void> {
-  const userId = auth.currentUser?.uid;
+export async function updateHorarioDirect(horarioId: string, updates: Partial<Horario>, overrideUserId?: string | null): Promise<void> {
+  const userId = overrideUserId || auth.currentUser?.uid;
   if (!userId) throw new Error("Usuário não autenticado");
 
   const horarioRef = doc(db, "alunos", userId, "horarios", horarioId);
@@ -85,8 +85,8 @@ export async function updateHorarioDirect(horarioId: string, updates: Partial<Ho
 /**
  * Deletar um horário
  */
-export async function deleteHorarioDirect(horarioId: string): Promise<void> {
-  const userId = auth.currentUser?.uid;
+export async function deleteHorarioDirect(horarioId: string, overrideUserId?: string | null): Promise<void> {
+  const userId = overrideUserId || auth.currentUser?.uid;
   if (!userId) throw new Error("Usuário não autenticado");
 
   const horarioRef = doc(db, "alunos", userId, "horarios", horarioId);
@@ -97,8 +97,8 @@ export async function deleteHorarioDirect(horarioId: string): Promise<void> {
  * Limpar todos os horários do aluno
  * Usa batch para melhor performance
  */
-export async function clearAllHorariosDirect(): Promise<void> {
-  const userId = auth.currentUser?.uid;
+export async function clearAllHorariosDirect(overrideUserId?: string | null): Promise<void> {
+  const userId = overrideUserId || auth.currentUser?.uid;
   if (!userId) throw new Error("Usuário não autenticado");
 
   const horariosRef = collection(db, "alunos", userId, "horarios");
@@ -122,8 +122,8 @@ export async function clearAllHorariosDirect(): Promise<void> {
  * Salvar múltiplos horários de uma vez (batch)
  * Muito mais rápido que salvar um por um
  */
-export async function saveHorariosBatch(horarios: Omit<Horario, 'id'>[]): Promise<void> {
-  const userId = auth.currentUser?.uid;
+export async function saveHorariosBatch(horarios: Omit<Horario, 'id'>[], overrideUserId?: string | null): Promise<void> {
+  const userId = overrideUserId || auth.currentUser?.uid;
   if (!userId) throw new Error("Usuário não autenticado");
 
   if (horarios.length === 0) return;
@@ -153,8 +153,8 @@ export async function saveHorariosBatch(horarios: Omit<Horario, 'id'>[]): Promis
  * Limpar e salvar horários em uma única operação otimizada
  * Combina delete + create para minimizar round-trips
  */
-export async function replaceAllHorarios(horarios: Omit<Horario, 'id'>[]): Promise<void> {
-  const userId = auth.currentUser?.uid;
+export async function replaceAllHorarios(horarios: Omit<Horario, 'id'>[], overrideUserId?: string | null): Promise<void> {
+  const userId = overrideUserId || auth.currentUser?.uid;
   if (!userId) throw new Error("Usuário não autenticado");
 
   const horariosRef = collection(db, "alunos", userId, "horarios");
@@ -213,8 +213,8 @@ export interface Template {
 /**
  * Buscar todos os templates do aluno
  */
-export async function getTemplatesDirect(): Promise<Template[]> {
-  const userId = auth.currentUser?.uid;
+export async function getTemplatesDirect(overrideUserId?: string | null): Promise<Template[]> {
+  const userId = overrideUserId || auth.currentUser?.uid;
   if (!userId) throw new Error("Usuário não autenticado");
 
   const templatesRef = collection(db, "alunos", userId, "templates");
@@ -230,8 +230,8 @@ export async function getTemplatesDirect(): Promise<Template[]> {
 /**
  * Salvar um novo template
  */
-export async function saveTemplateDirect(template: { nome: string; horarios: any[] }): Promise<string> {
-  const userId = auth.currentUser?.uid;
+export async function saveTemplateDirect(template: { nome: string; horarios: any[] }, overrideUserId?: string | null): Promise<string> {
+  const userId = overrideUserId || auth.currentUser?.uid;
   if (!userId) throw new Error("Usuário não autenticado");
 
   const templatesRef = collection(db, "alunos", userId, "templates");
@@ -246,8 +246,8 @@ export async function saveTemplateDirect(template: { nome: string; horarios: any
 /**
  * Carregar um template específico
  */
-export async function loadTemplateDirect(templateId: string): Promise<Template | null> {
-  const userId = auth.currentUser?.uid;
+export async function loadTemplateDirect(templateId: string, overrideUserId?: string | null): Promise<Template | null> {
+  const userId = overrideUserId || auth.currentUser?.uid;
   if (!userId) throw new Error("Usuário não autenticado");
 
   const templatesRef = collection(db, "alunos", userId, "templates");
@@ -265,8 +265,8 @@ export async function loadTemplateDirect(templateId: string): Promise<Template |
 /**
  * Deletar um template
  */
-export async function deleteTemplateDirect(templateId: string): Promise<void> {
-  const userId = auth.currentUser?.uid;
+export async function deleteTemplateDirect(templateId: string, overrideUserId?: string | null): Promise<void> {
+  const userId = overrideUserId || auth.currentUser?.uid;
   if (!userId) throw new Error("Usuário não autenticado");
 
   const templateRef = doc(db, "alunos", userId, "templates", templateId);
@@ -294,8 +294,8 @@ export interface Estudo {
  * Buscar todos os estudos do aluno
  * Limitado aos 200 mais recentes para performance
  */
-export async function getEstudosDirect(): Promise<Estudo[]> {
-  const userId = auth.currentUser?.uid;
+export async function getEstudosDirect(overrideUserId?: string | null): Promise<Estudo[]> {
+  const userId = overrideUserId || auth.currentUser?.uid;
   if (!userId) throw new Error("Usuário não autenticado");
 
   const estudosRef = collection(db, "alunos", userId, "estudos");
@@ -333,8 +333,8 @@ export interface Simulado {
  * Buscar todos os simulados do aluno
  * Limitado aos 100 mais recentes para performance
  */
-export async function getSimuladosDirect(): Promise<Simulado[]> {
-  const userId = auth.currentUser?.uid;
+export async function getSimuladosDirect(overrideUserId?: string | null): Promise<Simulado[]> {
+  const userId = overrideUserId || auth.currentUser?.uid;
   if (!userId) throw new Error("Usuário não autenticado");
 
   const simuladosRef = collection(db, "alunos", userId, "simulados");
@@ -368,8 +368,8 @@ export interface Meta {
 /**
  * Buscar todas as metas do aluno
  */
-export async function getMetasDirect(): Promise<Meta[]> {
-  const userId = auth.currentUser?.uid;
+export async function getMetasDirect(overrideUserId?: string | null): Promise<Meta[]> {
+  const userId = overrideUserId || auth.currentUser?.uid;
   if (!userId) throw new Error("Usuário não autenticado");
 
   const metasRef = collection(db, "alunos", userId, "metas");
@@ -405,8 +405,8 @@ export interface PlanoAcao {
 /**
  * Buscar todos os planos de ação do aluno
  */
-export async function getPlanosAcaoDirect(): Promise<PlanoAcao[]> {
-  const userId = auth.currentUser?.uid;
+export async function getPlanosAcaoDirect(overrideUserId?: string | null): Promise<PlanoAcao[]> {
+  const userId = overrideUserId || auth.currentUser?.uid;
   if (!userId) throw new Error("Usuário não autenticado");
 
   const planosRef = collection(db, "alunos", userId, "planosAcao");
@@ -435,8 +435,8 @@ export async function getPlanosAcaoDirect(): Promise<PlanoAcao[]> {
 /**
  * Criar um novo plano de ação
  */
-export async function createPlanoAcaoDirect(plano: Omit<PlanoAcao, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
-  const userId = auth.currentUser?.uid;
+export async function createPlanoAcaoDirect(plano: Omit<PlanoAcao, 'id' | 'createdAt' | 'updatedAt'>, overrideUserId?: string | null): Promise<string> {
+  const userId = overrideUserId || auth.currentUser?.uid;
   if (!userId) throw new Error("Usuário não autenticado");
 
   const planosRef = collection(db, "alunos", userId, "planosAcao");
@@ -452,8 +452,8 @@ export async function createPlanoAcaoDirect(plano: Omit<PlanoAcao, 'id' | 'creat
 /**
  * Atualizar um plano de ação existente
  */
-export async function updatePlanoAcaoDirect(planoId: string, updates: Partial<PlanoAcao>): Promise<void> {
-  const userId = auth.currentUser?.uid;
+export async function updatePlanoAcaoDirect(planoId: string, updates: Partial<PlanoAcao>, overrideUserId?: string | null): Promise<void> {
+  const userId = overrideUserId || auth.currentUser?.uid;
   if (!userId) throw new Error("Usuário não autenticado");
 
   const planoRef = doc(db, "alunos", userId, "planosAcao", planoId);
@@ -466,8 +466,8 @@ export async function updatePlanoAcaoDirect(planoId: string, updates: Partial<Pl
 /**
  * Marcar plano de ação como resolvido
  */
-export async function resolverPlanoAcaoDirect(planoId: string): Promise<void> {
-  const userId = auth.currentUser?.uid;
+export async function resolverPlanoAcaoDirect(planoId: string, overrideUserId?: string | null): Promise<void> {
+  const userId = overrideUserId || auth.currentUser?.uid;
   if (!userId) throw new Error("Usuário não autenticado");
 
   const planoRef = doc(db, "alunos", userId, "planosAcao", planoId);
@@ -481,8 +481,8 @@ export async function resolverPlanoAcaoDirect(planoId: string): Promise<void> {
 /**
  * Reabrir plano de ação (desmarcar como resolvido)
  */
-export async function reabrirPlanoAcaoDirect(planoId: string): Promise<void> {
-  const userId = auth.currentUser?.uid;
+export async function reabrirPlanoAcaoDirect(planoId: string, overrideUserId?: string | null): Promise<void> {
+  const userId = overrideUserId || auth.currentUser?.uid;
   if (!userId) throw new Error("Usuário não autenticado");
 
   const planoRef = doc(db, "alunos", userId, "planosAcao", planoId);
@@ -496,8 +496,8 @@ export async function reabrirPlanoAcaoDirect(planoId: string): Promise<void> {
 /**
  * Deletar um plano de ação
  */
-export async function deletePlanoAcaoDirect(planoId: string): Promise<void> {
-  const userId = auth.currentUser?.uid;
+export async function deletePlanoAcaoDirect(planoId: string, overrideUserId?: string | null): Promise<void> {
+  const userId = overrideUserId || auth.currentUser?.uid;
   if (!userId) throw new Error("Usuário não autenticado");
 
   const planoRef = doc(db, "alunos", userId, "planosAcao", planoId);
@@ -526,8 +526,8 @@ export function gerarConduta(motivoErro: "interpretacao" | "lacuna_teorica", qua
 export async function criarPlanosDeAutodiagnostico(
   prova: string, 
   questoes: Array<{ macroassunto: string; microassunto: string; motivoErro: string }>
-): Promise<void> {
-  const userId = auth.currentUser?.uid;
+, overrideUserId?: string | null): Promise<void> {
+  const userId = overrideUserId || auth.currentUser?.uid;
   if (!userId) throw new Error("Usuário não autenticado");
 
   // Filtrar apenas erros por interpretação ou lacuna teórica

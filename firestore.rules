@@ -73,9 +73,8 @@ service cloud.firestore {
       // Gestor pode ler todos os alunos
       allow read: if hasRole('gestor');
       
-      // Mentor pode ler alunos vinculados a ele
-      allow read: if hasRole('mentor') && 
-                     get(/databases/$(database)/documents/alunos/$(alunoId)).data.mentorId == request.auth.uid;
+      // Mentor pode ler todos os alunos (para visualizar perfis de diagnóstico)
+      allow read: if hasRole('mentor');
       
       // Aluno pode ler dados de outros alunos (necessário para o ranking)
       allow read: if hasRole('aluno');

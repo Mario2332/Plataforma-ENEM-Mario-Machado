@@ -36,9 +36,27 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.setActiveSchedule = exports.toggleTopicoCompleto = exports.getCronogramaAnual = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
-const auth_1 = require("../utils/auth");
 const init_cronograma_templates_1 = require("./init-cronograma-templates");
 const db = admin.firestore();
+/**
+ * Verificar se o usuário é mentor e pode acessar dados de outro aluno
+ */
+async function getEffectiveUserId(context, requestedAlunoId) {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "Você precisa estar autenticado");
+    }
+    // Se não foi solicitado um alunoId específico, usar o próprio usuário
+    if (!requestedAlunoId) {
+        return context.auth.uid;
+    }
+    // Se foi solicitado um alunoId diferente, verificar se é mentor
+    const userDoc = await db.collection("users").doc(context.auth.uid).get();
+    const userData = userDoc.data();
+    if (!userData || userData.role !== "mentor") {
+        throw new functions.https.HttpsError("permission-denied", "Apenas mentores podem acessar dados de outros alunos");
+    }
+    return requestedAlunoId;
+}
 /**
  * Obter cronograma anual do aluno
  * Retorna cronograma extensivo ou intensivo com progresso
@@ -53,17 +71,19 @@ exports.getCronogramaAnual = functions
     try {
         functions.logger.info("🔵 getCronogramaAnual chamada", {
             tipo: data?.tipo,
-            uid: context.auth?.uid
+            uid: context.auth?.uid,
+            alunoId: data?.alunoId
         });
         if (!context.auth) {
             throw new functions.https.HttpsError("unauthenticated", "Você precisa estar autenticado");
         }
-        const auth = await (0, auth_1.getAuthContext)(context);
-        const { tipo = "extensive" } = data; // extensive ou intensive
+        const { tipo = "extensive", alunoId } = data; // extensive ou intensive
+        // Obter o ID efetivo (próprio usuário ou aluno se for mentor)
+        const effectiveUserId = await getEffectiveUserId(context, alunoId);
         // Inicializar templates se necessário
         await (0, init_cronograma_templates_1.initializeTemplatesIfNeeded)();
         // Buscar cronograma do aluno
-        const cronogramaRef = db.collection("cronogramas_anuais").doc(context.auth.uid);
+        const cronogramaRef = db.collection("cronogramas_anuais").doc(effectiveUserId);
         const cronogramaDoc = await cronogramaRef.get();
         let cronogramaData;
         if (!cronogramaDoc.exists) {
@@ -141,11 +161,13 @@ exports.toggleTopicoCompleto = functions
         if (!context.auth) {
             throw new functions.https.HttpsError("unauthenticated", "Você precisa estar autenticado");
         }
-        const { topicoId, completed } = data;
+        const { topicoId, completed, alunoId } = data;
         if (!topicoId) {
             throw new functions.https.HttpsError("invalid-argument", "topicoId é obrigatório");
         }
-        const cronogramaRef = db.collection("cronogramas_anuais").doc(context.auth.uid);
+        // Obter o ID efetivo (próprio usuário ou aluno se for mentor)
+        const effectiveUserId = await getEffectiveUserId(context, alunoId);
+        const cronogramaRef = db.collection("cronogramas_anuais").doc(effectiveUserId);
         const cronogramaDoc = await cronogramaRef.get();
         // Obter completedTopics atual ou criar novo objeto
         const currentData = cronogramaDoc.data() || {};
@@ -160,7 +182,7 @@ exports.toggleTopicoCompleto = functions
         // Sincronizar com conteudos_progresso para metas de tópicos
         const progressoRef = db
             .collection("alunos")
-            .doc(context.auth.uid)
+            .doc(effectiveUserId)
             .collection("conteudos_progresso")
             .doc(topicoId);
         const now = admin.firestore.Timestamp.now();
@@ -185,7 +207,8 @@ exports.toggleTopicoCompleto = functions
         }
         functions.logger.info("✅ Tópico atualizado e sincronizado", {
             topicoId,
-            completed
+            completed,
+            effectiveUserId
         });
         return { success: true };
     }
@@ -211,16 +234,18 @@ exports.setActiveSchedule = functions
         if (!context.auth) {
             throw new functions.https.HttpsError("unauthenticated", "Você precisa estar autenticado");
         }
-        const { tipo } = data;
+        const { tipo, alunoId } = data;
         if (!tipo || !["extensive", "intensive"].includes(tipo)) {
             throw new functions.https.HttpsError("invalid-argument", "tipo deve ser 'extensive' ou 'intensive'");
         }
-        const cronogramaRef = db.collection("cronogramas_anuais").doc(context.auth.uid);
+        // Obter o ID efetivo (próprio usuário ou aluno se for mentor)
+        const effectiveUserId = await getEffectiveUserId(context, alunoId);
+        const cronogramaRef = db.collection("cronogramas_anuais").doc(effectiveUserId);
         await cronogramaRef.set({
             activeSchedule: tipo,
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         }, { merge: true });
-        functions.logger.info("✅ Cronograma ativo atualizado", { tipo });
+        functions.logger.info("✅ Cronograma ativo atualizado", { tipo, effectiveUserId });
         return { success: true };
     }
     catch (error) {

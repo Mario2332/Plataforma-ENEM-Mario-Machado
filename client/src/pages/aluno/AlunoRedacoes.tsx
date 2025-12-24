@@ -10,6 +10,7 @@ import { Plus, Trash2, Edit2, TrendingUp, Award, FileText, Clock, Target, AlertT
 import { toast } from "sonner";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, BarChart, Bar, Cell, Legend } from "recharts";
 import { db, auth } from "@/lib/firebase";
+import { useMentorViewContext } from "@/contexts/MentorViewContext";
 import { collection, doc, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy, Timestamp, setDoc } from "firebase/firestore";
 
 // Função para formatar data sem problema de fuso horário
@@ -93,6 +94,7 @@ const initialForm: RedacaoForm = {
 };
 
 export default function AlunoRedacoes() {
+  const { alunoId: mentorViewAlunoId, isMentorView } = useMentorViewContext();
   const alunoApi = useAlunoApi();
   const [redacoes, setRedacoes] = useState<Redacao[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -112,11 +114,12 @@ export default function AlunoRedacoes() {
   }, []);
 
   const getAlunoId = () => {
-    // Se estiver em modo mentor, pegar o alunoId da URL
+    // Se estiver na visualização do mentor, usar o ID do aluno do contexto
+    if (isMentorView && mentorViewAlunoId) return mentorViewAlunoId;
+    // Fallback para URL params (compatibilidade)
     const urlParams = new URLSearchParams(window.location.search);
     const alunoIdFromUrl = urlParams.get('alunoId');
     if (alunoIdFromUrl) return alunoIdFromUrl;
-    
     // Caso contrário, usar o usuário logado
     return auth.currentUser?.uid || "";
   };

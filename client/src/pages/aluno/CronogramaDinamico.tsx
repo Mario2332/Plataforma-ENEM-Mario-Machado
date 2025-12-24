@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { BookOpen, Calendar as CalendarIcon, Settings, CheckCircle, Clock, ChevronDown, ChevronRight, ChevronLeft, BarChart2, AlertCircle, RefreshCw, Save, Layers, LayoutGrid, List as ListIcon, CheckSquare, Square, Edit3, Repeat, X, Map, RotateCcw, FileText, Zap, CheckCircle2, AlertTriangle, Eye, CheckCheck, PenTool, CalendarOff, Loader2, Check } from 'lucide-react';
 import { db, auth } from "@/lib/firebase";
+import { useMentorViewContext } from "@/contexts/MentorViewContext";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { toast } from "sonner";
 
@@ -3008,6 +3009,7 @@ const generateSchedule = (state: AppState): ScheduleResult => {
 
 // --- COMPONENTE PRINCIPAL ---
 export default function CronogramaDinamico() {
+  const { alunoId: mentorViewAlunoId, isMentorView } = useMentorViewContext();
   const [state, setState] = useState<AppState>({
     step: 1,
     scheduleType: 'extensivo',
@@ -3050,6 +3052,9 @@ export default function CronogramaDinamico() {
 
   // Função para obter o ID do aluno
   const getAlunoId = () => {
+    // Se estiver na visualização do mentor, usar o ID do aluno do contexto
+    if (isMentorView && mentorViewAlunoId) return mentorViewAlunoId;
+    // Fallback para URL params (compatibilidade)
     const urlParams = new URLSearchParams(window.location.search);
     const alunoIdFromUrl = urlParams.get('alunoId');
     if (alunoIdFromUrl) return alunoIdFromUrl;

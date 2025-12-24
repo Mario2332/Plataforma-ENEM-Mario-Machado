@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { cronogramaAnualApi } from "../../../lib/api-cronograma-anual";
+import { useMentorViewContext } from "@/contexts/MentorViewContext";
 import { 
   Loader2, 
   CheckCircle2, 
@@ -33,6 +34,9 @@ interface CronogramaData {
 }
 
 export default function CronogramaAnual() {
+  const { alunoId: mentorViewAlunoId, isMentorView } = useMentorViewContext();
+  const effectiveAlunoId = isMentorView ? mentorViewAlunoId : null;
+  
   const [tipo, setTipo] = useState<CronogramaTipo>("extensive");
   const [cronograma, setCronograma] = useState<CronogramaData | null>(null);
   const [completedTopics, setCompletedTopics] = useState<Record<string, boolean>>({});
@@ -45,13 +49,13 @@ export default function CronogramaAnual() {
 
   useEffect(() => {
     loadCronograma();
-  }, [tipo]);
+  }, [tipo, effectiveAlunoId]);
 
   const loadCronograma = async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await cronogramaAnualApi.getCronograma(tipo);
+      const data = await cronogramaAnualApi.getCronograma(tipo, effectiveAlunoId);
       setCronograma(data.cronograma);
       // Sempre usar os dados mais recentes do servidor
       setCompletedTopics(data.completedTopics || {});
@@ -76,7 +80,7 @@ export default function CronogramaAnual() {
     }));
 
     try {
-      await cronogramaAnualApi.toggleTopico(topicoId, newCompleted);
+      await cronogramaAnualApi.toggleTopico(topicoId, newCompleted, effectiveAlunoId);
     } catch (err) {
       console.error("Erro ao atualizar tópico:", err);
       setCompletedTopics(prev => ({
@@ -88,7 +92,7 @@ export default function CronogramaAnual() {
 
   const handleSetActiveSchedule = async (newTipo: CronogramaTipo) => {
     try {
-      await cronogramaAnualApi.setActiveSchedule(newTipo);
+      await cronogramaAnualApi.setActiveSchedule(newTipo, effectiveAlunoId);
       setActiveSchedule(newTipo);
     } catch (err) {
       console.error("Erro ao definir cronograma ativo:", err);

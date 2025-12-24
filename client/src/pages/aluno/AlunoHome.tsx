@@ -34,6 +34,7 @@ import { RankingModal, RankingResumo } from "@/components/RankingModal";
 import { DiagnosticoPerfil, PerfilResumo, PERFIS_PADRAO } from "@/components/DiagnosticoPerfil";
 import { db, auth } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
+import { useMentorViewContext } from "@/contexts/MentorViewContext";
 
 // Função auxiliar para formatar data no fuso horário brasileiro (GMT-3)
 const formatarDataBrasil = (date: Date): string => {
@@ -61,6 +62,13 @@ export default function AlunoHome() {
   // Removido useAlunoApi - usando acesso direto ao Firestore para eliminar cold start
   const [, setLocation] = useLocation();
   const { userData } = useAuthContext();
+  const { alunoId: mentorViewAlunoId, isMentorView } = useMentorViewContext();
+  
+  // Função para obter o ID do aluno efetivo
+  const getEffectiveUserId = () => {
+    if (isMentorView && mentorViewAlunoId) return mentorViewAlunoId;
+    return auth.currentUser?.uid || null;
+  };
   const [estudos, setEstudos] = useState<any[]>([]);
   const [simulados, setSimulados] = useState<any[]>([]);
   const [metas, setMetas] = useState<any[]>([]);
@@ -72,11 +80,12 @@ export default function AlunoHome() {
   const loadData = async () => {
     try {
       setIsLoading(true);
+      const effectiveUserId = getEffectiveUserId();
       // Acesso direto ao Firestore (elimina cold start)
       const [estudosData, simuladosData, metasData] = await Promise.all([
-        getEstudosDirect(),
-        getSimuladosDirect(),
-        getMetasDirect(),
+        getEstudosDirect(effectiveUserId),
+        getSimuladosDirect(effectiveUserId),
+        getMetasDirect(effectiveUserId),
       ]);
       setEstudos(estudosData as any[]);
       setSimulados(simuladosData as any[]);
@@ -95,7 +104,7 @@ export default function AlunoHome() {
   // Carregar perfil do aluno
   useEffect(() => {
     const loadPerfil = async () => {
-      const userId = auth.currentUser?.uid;
+      const userId = getEffectiveUserId();
       if (!userId) return;
       
       try {

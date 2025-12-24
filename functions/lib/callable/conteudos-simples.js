@@ -82,9 +82,67 @@ async function ensureDataExists() {
     return initializationPromise;
 }
 /**
- * Função SIMPLES para obter conteúdos
- * Retorna dados direto do Firestore
- * Inicializa automaticamente se necessário
+ * Mesclar tópicos base com customizações
+ */
+async function mergeTopicsWithCustomizations(materiaKey, baseTopics) {
+    // Buscar customizações do Firestore
+    const customizacoesSnapshot = await db
+        .collection("conteudos_customizados")
+        .doc(materiaKey)
+        .collection("topicos")
+        .get();
+    // Se não há customizações, retornar tópicos base
+    if (customizacoesSnapshot.empty) {
+        return baseTopics;
+    }
+    // Criar mapa de customizações
+    const customMap = {};
+    customizacoesSnapshot.docs.forEach((doc) => {
+        const data = doc.data();
+        customMap[data.id] = data;
+    });
+    functions.logger.info("📝 Customizações encontradas", {
+        materiaKey,
+        count: Object.keys(customMap).length
+    });
+    // Mesclar tópicos base com customizações
+    let mergedTopics = baseTopics.map((topic) => {
+        if (customMap[topic.id]) {
+            const custom = customMap[topic.id];
+            // Se foi deletado, retornar null para filtrar depois
+            if (custom.isDeleted) {
+                return null;
+            }
+            // Mesclar dados customizados
+            return {
+                ...topic,
+                name: custom.name !== undefined ? custom.name : topic.name,
+                incidenceLevel: custom.incidenceLevel !== undefined ? custom.incidenceLevel : topic.incidenceLevel,
+                incidenceValue: custom.incidenceValue !== undefined ? custom.incidenceValue : topic.incidenceValue,
+            };
+        }
+        return topic;
+    }).filter((t) => t !== null);
+    // Adicionar tópicos customizados novos (que não existem na base)
+    Object.values(customMap).forEach((custom) => {
+        if (custom.isCustom && !custom.isDeleted) {
+            // Verificar se já não foi adicionado
+            const exists = mergedTopics.some((t) => t.id === custom.id);
+            if (!exists) {
+                mergedTopics.push({
+                    id: custom.id,
+                    name: custom.name,
+                    incidenceLevel: custom.incidenceLevel,
+                    incidenceValue: custom.incidenceValue,
+                });
+            }
+        }
+    });
+    return mergedTopics;
+}
+/**
+ * Função para obter conteúdos com mesclagem de customizações
+ * Retorna dados do Firestore mesclados com customizações
  */
 exports.getConteudosSimples = functions
     .region("southamerica-east1")
@@ -112,20 +170,34 @@ exports.getConteudosSimples = functions
                 throw new functions.https.HttpsError("not-found", `Matéria ${materiaKey} não encontrada`);
             }
             const materiaData = doc.data();
-            functions.logger.info("✅ Matéria carregada", {
+            const baseTopics = materiaData?.topics || [];
+            // Mesclar com customizações
+            const mergedTopics = await mergeTopicsWithCustomizations(materiaKey, baseTopics);
+            functions.logger.info("✅ Matéria carregada com customizações", {
                 materiaKey,
-                topicsCount: materiaData?.topics?.length || 0
+                baseTopicsCount: baseTopics.length,
+                mergedTopicsCount: mergedTopics.length
             });
-            return materiaData;
+            return {
+                ...materiaData,
+                topics: mergedTopics,
+            };
         }
         else {
             // Retornar todas as matérias
             const snapshot = await db.collection("conteudos_base").get();
             const allData = {};
-            snapshot.docs.forEach(doc => {
-                allData[doc.id] = doc.data();
-            });
-            functions.logger.info("✅ Todas as matérias carregadas", {
+            for (const doc of snapshot.docs) {
+                const materiaData = doc.data();
+                const baseTopics = materiaData?.topics || [];
+                // Mesclar com customizações
+                const mergedTopics = await mergeTopicsWithCustomizations(doc.id, baseTopics);
+                allData[doc.id] = {
+                    ...materiaData,
+                    topics: mergedTopics,
+                };
+            }
+            functions.logger.info("✅ Todas as matérias carregadas com customizações", {
                 count: Object.keys(allData).length
             });
             return allData;

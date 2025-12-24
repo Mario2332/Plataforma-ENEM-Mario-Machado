@@ -576,24 +576,24 @@ export function PerfilResumo({ onClick }: PerfilResumoProps) {
       <Button
         variant="outline"
         onClick={onClick}
-        className="flex flex-col items-start gap-2 h-auto p-4 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 border-2 border-purple-200 dark:border-purple-800 hover:border-purple-400 dark:hover:border-purple-600 transition-all hover:shadow-lg hover:shadow-purple-500/20"
+        className="flex flex-col items-start gap-2 h-auto p-4 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 border-2 border-blue-200 dark:border-blue-800 hover:border-blue-400 dark:hover:border-blue-600 transition-all hover:shadow-lg hover:shadow-blue-500/20"
       >
         <div className="flex items-center gap-2 w-full">
-          <Brain className="h-5 w-5 text-purple-500" />
+          <Brain className="h-5 w-5 text-blue-500" />
           <span className="font-bold text-sm">Perfil de Estudante</span>
         </div>
         
         <div className="flex items-center gap-2">
-          <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center">
-            <HelpCircle className="h-6 w-6 text-purple-500" />
+          <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
+            <HelpCircle className="h-6 w-6 text-blue-500" />
           </div>
           <div className="text-left">
             <p className="text-xs text-muted-foreground">Ainda não descoberto</p>
-            <p className="font-semibold text-sm text-purple-600 dark:text-purple-400">Faça o diagnóstico!</p>
+            <p className="font-semibold text-sm text-blue-600 dark:text-blue-400">Faça o diagnóstico!</p>
           </div>
         </div>
         
-        <div className="flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400">
+        <div className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
           <Sparkles className="h-3 w-3" />
           <span>12 perguntas • 3 min</span>
         </div>
@@ -615,7 +615,7 @@ export function PerfilResumo({ onClick }: PerfilResumoProps) {
       )}
     >
       <div className="flex items-center gap-2 w-full">
-        <Brain className="h-5 w-5 text-purple-500" />
+        <Brain className="h-5 w-5 text-blue-500" />
         <span className="font-bold text-sm">Seu Perfil</span>
       </div>
       

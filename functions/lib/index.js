@@ -59,7 +59,7 @@ Object.defineProperty(exports, "metasFunctions", { enumerable: true, get: functi
 // BACKUP: Sistema de notificações removido temporariamente - ver pasta backup_notificacoes
 // export { notificacoesFunctions } from "./callable/notificacoes";
 __exportStar(require("./callable/aluno-extras"), exports);
-__exportStar(require("./callable/mentor-conteudos"), exports);
+__exportStar(require("./callable/topicos-crud"), exports);
 __exportStar(require("./callable/conteudos-simples"), exports);
 __exportStar(require("./callable/cronograma-anual"), exports);
 __exportStar(require("./callable/init-cronograma-templates"), exports);

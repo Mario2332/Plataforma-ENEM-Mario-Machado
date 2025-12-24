@@ -18,7 +18,7 @@ export { metasFunctions } from "./callable/metas";
 // BACKUP: Sistema de notificações removido temporariamente - ver pasta backup_notificacoes
 // export { notificacoesFunctions } from "./callable/notificacoes";
 export * from "./callable/aluno-extras";
-export * from "./callable/mentor-conteudos";
+export * from "./callable/topicos-crud";
 export * from "./callable/conteudos-simples";
 export * from "./callable/cronograma-anual";
 export * from "./callable/init-cronograma-templates";

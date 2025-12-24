@@ -265,8 +265,21 @@ export const createTopico = functions
     timeoutSeconds: 60,
   })
   .https.onCall(async (data, context) => {
-    const auth = await getAuthContext(context);
-    requireRole(auth, "mentor");
+    functions.logger.info("createTopico chamado", { data, hasAuth: !!context.auth });
+    
+    if (!context.auth) {
+      throw new functions.https.HttpsError("unauthenticated", "Voce precisa estar autenticado");
+    }
+    
+    const userDoc = await db.collection("users").doc(context.auth.uid).get();
+    if (!userDoc.exists) {
+      throw new functions.https.HttpsError("not-found", "Dados do usuario nao encontrados");
+    }
+    
+    const userData = userDoc.data()!;
+    if (userData.role !== "mentor" && userData.role !== "gestor") {
+      throw new functions.https.HttpsError("permission-denied", "Apenas mentores podem criar topicos");
+    }
 
     const { materiaKey, name, incidenceLevel } = data;
 
@@ -322,15 +335,40 @@ export const updateTopico = functions
     timeoutSeconds: 60,
   })
   .https.onCall(async (data, context) => {
-    functions.logger.info("updateTopico chamado", { data, hasAuth: !!context.auth });
+    functions.logger.info("updateTopico chamado", { 
+      data, 
+      hasAuth: !!context.auth,
+      uid: context.auth?.uid 
+    });
     
-    try {
-      const auth = await getAuthContext(context);
-      functions.logger.info("Auth context obtido", { uid: auth.uid, role: auth.role });
-      requireRole(auth, "mentor");
-    } catch (authError: any) {
-      functions.logger.error("Erro de autenticação", { error: authError.message });
-      throw authError;
+    // Verificar autenticação diretamente
+    if (!context.auth) {
+      functions.logger.error("Usuario nao autenticado");
+      throw new functions.https.HttpsError(
+        "unauthenticated",
+        "Voce precisa estar autenticado"
+      );
+    }
+    
+    // Verificar role do usuario
+    const userDoc = await db.collection("users").doc(context.auth.uid).get();
+    if (!userDoc.exists) {
+      functions.logger.error("Usuario nao encontrado", { uid: context.auth.uid });
+      throw new functions.https.HttpsError(
+        "not-found",
+        "Dados do usuario nao encontrados"
+      );
+    }
+    
+    const userData = userDoc.data()!;
+    functions.logger.info("Usuario autenticado", { uid: context.auth.uid, role: userData.role });
+    
+    if (userData.role !== "mentor" && userData.role !== "gestor") {
+      functions.logger.error("Permissao negada", { role: userData.role });
+      throw new functions.https.HttpsError(
+        "permission-denied",
+        "Apenas mentores podem editar topicos"
+      );
     }
 
     const { materiaKey, topicoId, name, incidenceLevel } = data;
@@ -409,8 +447,21 @@ export const deleteTopico = functions
     timeoutSeconds: 60,
   })
   .https.onCall(async (data, context) => {
-    const auth = await getAuthContext(context);
-    requireRole(auth, "mentor");
+    functions.logger.info("deleteTopico chamado", { data, hasAuth: !!context.auth });
+    
+    if (!context.auth) {
+      throw new functions.https.HttpsError("unauthenticated", "Voce precisa estar autenticado");
+    }
+    
+    const userDoc = await db.collection("users").doc(context.auth.uid).get();
+    if (!userDoc.exists) {
+      throw new functions.https.HttpsError("not-found", "Dados do usuario nao encontrados");
+    }
+    
+    const userData = userDoc.data()!;
+    if (userData.role !== "mentor" && userData.role !== "gestor") {
+      throw new functions.https.HttpsError("permission-denied", "Apenas mentores podem deletar topicos");
+    }
 
     const { materiaKey, topicoId } = data;
 

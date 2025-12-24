@@ -77,14 +77,14 @@ export default function MentorDiagnosticoPerfil() {
     setIsLoading(true);
     try {
       // Carregar perguntas customizadas
-      const perguntasRef = doc(db, "configuracoes", "diagnostico_perguntas");
+      const perguntasRef = doc(db, "diagnostico_perfil_config", "perguntas");
       const perguntasSnap = await getDoc(perguntasRef);
       if (perguntasSnap.exists() && perguntasSnap.data()?.perguntas) {
         setPerguntas(perguntasSnap.data().perguntas);
       }
 
       // Carregar perfis customizados
-      const perfisRef = doc(db, "configuracoes", "diagnostico_perfis");
+      const perfisRef = doc(db, "diagnostico_perfil_config", "perfis");
       const perfisSnap = await getDoc(perfisRef);
       if (perfisSnap.exists() && perfisSnap.data()?.perfis) {
         setPerfis(perfisSnap.data().perfis);
@@ -126,7 +126,7 @@ export default function MentorDiagnosticoPerfil() {
   const salvarPerguntas = async () => {
     setIsSaving(true);
     try {
-      const perguntasRef = doc(db, "configuracoes", "diagnostico_perguntas");
+      const perguntasRef = doc(db, "diagnostico_perfil_config", "perguntas");
       await setDoc(perguntasRef, {
         perguntas,
         atualizadoEm: Timestamp.now()
@@ -144,7 +144,7 @@ export default function MentorDiagnosticoPerfil() {
   const salvarPerfis = async () => {
     setIsSaving(true);
     try {
-      const perfisRef = doc(db, "configuracoes", "diagnostico_perfis");
+      const perfisRef = doc(db, "diagnostico_perfil_config", "perfis");
       await setDoc(perfisRef, {
         perfis,
         atualizadoEm: Timestamp.now()

@@ -423,44 +423,31 @@ function DashboardLayoutContent({
               <span className="group-data-[collapsible=icon]:hidden">Sair</span>
             </Button>
             
-            {/* 🎄 Card de usuário com tema natalino */}
-            <div className="flex items-center gap-3 rounded-xl px-2 py-2 w-full group-data-[collapsible=icon]:justify-center bg-gradient-to-r from-red-50 to-green-50 dark:from-red-950/20 dark:to-green-950/20 border-2 border-red-200 dark:border-red-800 shadow-sm">
+            {/* Card de usuário */}
+            <div className="flex items-center gap-3 rounded-xl px-2 py-2 w-full group-data-[collapsible=icon]:justify-center bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 border-2 border-blue-200 dark:border-blue-800 shadow-sm">
               <div className="relative shrink-0">
-                {/* 🎅 Gorro de Papai Noel - centralizado com a foto */}
-                <div className="absolute -top-5 left-1/2 -translate-x-1/2 z-20 animate-santa-hat" style={{ transform: 'translateX(-50%) rotate(-12deg)' }}>
-                  <svg width="28" height="24" viewBox="0 0 28 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    {/* Gorro vermelho */}
-                    <path d="M4 20C4 20 6 8 14 6C22 8 24 20 24 20" fill="#DC2626" />
-                    {/* Ponta do gorro */}
-                    <path d="M14 6C14 6 16 2 20 2" stroke="#DC2626" strokeWidth="4" strokeLinecap="round" />
-                    {/* Pompom */}
-                    <circle cx="21" cy="2" r="3" fill="white" />
-                    {/* Borda de pelo branco */}
-                    <path d="M2 20C2 20 4 18 14 18C24 18 26 20 26 20" stroke="white" strokeWidth="4" strokeLinecap="round" />
-                  </svg>
-                </div>
-                <div className="absolute inset-0 bg-gradient-to-br from-red-500 to-green-500 rounded-full blur-md opacity-50"></div>
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full blur-md opacity-50"></div>
                 <Avatar className="relative h-11 w-11 border-2 border-white dark:border-gray-800 shadow-lg">
                   {userData?.photoURL && (
                     <AvatarImage src={userData.photoURL} alt={userData?.name || "Foto de perfil"} />
                   )}
-                  <AvatarFallback className="text-sm font-black bg-gradient-to-br from-red-500 to-green-500 text-white">
+                  <AvatarFallback className="text-sm font-black bg-gradient-to-br from-blue-500 to-cyan-500 text-white">
                     {userData?.name?.charAt(0).toUpperCase() || "?"}
                   </AvatarFallback>
                 </Avatar>
               </div>
               <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
-                <p className="text-sm font-bold truncate leading-none text-red-900 dark:text-red-100">
+                <p className="text-sm font-bold truncate leading-none text-blue-900 dark:text-blue-100">
                   {userData?.name?.split(' ')[0] || "Aluno"}
                 </p>
                 {(userData?.curso || userData?.faculdade) && (
-                  <p className="text-xs font-semibold text-red-600 dark:text-red-400 truncate mt-0.5">
+                  <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 truncate mt-0.5">
                     {userData?.curso && userData?.faculdade 
                       ? `${userData.curso} - ${userData.faculdade}`
                       : userData?.curso || userData?.faculdade}
                   </p>
                 )}
-                <p className="text-xs font-semibold text-green-600 dark:text-green-400 truncate mt-0.5">
+                <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 truncate mt-0.5">
                   {userData?.email || ""}
                 </p>
               </div>

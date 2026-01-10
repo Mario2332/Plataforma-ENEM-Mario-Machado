@@ -343,11 +343,11 @@ export default function AlunoHome() {
 
   return (
     <div className="space-y-8 p-4 md:p-8 animate-fade-in">
-      <div className="bg-white dark:bg-gray-900/50 rounded-lg p-6">
+      <div className="bg-white dark:bg-gray-900/50 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
         <div className="flex items-start justify-between gap-4">
           <div className="text-center md:text-left">
             <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-50 sm:text-4xl">
-              Bem-vindo(a) de volta, {userData?.name?.split(' ')[0] || "Aluno"}!
+              Bem-vindo(a) de volta, {userData?.name?.split(' ')[0] || "Aluno"}! <span className="inline-block animate-wave">👋</span>
             </h1>
             <p className="mt-2 text-lg text-gray-600 dark:text-gray-400">
               Continue seu progresso e prepare-se para o sucesso.

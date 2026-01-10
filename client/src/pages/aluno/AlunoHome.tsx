@@ -342,33 +342,56 @@ export default function AlunoHome() {
   };
 
   return (
-    <div className="space-y-8 p-4 md:p-8 animate-fade-in">
-      <div className="bg-white dark:bg-gray-900/50 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
-        <div className="flex items-start justify-between gap-4">
-          <div className="text-center md:text-left">
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-50 sm:text-4xl">
-              Bem-vindo(a) de volta, {userData?.name?.split(' ')[0] || "Aluno"}! <span className="inline-block animate-wave">👋</span>
-            </h1>
-            <p className="mt-2 text-lg text-gray-600 dark:text-gray-400">
-              Continue seu progresso e prepare-se para o sucesso.
-            </p>
-          </div>
-          <div className="hidden md:flex gap-3">
-            <PerfilResumo onClick={() => setDiagnosticoModalOpen(true)} />
-            <RankingResumo onClick={() => setRankingModalOpen(true)} />
-          </div>
-        </div>
-        <p className="text-lg text-gray-700 dark:text-gray-300 font-medium mt-4">
-          Aproveite ao máximo sua jornada de estudos!
-        </p>
-        <div className="flex items-center justify-between flex-wrap gap-3 mt-4">
-          <div className="flex items-center gap-4 flex-wrap">
-            {streak > 0 && (
-              <div className="flex items-center gap-2 px-4 py-2 bg-green-500/20 rounded-full border border-green-500/30 backdrop-blur-sm">
-                <Flame className="h-5 w-5 text-green-500" />
-                <span className="text-lg font-semibold text-green-500">{streak} dias de streak!</span>
+    <div className="space-y-8 pb-8 animate-fade-in relative">
+      {/* Elementos decorativos flutuantes */}
+      <div className="fixed top-20 right-10 w-72 h-72 bg-primary/5 rounded-full blur-3xl animate-float pointer-events-none" />
+      <div className="fixed bottom-20 left-10 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl animate-float-delayed pointer-events-none" />
+      
+      {/* Header Premium com Glassmorphism */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/20 via-purple-500/10 to-blue-500/10 p-10 border-2 border-white/20 dark:border-white/10 backdrop-blur-xl shadow-2xl animate-slide-up">
+        {/* Efeitos de luz */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-primary/20 to-transparent rounded-full blur-3xl animate-pulse-slow" />
+        <div className="absolute bottom-0 left-0 w-72 h-72 bg-gradient-to-tr from-purple-500/20 to-transparent rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '1s' }} />
+        
+        {/* Partículas decorativas */}
+        <div className="absolute top-10 right-20 w-2 h-2 bg-primary rounded-full animate-ping" />
+        <div className="absolute top-20 right-40 w-1.5 h-1.5 bg-purple-500 rounded-full animate-ping" style={{ animationDelay: '0.5s' }} />
+        <div className="absolute bottom-10 left-20 w-2 h-2 bg-blue-500 rounded-full animate-ping" style={{ animationDelay: '1s' }} />
+        
+        <div className="relative space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-primary to-purple-500 rounded-2xl blur-xl opacity-50 animate-pulse-slow" />
+                <div className="relative bg-gradient-to-br from-primary via-purple-500 to-blue-500 p-4 rounded-2xl shadow-2xl">
+                  <Trophy className="h-10 w-10 text-white" />
+                </div>
               </div>
-            )}
+              <div>
+                <h1 className="text-5xl font-black tracking-tight bg-gradient-to-r from-primary via-purple-600 to-blue-600 bg-clip-text text-transparent">
+                  Olá, {userData?.name?.split(' ')[0] || "Aluno"}!
+                </h1>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-6xl animate-wave inline-block">👋</span>
+                  {streak > 0 && (
+                    <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500/20 to-red-500/20 rounded-full border border-orange-500/30 backdrop-blur-sm animate-bounce-subtle">
+                      <Flame className="h-5 w-5 text-orange-500" />
+                      <span className="text-sm font-bold text-orange-600 dark:text-orange-400">{streak} dias de foco!</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="hidden md:flex gap-3">
+              <PerfilResumo onClick={() => setDiagnosticoModalOpen(true)} />
+              <RankingResumo onClick={() => setRankingModalOpen(true)} />
+            </div>
+          </div>
+          <p className="text-xl text-muted-foreground font-medium">
+            Continue sua jornada rumo à aprovação no ENEM 🎯
+          </p>
+          <div className="flex items-center justify-between flex-wrap gap-3 mt-4">
+            <div className="flex items-center gap-4 flex-wrap">
               {/* 📓 Lembrete do Diário de Bordo */}
               <div className="flex items-center gap-2">
                 <span className="text-sm text-pink-600 dark:text-pink-400 font-medium">Lembre de preencher o diário de bordo!</span>
@@ -389,6 +412,7 @@ export default function AlunoHome() {
             </div>
           </div>
         </div>
+      </div>
 
       {/* Cards de Métricas com Progresso Circular */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">

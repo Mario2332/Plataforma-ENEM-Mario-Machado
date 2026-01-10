@@ -393,7 +393,7 @@ export default function AlunoHome() {
       {/* Cards de Métricas com Progresso Circular */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {/* Card Sequência Premium */}
-        <Card className="relative overflow-hidden transition-all duration-500 hover:shadow-2xl hover:shadow-orange-500/20 group animate-slide-up" style={{ animationDelay: '0.1s' }}>
+        <Card className="relative overflow-hidden transition-all duration-500 hover:shadow-2xl hover:shadow-orange-500/20 group animate-slide-up border border-gray-200 dark:border-gray-700" style={{ animationDelay: '0.1s' }}>
           <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-orange-500/20 to-transparent rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700" />
           
@@ -417,7 +417,7 @@ export default function AlunoHome() {
         </Card>
 
         {/* Card Tempo de Estudo */}
-        <Card className="relative overflow-hidden transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/20 group animate-slide-up" style={{ animationDelay: '0.2s' }}>
+        <Card className="relative overflow-hidden transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/20 group animate-slide-up border border-gray-200 dark:border-gray-700" style={{ animationDelay: '0.2s' }}>
           <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-blue-500/20 to-transparent rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700" />
           
@@ -445,7 +445,7 @@ export default function AlunoHome() {
         </Card>
 
         {/* Card Questões Resolvidas */}
-        <Card className="relative overflow-hidden transition-all duration-500 hover:shadow-2xl hover:shadow-emerald-500/20 group animate-slide-up" style={{ animationDelay: '0.3s' }}>
+        <Card className="relative overflow-hidden transition-all duration-500 hover:shadow-2xl hover:shadow-emerald-500/20 group animate-slide-up border border-gray-200 dark:border-gray-700" style={{ animationDelay: '0.3s' }}>
           <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-emerald-500/20 to-transparent rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700" />
           
@@ -469,7 +469,7 @@ export default function AlunoHome() {
         </Card>
 
         {/* Card Simulado */}
-        <Card className="relative overflow-hidden transition-all duration-500 hover:shadow-2xl hover:shadow-purple-500/20 group animate-slide-up" style={{ animationDelay: '0.4s' }}>
+        <Card className="relative overflow-hidden transition-all duration-500 hover:shadow-2xl hover:shadow-purple-500/20 group animate-slide-up border border-gray-200 dark:border-gray-700" style={{ animationDelay: '0.4s' }}>
           <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-purple-500/20 to-transparent rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700" />
           
@@ -514,7 +514,7 @@ export default function AlunoHome() {
       {/* Ações Rápidas Premium */}
       <div className="grid gap-5 md:grid-cols-3 animate-slide-up" style={{ animationDelay: '0.5s' }}>
         <Card 
-          className="relative overflow-hidden border-2 border-transparent hover:border-blue-500 transition-all duration-500 cursor-pointer group hover:shadow-2xl hover:shadow-blue-500/30 hover:-translate-y-2 bg-gradient-to-br from-blue-50/50 to-transparent dark:from-blue-950/20" 
+          className="relative overflow-hidden border border-gray-200 dark:border-gray-700 hover:border-blue-500 transition-all duration-500 cursor-pointer group hover:shadow-2xl hover:shadow-blue-500/30 hover:-translate-y-2 bg-gradient-to-br from-blue-50/50 to-transparent dark:from-blue-950/20" 
           onClick={() => setLocation("/aluno/estudos")}
         >
           <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 via-blue-500/5 to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -540,7 +540,7 @@ export default function AlunoHome() {
         </Card>
 
         <Card 
-          className="relative overflow-hidden border-2 border-transparent hover:border-emerald-500 transition-all duration-500 cursor-pointer group hover:shadow-2xl hover:shadow-emerald-500/30 hover:-translate-y-2 bg-gradient-to-br from-emerald-50/50 to-transparent dark:from-emerald-950/20" 
+          className="relative overflow-hidden border border-gray-200 dark:border-gray-700 hover:border-emerald-500 transition-all duration-500 cursor-pointer group hover:shadow-2xl hover:shadow-emerald-500/30 hover:-translate-y-2 bg-gradient-to-br from-emerald-50/50 to-transparent dark:from-emerald-950/20" 
           onClick={() => setLocation("/aluno/estudos")}
         >
           <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/0 via-emerald-500/5 to-emerald-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -566,7 +566,7 @@ export default function AlunoHome() {
         </Card>
 
         <Card 
-          className="relative overflow-hidden border-2 border-transparent hover:border-purple-500 transition-all duration-500 cursor-pointer group hover:shadow-2xl hover:shadow-purple-500/30 hover:-translate-y-2 bg-gradient-to-br from-purple-50/50 to-transparent dark:from-purple-950/20" 
+          className="relative overflow-hidden border border-gray-200 dark:border-gray-700 hover:border-purple-500 transition-all duration-500 cursor-pointer group hover:shadow-2xl hover:shadow-purple-500/30 hover:-translate-y-2 bg-gradient-to-br from-purple-50/50 to-transparent dark:from-purple-950/20" 
           onClick={() => setLocation("/aluno/simulados")}
         >
           <div className="absolute inset-0 bg-gradient-to-br from-purple-500/0 via-purple-500/5 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -593,7 +593,7 @@ export default function AlunoHome() {
       </div>
 
       {/* Mapa de Calor Premium */}
-      <Card className="hover:shadow-2xl transition-all duration-500 animate-slide-up" style={{ animationDelay: '0.6s' }}>
+      <Card className="hover:shadow-2xl transition-all duration-500 animate-slide-up border border-gray-200 dark:border-gray-700" style={{ animationDelay: '0.6s' }}>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -638,7 +638,7 @@ export default function AlunoHome() {
       </Card>
 
       {/* Análise de Desempenho Premium */}
-      <Card className="hover:shadow-2xl transition-all duration-500 animate-slide-up" style={{ animationDelay: '0.7s' }}>
+      <Card className="hover:shadow-2xl transition-all duration-500 animate-slide-up border border-gray-200 dark:border-gray-700" style={{ animationDelay: '0.7s' }}>
         <CardHeader>
           <CardTitle className="flex items-center gap-3 text-2xl font-black">
             <div className="relative">
@@ -713,52 +713,6 @@ export default function AlunoHome() {
               )}
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Metas Ativas Premium */}
-      <Card className="hover:shadow-2xl transition-all duration-500 animate-slide-up" style={{ animationDelay: '0.8s' }}>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-3 text-2xl font-black">
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-yellow-500 to-amber-500 rounded-xl blur-md opacity-50" />
-              <div className="relative p-3 bg-gradient-to-br from-yellow-500 to-amber-500 rounded-xl shadow-xl">
-                <Target className="h-6 w-6 text-white" />
-              </div>
-            </div>
-            Metas Ativas
-          </CardTitle>
-          <CardDescription className="mt-3 text-base">
-            Acompanhe seu progresso em direção aos seus objetivos.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {metas.length > 0 ? (
-            <ul className="space-y-5">
-              {metas.map((meta, index) => (
-                <li key={index}>
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="font-bold text-lg">{meta.descricao}</p>
-                    <span className="font-bold text-primary">{Math.round(meta.progresso)}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 relative overflow-hidden">
-                    <div 
-                      className="bg-primary h-3 rounded-full transition-all duration-500"
-                      style={{ width: `${meta.progresso}%` }}
-                    />
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-2">Meta: {meta.valorMeta} {meta.tipo.toLowerCase()} | Progresso: {meta.valorAtual} {meta.tipo.toLowerCase()}</p>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div className="text-center py-8 px-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-              <Award className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-              <p className="font-semibold text-lg">Nenhuma meta ativa.</p>
-              <p className="text-sm text-muted-foreground mt-1">Crie metas para direcionar seus estudos!</p>
-              <Button onClick={() => setLocation('/aluno/metas')} className="mt-4">Criar Meta</Button>
-            </div>
-          )}
         </CardContent>
       </Card>
 

@@ -89,10 +89,24 @@ const getMetas = functions
         .orderBy("createdAt", "desc")
         .get();
 
-      return metasSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
+      // Filtrar metas para não mostrar as "metas-mãe" (templates)
+      // Metas-mãe são aquelas com repetirDiariamente=true MAS sem metaPaiId
+      // Essas são apenas templates usados para gerar instâncias diárias
+      const metasFiltradas = metasSnapshot.docs
+        .map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }))
+        .filter((meta: any) => {
+          // Se não é meta diária, mostrar normalmente
+          if (!meta.repetirDiariamente) return true;
+          
+          // Se é meta diária, só mostrar se for uma instância (tem metaPaiId)
+          // Não mostrar o template (meta-mãe)
+          return !!meta.metaPaiId;
+        });
+
+      return metasFiltradas;
     } catch (error: any) {
       functions.logger.error("Erro ao listar metas:", error);
       throw new functions.https.HttpsError("internal", error.message);

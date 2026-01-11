@@ -13,7 +13,7 @@ const db = admin.firestore();
  */
 export const processarMetasDiarias = functions
   .region("southamerica-east1")
-  .pubsub.schedule("0 0 * * *") // Todo dia à meia-noite
+  .pubsub.schedule("0 4 * * *") // Todo dia às 04:00 da manhã (evita problemas de fuso horário)
   .timeZone("America/Sao_Paulo")
   .onRun(async (context) => {
     try {
@@ -42,11 +42,31 @@ export const processarMetasDiarias = functions
  */
 async function processarMetasAlunoAsync(alunoId: string) {
   try {
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
+    // Usar data no fuso horário de Brasília (GMT-3)
+    // A função roda às 04:00 de Brasília, então estamos bem dentro do dia
+    const agora = new Date();
     
+    // Calcular a data de hoje em Brasília (GMT-3)
+    // Subtrair 3 horas do UTC para obter o horário de Brasília
+    const offsetBrasilia = -3 * 60; // -3 horas em minutos
+    const offsetLocal = agora.getTimezoneOffset(); // offset local em minutos
+    const diffMinutos = offsetBrasilia - (-offsetLocal); // diferença para Brasília
+    
+    const agoraBrasilia = new Date(agora.getTime() + diffMinutos * 60 * 1000);
+    
+    // Criar data de "hoje" à meia-noite no fuso de Brasília
+    const hoje = new Date(Date.UTC(
+      agoraBrasilia.getUTCFullYear(),
+      agoraBrasilia.getUTCMonth(),
+      agoraBrasilia.getUTCDate(),
+      3, 0, 0, 0 // 00:00 Brasília = 03:00 UTC
+    ));
+    
+    // Ontem é um dia antes
     const ontem = new Date(hoje);
     ontem.setDate(ontem.getDate() - 1);
+    
+    functions.logger.info(`Processando metas - Hoje: ${hoje.toISOString()}, Ontem: ${ontem.toISOString()}`);
 
     // 1. Buscar todas as metas ativas com repetirDiariamente
     const metasSnapshot = await db

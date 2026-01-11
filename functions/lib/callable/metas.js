@@ -359,7 +359,7 @@ const updateMeta = functions
     .https.onCall(async (data, context) => {
     const auth = await (0, auth_1.getAuthContext)(context);
     (0, auth_1.requireRole)(auth, "aluno");
-    const { metaId, nome, descricao, valorAlvo, dataInicio, dataFim, status, } = data;
+    const { metaId, nome, descricao, valorAlvo, dataInicio, dataFim, status, repetirDiariamente, } = data;
     if (!metaId) {
         throw new functions.https.HttpsError("invalid-argument", "ID da meta é obrigatório");
     }
@@ -399,6 +399,65 @@ const updateMeta = functions
             if (status === 'concluida') {
                 updateData.dataConclusao = admin.firestore.Timestamp.now();
             }
+        }
+        // Se repetirDiariamente foi alterado de false para true, transformar em meta diária
+        if (repetirDiariamente === true && !metaAtual.repetirDiariamente) {
+            // Transformar a meta atual em "meta-mãe" (template)
+            updateData.repetirDiariamente = true;
+            updateData.valorAtual = 0; // Reset progresso da meta-mãe
+            // Criar a primeira instância diária para hoje
+            const hoje = getHojeBrasilia();
+            const dataInicioMeta = dataInicio ? parseDateWithBrasiliaTimezone(dataInicio) : metaAtual.dataInicio.toDate();
+            const dataFimMeta = dataFim ? parseDateWithBrasiliaTimezone(dataFim) : metaAtual.dataFim.toDate();
+            // Só criar instância se hoje estiver dentro do período da meta
+            if (isDateInRangeBrasilia(hoje, dataInicioMeta, dataFimMeta)) {
+                // Criar instância diária sem copiar campos indesejados
+                const instanciaData = {
+                    alunoId: metaAtual.alunoId,
+                    tipo: metaAtual.tipo,
+                    nome: nome || metaAtual.nome,
+                    descricao: descricao || metaAtual.descricao || '',
+                    valorAlvo: valorAlvo !== undefined ? Number(valorAlvo) : metaAtual.valorAlvo,
+                    unidade: metaAtual.unidade,
+                    dataInicio: admin.firestore.Timestamp.fromDate(dataInicioMeta),
+                    dataFim: admin.firestore.Timestamp.fromDate(dataFimMeta),
+                    repetirDiariamente: true,
+                    metaPaiId: metaId, // Referência à meta-mãe
+                    dataReferencia: admin.firestore.Timestamp.fromDate(hoje),
+                    valorAtual: 0, // Começa zerada
+                    status: 'ativa',
+                    createdAt: admin.firestore.Timestamp.now(),
+                    updatedAt: admin.firestore.Timestamp.now(),
+                };
+                // Copiar campos opcionais se existirem
+                if (metaAtual.materia)
+                    instanciaData.materia = metaAtual.materia;
+                if (metaAtual.incidencia)
+                    instanciaData.incidencia = metaAtual.incidencia;
+                await db
+                    .collection("alunos")
+                    .doc(auth.uid)
+                    .collection("metas")
+                    .add(instanciaData);
+                functions.logger.info(`Instância diária criada para meta ${metaId}`);
+            }
+        }
+        else if (repetirDiariamente === false && metaAtual.repetirDiariamente) {
+            // Transformar de meta diária para meta normal
+            updateData.repetirDiariamente = false;
+            // Deletar instâncias diárias existentes
+            const instanciasSnapshot = await db
+                .collection("alunos")
+                .doc(auth.uid)
+                .collection("metas")
+                .where("metaPaiId", "==", metaId)
+                .get();
+            const batch = db.batch();
+            instanciasSnapshot.docs.forEach((doc) => {
+                batch.delete(doc.ref);
+            });
+            await batch.commit();
+            functions.logger.info(`${instanciasSnapshot.size} instâncias diárias removidas da meta ${metaId}`);
         }
         // Se dataInicio foi alterada, recalcular progresso (apenas para metas não-diárias)
         if (dataInicio !== undefined && !metaAtual.repetirDiariamente) {

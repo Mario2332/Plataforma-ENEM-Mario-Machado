@@ -250,6 +250,7 @@ export default function AlunoMetas() {
           valorAlvo: Number(valorAlvo),
           dataInicio: dataInicioISO,
           dataFim: dataFimISO,
+          repetirDiariamente: (tipo === 'horas' || tipo === 'questoes' || tipo === 'topicos') ? repetirDiariamente : undefined,
         });
         toast.success("Meta atualizada com sucesso!");
       } else {

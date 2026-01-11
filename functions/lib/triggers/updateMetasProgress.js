@@ -302,9 +302,20 @@ exports.onSimuladoWrite = functions
                     // Contar simulados no período da meta
                     const dataInicio = meta.dataInicio.toDate();
                     const dataFim = meta.dataFim.toDate();
+                    // Para metas diárias, usar a data de referência
+                    const dataRefStr = meta.metaPaiId && meta.dataReferencia
+                        ? toDateStrBrasilia(meta.dataReferencia.toDate())
+                        : null;
                     valorAtual = simulados.filter((s) => {
                         const dataSimulado = s.data.toDate();
-                        return dataSimulado >= dataInicio && dataSimulado <= dataFim;
+                        if (dataRefStr) {
+                            // Meta diária: apenas simulados do dia de referência
+                            return toDateStrBrasilia(dataSimulado) === dataRefStr;
+                        }
+                        else {
+                            // Meta normal: período completo com fuso de Brasília
+                            return isDateInRangeBrasilia(dataSimulado, dataInicio, dataFim);
+                        }
                     }).length;
                     break;
                 }
@@ -312,10 +323,21 @@ exports.onSimuladoWrite = functions
                     // Somar acertos em simulados no período da meta
                     const dataInicio = meta.dataInicio.toDate();
                     const dataFim = meta.dataFim.toDate();
+                    // Para metas diárias, usar a data de referência
+                    const dataRefStrDesemp = meta.metaPaiId && meta.dataReferencia
+                        ? toDateStrBrasilia(meta.dataReferencia.toDate())
+                        : null;
                     valorAtual = simulados
                         .filter((s) => {
                         const dataSimulado = s.data.toDate();
-                        return dataSimulado >= dataInicio && dataSimulado <= dataFim;
+                        if (dataRefStrDesemp) {
+                            // Meta diária: apenas simulados do dia de referência
+                            return toDateStrBrasilia(dataSimulado) === dataRefStrDesemp;
+                        }
+                        else {
+                            // Meta normal: período completo com fuso de Brasília
+                            return isDateInRangeBrasilia(dataSimulado, dataInicio, dataFim);
+                        }
                     })
                         .reduce((acc, s) => {
                         let acertos = 0;
@@ -443,13 +465,25 @@ exports.onConteudoProgressoWrite = functions
             // Contar tópicos concluídos no período da meta
             const dataInicio = meta.dataInicio.toDate();
             const dataFim = meta.dataFim.toDate();
+            // Para metas diárias, usar a data de referência
+            const dataRefStrTopicos = meta.metaPaiId && meta.dataReferencia
+                ? toDateStrBrasilia(meta.dataReferencia.toDate())
+                : null;
             const valorAtual = progressoSnapshot.docs.filter((doc) => {
                 const data = doc.data();
                 // Usar dataConclusao se existir, senão usar updatedAt ou createdAt
                 const dataConclusao = data.dataConclusao?.toDate() || data.updatedAt?.toDate() || data.createdAt?.toDate();
                 if (!dataConclusao)
                     return false;
-                const matchPeriodo = dataConclusao >= dataInicio && dataConclusao <= dataFim;
+                let matchPeriodo;
+                if (dataRefStrTopicos) {
+                    // Meta diária: apenas tópicos concluídos no dia de referência
+                    matchPeriodo = toDateStrBrasilia(dataConclusao) === dataRefStrTopicos;
+                }
+                else {
+                    // Meta normal: período completo com fuso de Brasília
+                    matchPeriodo = isDateInRangeBrasilia(dataConclusao, dataInicio, dataFim);
+                }
                 // Filtrar por incidencia apenas se a meta especificar E o progresso tiver incidencia
                 // (para não excluir tópicos do cronograma anual que não têm incidencia)
                 const matchIncidencia = !meta.incidencia || !data.incidencia || data.incidencia === meta.incidencia;

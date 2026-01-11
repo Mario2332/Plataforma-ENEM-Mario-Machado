@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import CronogramaCell from "@/components/CronogramaCell";
-import { Calendar, Save, Copy, Palette, Zap, Clock, Sparkles } from "lucide-react";
+import { Calendar, Save, Copy, Palette, Zap, Clock, Sparkles, CheckCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 // Acesso direto ao Firestore (elimina cold start de ~20s)
 import {
@@ -17,6 +17,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { CronogramaSkeleton } from "@/components/ui/skeleton-loader";
+// Importar o hook para obter o ID do usuário efetivo (suporte a visualização do mentor)
+import { useEffectiveUserId } from "@/contexts/MentorViewContext";
 
 type TimeSlot = {
   day: number;
@@ -43,20 +45,45 @@ const COLORS = [
 ];
 
 export default function AlunoCronograma() {
-  // Removido useAlunoApi - usando acesso direto ao Firestore para eliminar cold start
+  // Obter o ID do usuário efetivo (aluno logado ou aluno sendo visualizado pelo mentor)
+  const effectiveUserId = useEffectiveUserId();
+  
   const [schedule, setSchedule] = useState<TimeSlot[]>([]);
   const [copiedCell, setCopiedCell] = useState<TimeSlot | null>(null);
   const [editingCell, setEditingCell] = useState<string | null>(null);
   const [draggedCell, setDraggedCell] = useState<{ day: number; hour: number; minute: number } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   
   // Estado para Popover global de cores (otimização: evita 336 Popovers)
   const [colorPickerCell, setColorPickerCell] = useState<{ day: number; hour: number; minute: number } | null>(null);
 
+  // Ref para debounce do auto-save
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Ref para rastrear se houve mudanças desde o último save
+  const hasUnsavedChanges = useRef(false);
+  // Ref para o schedule atual (para uso no auto-save)
+  const scheduleRef = useRef<TimeSlot[]>([]);
+  // Ref para o userId atual
+  const userIdRef = useRef<string | null>(null);
+
+  // Atualizar refs quando schedule ou userId mudar
   useEffect(() => {
+    scheduleRef.current = schedule;
+  }, [schedule]);
+
+  useEffect(() => {
+    userIdRef.current = effectiveUserId;
+  }, [effectiveUserId]);
+
+  // Carregar dados quando o userId mudar
+  useEffect(() => {
+    if (!effectiveUserId) return;
+    
     const loadData = async () => {
       setIsLoading(true);
+      hasUnsavedChanges.current = false;
       try {
         await loadSchedule();
       } finally {
@@ -64,12 +91,23 @@ export default function AlunoCronograma() {
       }
     };
     loadData();
-  }, []);
+    
+    // Cleanup: salvar mudanças pendentes ao desmontar ou mudar de usuário
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+      // Salvar mudanças pendentes antes de desmontar
+      if (hasUnsavedChanges.current && userIdRef.current) {
+        saveScheduleImmediate(scheduleRef.current, userIdRef.current);
+      }
+    };
+  }, [effectiveUserId]);
 
   const loadSchedule = async () => {
     try {
-      // Acesso direto ao Firestore (elimina cold start de ~20s)
-      const horarios = await getHorariosDirect();
+      // Acesso direto ao Firestore usando o ID do usuário efetivo
+      const horarios = await getHorariosDirect(effectiveUserId);
       
       const slots: TimeSlot[] = [];
       horarios.forEach((h: any) => {
@@ -97,6 +135,7 @@ export default function AlunoCronograma() {
       });
       
       setSchedule(slots);
+      setSaveStatus('idle');
     } catch (error: any) {
       toast.error(error.message || "Erro ao carregar cronograma");
     }
@@ -118,6 +157,107 @@ export default function AlunoCronograma() {
     return scheduleMap.get(key) || { day, hour, minute, activity: "", color: "#FFFFFF" };
   }, [scheduleMap]);
 
+  // Função para converter schedule em horários para salvar
+  const convertScheduleToHorarios = (scheduleData: TimeSlot[]) => {
+    const sortedSchedule = [...scheduleData]
+      .filter(s => s.activity)
+      .sort((a, b) => {
+        if (a.day !== b.day) return a.day - b.day;
+        if (a.hour !== b.hour) return a.hour - b.hour;
+        return a.minute - b.minute;
+      });
+    
+    const groupedSlots: Array<{ day: number; startHour: number; startMinute: number; endHour: number; endMinute: number; activity: string; color: string }> = [];
+    
+    sortedSchedule.forEach(slot => {
+      const lastGroup = groupedSlots[groupedSlots.length - 1];
+      
+      if (
+        lastGroup &&
+        lastGroup.day === slot.day &&
+        lastGroup.activity === slot.activity &&
+        lastGroup.color === slot.color &&
+        (
+          (lastGroup.endHour === slot.hour && lastGroup.endMinute === slot.minute) ||
+          (lastGroup.endHour === slot.hour - 1 && lastGroup.endMinute === 30 && slot.minute === 0)
+        )
+      ) {
+        lastGroup.endHour = slot.hour;
+        lastGroup.endMinute = slot.minute + 30;
+        if (lastGroup.endMinute >= 60) {
+          lastGroup.endMinute = 0;
+          lastGroup.endHour++;
+        }
+      } else {
+        groupedSlots.push({
+          day: slot.day,
+          startHour: slot.hour,
+          startMinute: slot.minute,
+          endHour: slot.hour,
+          endMinute: slot.minute + 30,
+          activity: slot.activity,
+          color: slot.color,
+        });
+        
+        if (groupedSlots[groupedSlots.length - 1].endMinute >= 60) {
+          groupedSlots[groupedSlots.length - 1].endMinute = 0;
+          groupedSlots[groupedSlots.length - 1].endHour++;
+        }
+      }
+    });
+    
+    return groupedSlots.map(g => ({
+      diaSemana: g.day,
+      horaInicio: `${String(g.startHour).padStart(2, '0')}:${String(g.startMinute).padStart(2, '0')}`,
+      horaFim: `${String(g.endHour).padStart(2, '0')}:${String(g.endMinute).padStart(2, '0')}`,
+      materia: g.activity.split(' - ')[0].trim(),
+      descricao: g.activity.split(' - ').slice(1).join(' - ').trim() || '',
+      cor: g.color,
+    }));
+  };
+
+  // Função para salvar imediatamente (usada no cleanup)
+  const saveScheduleImmediate = async (scheduleData: TimeSlot[], userId: string) => {
+    try {
+      const horarios = convertScheduleToHorarios(scheduleData);
+      await replaceAllHorarios(horarios, userId);
+    } catch (error) {
+      console.error("Erro ao salvar cronograma:", error);
+    }
+  };
+
+  // Função de auto-save com debounce
+  const triggerAutoSave = useCallback(() => {
+    hasUnsavedChanges.current = true;
+    setSaveStatus('saving');
+    
+    // Cancelar save anterior se existir
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    
+    // Agendar novo save após 1.5 segundos de inatividade
+    saveTimeoutRef.current = setTimeout(async () => {
+      if (!userIdRef.current) return;
+      
+      try {
+        const horarios = convertScheduleToHorarios(scheduleRef.current);
+        await replaceAllHorarios(horarios, userIdRef.current);
+        hasUnsavedChanges.current = false;
+        setSaveStatus('saved');
+        
+        // Resetar status após 2 segundos
+        setTimeout(() => {
+          setSaveStatus('idle');
+        }, 2000);
+      } catch (error: any) {
+        console.error("Erro ao salvar cronograma:", error);
+        setSaveStatus('error');
+        toast.error("Erro ao salvar cronograma. Tente novamente.");
+      }
+    }, 1500);
+  }, []);
+
   const updateSlot = useCallback((day: number, hour: number, minute: number, updates: Partial<TimeSlot>) => {
     const key = getCellKey(day, hour, minute);
     const existing = scheduleMap.has(key);
@@ -131,7 +271,10 @@ export default function AlunoCronograma() {
     } else {
       setSchedule(prev => [...prev, { day, hour, minute, activity: "", color: "#FFFFFF", ...updates }]);
     }
-  }, [scheduleMap]);
+    
+    // Disparar auto-save
+    triggerAutoSave();
+  }, [scheduleMap, triggerAutoSave]);
 
   // Handlers otimizados com useCallback para evitar re-renders desnecessários
   const handleCopy = useCallback((day: number, hour: number, minute: number) => {
@@ -193,76 +336,6 @@ export default function AlunoCronograma() {
     setColorPickerCell({ day, hour, minute });
   }, []);
 
-  const handleSave = async () => {
-    try {
-      setIsSaving(true);
-      
-      const sortedSchedule = [...schedule]
-        .filter(s => s.activity)
-        .sort((a, b) => {
-          if (a.day !== b.day) return a.day - b.day;
-          if (a.hour !== b.hour) return a.hour - b.hour;
-          return a.minute - b.minute;
-        });
-      
-      const groupedSlots: Array<{ day: number; startHour: number; startMinute: number; endHour: number; endMinute: number; activity: string; color: string }> = [];
-      
-      sortedSchedule.forEach(slot => {
-        const lastGroup = groupedSlots[groupedSlots.length - 1];
-        
-        if (
-          lastGroup &&
-          lastGroup.day === slot.day &&
-          lastGroup.activity === slot.activity &&
-          lastGroup.color === slot.color &&
-          (
-            (lastGroup.endHour === slot.hour && lastGroup.endMinute === slot.minute) ||
-            (lastGroup.endHour === slot.hour - 1 && lastGroup.endMinute === 30 && slot.minute === 0)
-          )
-        ) {
-          lastGroup.endHour = slot.hour;
-          lastGroup.endMinute = slot.minute + 30;
-          if (lastGroup.endMinute >= 60) {
-            lastGroup.endMinute = 0;
-            lastGroup.endHour++;
-          }
-        } else {
-          groupedSlots.push({
-            day: slot.day,
-            startHour: slot.hour,
-            startMinute: slot.minute,
-            endHour: slot.hour,
-            endMinute: slot.minute + 30,
-            activity: slot.activity,
-            color: slot.color,
-          });
-          
-          if (groupedSlots[groupedSlots.length - 1].endMinute >= 60) {
-            groupedSlots[groupedSlots.length - 1].endMinute = 0;
-            groupedSlots[groupedSlots.length - 1].endHour++;
-          }
-        }
-      });
-      
-      const horarios = groupedSlots.map(g => ({
-        diaSemana: g.day,
-        horaInicio: `${String(g.startHour).padStart(2, '0')}:${String(g.startMinute).padStart(2, '0')}`,
-        horaFim: `${String(g.endHour).padStart(2, '0')}:${String(g.endMinute).padStart(2, '0')}`,
-        materia: g.activity.split(' - ')[0].trim(),
-        descricao: g.activity.split(' - ').slice(1).join(' - ').trim() || '',
-        cor: g.color,
-      }));
-      
-      // Otimização: Limpar e salvar em UMA Única operação (delete + create no mesmo batch)
-      await replaceAllHorarios(horarios);
-      toast.success("Cronograma salvo com sucesso!");
-    } catch (error: any) {
-      toast.error(error.message || "Erro ao salvar cronograma");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   const formatTime = (hour: number, minute: number) => 
     `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 
@@ -276,16 +349,25 @@ export default function AlunoCronograma() {
 
   return (
     <div className="space-y-6">
-      {/* Botão Salvar */}
-      <div className="flex justify-end">
-        <Button
-          onClick={handleSave}
-          disabled={isSaving}
-          className="bg-gradient-to-r from-indigo-500 via-cyan-500 to-blue-500 hover:from-indigo-600 hover:via-cyan-600 hover:to-blue-600 shadow-xl hover:shadow-2xl font-bold"
-        >
-          <Save className="mr-2 h-4 w-4" />
-          {isSaving ? "Salvando..." : "Salvar"}
-        </Button>
+      {/* Indicador de Status de Salvamento */}
+      <div className="flex justify-end items-center gap-2">
+        {saveStatus === 'saving' && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground bg-yellow-50 dark:bg-yellow-900/20 px-3 py-1.5 rounded-full border border-yellow-200 dark:border-yellow-800">
+            <Loader2 className="h-4 w-4 animate-spin text-yellow-600" />
+            <span>Salvando...</span>
+          </div>
+        )}
+        {saveStatus === 'saved' && (
+          <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 dark:bg-green-900/20 px-3 py-1.5 rounded-full border border-green-200 dark:border-green-800">
+            <CheckCircle className="h-4 w-4" />
+            <span>Salvo automaticamente</span>
+          </div>
+        )}
+        {saveStatus === 'error' && (
+          <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 px-3 py-1.5 rounded-full border border-red-200 dark:border-red-800">
+            <span>Erro ao salvar</span>
+          </div>
+        )}
       </div>
 
       {/* Instruções Premium */}
@@ -331,8 +413,8 @@ export default function AlunoCronograma() {
               <span className="text-white font-bold text-sm">4</span>
             </div>
             <div>
-              <p className="font-bold text-sm">Mover</p>
-              <p className="text-sm text-muted-foreground">Arraste e solte células para reorganizar</p>
+              <p className="font-bold text-sm">Auto-Save</p>
+              <p className="text-sm text-muted-foreground">Suas alterações são salvas automaticamente</p>
             </div>
           </div>
         </CardContent>

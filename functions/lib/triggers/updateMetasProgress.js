@@ -69,6 +69,7 @@ exports.onEstudoWrite = functions
     .onWrite(async (change, context) => {
     const alunoId = context.params.alunoId;
     try {
+        console.log(`[onEstudoWrite] Iniciando processamento para aluno ${alunoId}`);
         // Buscar todas as metas ativas do aluno
         const metasSnapshot = await db
             .collection("alunos")
@@ -77,6 +78,7 @@ exports.onEstudoWrite = functions
             .where("status", "==", "ativa")
             .get();
         if (metasSnapshot.empty) {
+            console.log(`[onEstudoWrite] Nenhuma meta ativa encontrada para aluno ${alunoId}`);
             return null;
         }
         // Filtrar metas:
@@ -84,20 +86,26 @@ exports.onEstudoWrite = functions
         // - Para instâncias diárias, manter apenas as de hoje
         // Usar fuso horário de Brasília
         const hojeStr = getHojeBrasiliaStr();
+        console.log(`[onEstudoWrite] Hoje (Brasília): ${hojeStr}`);
+        console.log(`[onEstudoWrite] Total de metas ativas: ${metasSnapshot.docs.length}`);
         const metasValidas = metasSnapshot.docs.filter((doc) => {
             const meta = doc.data();
             // Excluir metas "pai" (templates)
             if (meta.repetirDiariamente && !meta.metaPaiId) {
+                console.log(`[onEstudoWrite] Excluindo meta-pai: ${meta.nome}`);
                 return false;
             }
             // Se for instância diária, verificar se é de hoje
             if (meta.metaPaiId && meta.dataReferencia) {
                 const dataRef = meta.dataReferencia.toDate();
                 const dataRefStr = toDateStrBrasilia(dataRef);
+                console.log(`[onEstudoWrite] Instância diária: ${meta.nome}, dataRef: ${dataRefStr}, hoje: ${hojeStr}, match: ${dataRefStr === hojeStr}`);
                 return dataRefStr === hojeStr;
             }
+            console.log(`[onEstudoWrite] Meta normal: ${meta.nome}, tipo: ${meta.tipo}`);
             return true;
         });
+        console.log(`[onEstudoWrite] Metas válidas após filtro: ${metasValidas.length}`);
         // Buscar todos os estudos do aluno
         const estudosSnapshot = await db
             .collection("alunos")
@@ -105,11 +113,13 @@ exports.onEstudoWrite = functions
             .collection("estudos")
             .get();
         const estudos = estudosSnapshot.docs.map((doc) => doc.data());
+        console.log(`[onEstudoWrite] Total de estudos do aluno: ${estudos.length}`);
         const batch = db.batch();
         const now = admin.firestore.Timestamp.now();
         for (const metaDoc of metasValidas) {
             const meta = metaDoc.data();
             let valorAtual = 0;
+            console.log(`[onEstudoWrite] Processando meta: ${meta.nome}, tipo: ${meta.tipo}`);
             // Calcular progresso baseado no tipo de meta
             switch (meta.tipo) {
                 case 'horas': {
@@ -121,20 +131,25 @@ exports.onEstudoWrite = functions
                     const dataRefStr = meta.metaPaiId && meta.dataReferencia
                         ? toDateStrBrasilia(meta.dataReferencia.toDate())
                         : null;
-                    valorAtual = estudos
-                        .filter((e) => {
+                    console.log(`[onEstudoWrite] Meta horas: dataRefStr=${dataRefStr}, dataInicio=${toDateStrBrasilia(dataInicio)}, dataFim=${toDateStrBrasilia(dataFim)}`);
+                    const estudosFiltrados = estudos.filter((e) => {
                         const dataEstudo = e.data.toDate();
+                        const dataEstudoStr = toDateStrBrasilia(dataEstudo);
                         if (dataRefStr) {
                             // Meta diária: apenas estudos do dia de referência
-                            return toDateStrBrasilia(dataEstudo) === dataRefStr;
+                            const match = dataEstudoStr === dataRefStr;
+                            console.log(`[onEstudoWrite] Estudo: data=${dataEstudoStr}, dataRef=${dataRefStr}, match=${match}, tempoMinutos=${e.tempoMinutos}`);
+                            return match;
                         }
                         else {
                             // Meta normal: período completo
                             return isDateInRangeBrasilia(dataEstudo, dataInicio, dataFim);
                         }
-                    })
-                        .reduce((acc, e) => acc + (e.tempoMinutos || 0), 0) / 60;
+                    });
+                    console.log(`[onEstudoWrite] Estudos filtrados para meta horas: ${estudosFiltrados.length}`);
+                    valorAtual = estudosFiltrados.reduce((acc, e) => acc + (e.tempoMinutos || 0), 0) / 60;
                     valorAtual = Math.round(valorAtual * 10) / 10; // Arredondar para 1 casa decimal
+                    console.log(`[onEstudoWrite] Valor calculado para meta horas: ${valorAtual}`);
                     break;
                 }
                 case 'questoes': {
@@ -217,10 +232,13 @@ exports.onEstudoWrite = functions
             if (valorAtual >= meta.valorAlvo && meta.status === 'ativa') {
                 updateData.status = 'concluida';
                 updateData.dataConclusao = now;
+                console.log(`[onEstudoWrite] Meta ${meta.nome} concluída!`);
             }
+            console.log(`[onEstudoWrite] Atualizando meta ${meta.nome}: valorAtual=${valorAtual}, valorAlvo=${meta.valorAlvo}`);
             batch.update(metaDoc.ref, updateData);
         }
         await batch.commit();
+        console.log(`[onEstudoWrite] Batch commit realizado com sucesso`);
         functions.logger.info(`Progresso de metas atualizado para aluno ${alunoId}`);
         return null;
     }

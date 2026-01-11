@@ -9,8 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
 import { mentorApi } from "@/lib/api";
-import { Plus, Users, ArrowUpDown, Edit, Trash2, Search, TrendingUp, Eye } from "lucide-react";
+import { Plus, Users, ArrowUpDown, Edit, Trash2, Search, TrendingUp, Eye, FileText, Calendar, Clock, Target, Award, Flame, BookOpen, Trophy, CheckCircle2, XCircle, User } from "lucide-react";
 import { toast } from "sonner";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
@@ -19,10 +22,13 @@ export default function MentorAlunos() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [resumoDialogOpen, setResumoDialogOpen] = useState(false);
   const [alunos, setAlunos] = useState<any[]>([]);
   const [metricas, setMetricas] = useState<any[]>([]);
   const [evolucao, setEvolucao] = useState<any[]>([]);
+  const [resumoAluno, setResumoAluno] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingResumo, setIsLoadingResumo] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -153,6 +159,48 @@ export default function MentorAlunos() {
     }
   };
 
+  const handleOpenResumoDialog = async (aluno: any) => {
+    setSelectedAluno(aluno);
+    setResumoDialogOpen(true);
+    setIsLoadingResumo(true);
+    
+    try {
+      const resumo = await mentorApi.getAlunoResumo(aluno.id);
+      setResumoAluno(resumo);
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao carregar resumo do aluno");
+    } finally {
+      setIsLoadingResumo(false);
+    }
+  };
+
+  // Formatar data de cadastro
+  const formatarDataCadastro = (aluno: any) => {
+    if (!aluno.createdAt) return "-";
+    
+    try {
+      let date: Date;
+      const timestamp = aluno.createdAt;
+      
+      if (timestamp.toDate) {
+        date = timestamp.toDate();
+      } else if (timestamp.seconds || timestamp._seconds) {
+        const seconds = timestamp.seconds || timestamp._seconds;
+        date = new Date(seconds * 1000);
+      } else {
+        date = new Date(timestamp);
+      }
+      
+      return date.toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+    } catch {
+      return "-";
+    }
+  };
+
   // Filtrar evolução por período
   const evolucaoFiltrada = useMemo(() => {
     if (!evolucao || evolucao.length === 0) return [];
@@ -222,6 +270,19 @@ export default function MentorAlunos() {
         // Tratar valores nulos
         if (aVal === null || aVal === undefined) aVal = sortColumn === 'nome' || sortColumn === 'email' ? "" : 0;
         if (bVal === null || bVal === undefined) bVal = sortColumn === 'nome' || sortColumn === 'email' ? "" : 0;
+        
+        // Tratar datas
+        if (sortColumn === 'createdAt') {
+          const getTimestamp = (val: any) => {
+            if (!val) return 0;
+            if (val.seconds) return val.seconds;
+            if (val._seconds) return val._seconds;
+            if (val.toDate) return val.toDate().getTime() / 1000;
+            return new Date(val).getTime() / 1000;
+          };
+          aVal = getTimestamp(aVal);
+          bVal = getTimestamp(bVal);
+        }
         
         // Comparar
         if (typeof aVal === 'string' && typeof bVal === 'string') {
@@ -294,8 +355,8 @@ export default function MentorAlunos() {
         </Dialog>
       </div>
 
-      {/* Cards de Métricas */}
-      <div className="grid gap-4 md:grid-cols-2">
+      {/* Cards de Resumo */}
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total de Alunos</CardTitle>
@@ -306,17 +367,30 @@ export default function MentorAlunos() {
             <p className="text-xs text-muted-foreground">{alunosAtivos} ativos</p>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Crescimento</CardTitle>
+            <CardTitle className="text-sm font-medium">Média de Desempenho</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {evolucao.length > 0 ? `+${evolucao.length}` : "0"}
+              {metricas.length > 0 
+                ? Math.round(metricas.reduce((acc, m) => acc + (m.desempenho || 0), 0) / metricas.length)
+                : 0}%
             </div>
-            <p className="text-xs text-muted-foreground">Alunos cadastrados</p>
+            <p className="text-xs text-muted-foreground">Baseado em questões</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total de Horas</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {Math.round(metricas.reduce((acc, m) => acc + (m.horasEstudo || 0), 0))}h
+            </div>
+            <p className="text-xs text-muted-foreground">De todos os alunos</p>
           </CardContent>
         </Card>
       </div>
@@ -331,16 +405,16 @@ export default function MentorAlunos() {
             </div>
             <Select value={periodoFiltro} onValueChange={setPeriodoFiltro}>
               <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Selecione o período" />
+                <SelectValue placeholder="Período" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="todo">Todo o período</SelectItem>
                 <SelectItem value="7d">Últimos 7 dias</SelectItem>
                 <SelectItem value="30d">Últimos 30 dias</SelectItem>
                 <SelectItem value="3m">Últimos 3 meses</SelectItem>
                 <SelectItem value="6m">Últimos 6 meses</SelectItem>
                 <SelectItem value="12m">Últimos 12 meses</SelectItem>
                 <SelectItem value="24m">Últimos 24 meses</SelectItem>
+                <SelectItem value="todo">Todo período</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -406,7 +480,7 @@ export default function MentorAlunos() {
         </CardHeader>
         <CardContent>
           {alunos && alunos.length > 0 ? (
-            <div className="rounded-md border">
+            <div className="rounded-md border overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -419,6 +493,12 @@ export default function MentorAlunos() {
                     <TableHead>
                       <Button variant="ghost" size="sm" onClick={() => handleSort('email')} className="h-8 px-2">
                         Email
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button variant="ghost" size="sm" onClick={() => handleSort('createdAt')} className="h-8 px-2">
+                        Cadastro
                         <ArrowUpDown className="ml-2 h-4 w-4" />
                       </Button>
                     </TableHead>
@@ -436,7 +516,7 @@ export default function MentorAlunos() {
                     </TableHead>
                     <TableHead>
                       <Button variant="ghost" size="sm" onClick={() => handleSort('horasEstudo')} className="h-8 px-2">
-                        Horas de Estudo
+                        Horas
                         <ArrowUpDown className="ml-2 h-4 w-4" />
                       </Button>
                     </TableHead>
@@ -449,6 +529,7 @@ export default function MentorAlunos() {
                     <TableRow key={aluno.id}>
                       <TableCell className="font-medium">{aluno.nome}</TableCell>
                       <TableCell>{aluno.email}</TableCell>
+                      <TableCell>{formatarDataCadastro(aluno)}</TableCell>
                       <TableCell>{aluno.questoesFeitas}</TableCell>
                       <TableCell>
                         <span className={`font-medium ${
@@ -466,7 +547,15 @@ export default function MentorAlunos() {
                         </span>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleOpenResumoDialog(aluno)}
+                            title="Ver resumo"
+                          >
+                            <FileText className="h-4 w-4" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -586,6 +675,224 @@ export default function MentorAlunos() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Dialog de Resumo do Aluno */}
+      <Dialog open={resumoDialogOpen} onOpenChange={setResumoDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <User className="h-5 w-5" />
+              Resumo do Aluno
+            </DialogTitle>
+            <DialogDescription>
+              Informações detalhadas sobre {selectedAluno?.nome}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {isLoadingResumo ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : resumoAluno ? (
+            <div className="space-y-6">
+              {/* Informações Básicas */}
+              <div className="space-y-3">
+                <h3 className="font-semibold text-lg flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Informações Básicas
+                </h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Nome:</span>
+                    <p className="font-medium">{resumoAluno.nome}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Email:</span>
+                    <p className="font-medium">{resumoAluno.email}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Celular:</span>
+                    <p className="font-medium">{resumoAluno.celular || "-"}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Plano:</span>
+                    <p className="font-medium">{resumoAluno.plano || "-"}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Data de Cadastro:</span>
+                    <p className="font-medium">
+                      {resumoAluno.dataCadastro 
+                        ? new Date(resumoAluno.dataCadastro).toLocaleDateString('pt-BR')
+                        : "-"}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Status:</span>
+                    <p>
+                      <Badge variant={resumoAluno.ativo ? "default" : "secondary"}>
+                        {resumoAluno.ativo ? "Ativo" : "Inativo"}
+                      </Badge>
+                    </p>
+                  </div>
+                </div>
+                {resumoAluno.perfil && (
+                  <div>
+                    <span className="text-muted-foreground text-sm">Perfil:</span>
+                    <p className="font-medium">{resumoAluno.perfil}</p>
+                  </div>
+                )}
+              </div>
+
+              <Separator />
+
+              {/* Gamificação e Ranking */}
+              <div className="space-y-3">
+                <h3 className="font-semibold text-lg flex items-center gap-2">
+                  <Trophy className="h-4 w-4" />
+                  Gamificação e Ranking
+                </h3>
+                <div className="grid grid-cols-3 gap-4">
+                  <Card className="p-4">
+                    <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                      <Award className="h-4 w-4" />
+                      Nível
+                    </div>
+                    <p className="text-2xl font-bold">{resumoAluno.nivel}</p>
+                    <p className="text-xs text-muted-foreground">{resumoAluno.xp} XP</p>
+                  </Card>
+                  <Card className="p-4">
+                    <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                      <Trophy className="h-4 w-4" />
+                      Ranking
+                    </div>
+                    <p className="text-2xl font-bold">#{resumoAluno.posicaoRanking}</p>
+                    <p className="text-xs text-muted-foreground">de {resumoAluno.totalAlunos} alunos</p>
+                  </Card>
+                  <Card className="p-4">
+                    <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                      <Flame className="h-4 w-4 text-orange-500" />
+                      Sequência
+                    </div>
+                    <p className="text-2xl font-bold">{resumoAluno.streak}</p>
+                    <p className="text-xs text-muted-foreground">dias consecutivos</p>
+                  </Card>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Métricas de Estudo */}
+              <div className="space-y-3">
+                <h3 className="font-semibold text-lg flex items-center gap-2">
+                  <BookOpen className="h-4 w-4" />
+                  Métricas de Estudo
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <Card className="p-4">
+                    <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                      <Clock className="h-4 w-4" />
+                      Horas de Estudo
+                    </div>
+                    <p className="text-2xl font-bold">{resumoAluno.horasEstudo}h</p>
+                    <p className="text-xs text-muted-foreground">{resumoAluno.totalEstudos} sessões</p>
+                  </Card>
+                  <Card className="p-4">
+                    <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                      <Target className="h-4 w-4" />
+                      Questões
+                    </div>
+                    <p className="text-2xl font-bold">{resumoAluno.questoesFeitas}</p>
+                    <p className="text-xs text-muted-foreground">{resumoAluno.questoesAcertadas} acertadas</p>
+                  </Card>
+                  <Card className="p-4">
+                    <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                      <TrendingUp className="h-4 w-4" />
+                      Desempenho
+                    </div>
+                    <p className={`text-2xl font-bold ${
+                      resumoAluno.desempenho >= 80 ? 'text-green-600' :
+                      resumoAluno.desempenho >= 60 ? 'text-yellow-600' :
+                      'text-red-600'
+                    }`}>
+                      {resumoAluno.desempenho}%
+                    </p>
+                    <p className="text-xs text-muted-foreground">em questões</p>
+                  </Card>
+                  <Card className="p-4">
+                    <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                      <FileText className="h-4 w-4" />
+                      Simulados
+                    </div>
+                    <p className="text-2xl font-bold">{resumoAluno.totalSimulados}</p>
+                    <p className="text-xs text-muted-foreground">média: {resumoAluno.mediaSimulados}%</p>
+                  </Card>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Progresso de Conteúdo */}
+              <div className="space-y-3">
+                <h3 className="font-semibold text-lg flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4" />
+                  Progresso de Conteúdo
+                </h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Tópicos concluídos</span>
+                    <span className="font-medium">{resumoAluno.topicosConcluidos} de {resumoAluno.topicosTotal}</span>
+                  </div>
+                  <Progress value={resumoAluno.progressoConteudo} className="h-2" />
+                  <p className="text-xs text-muted-foreground text-right">{resumoAluno.progressoConteudo}% concluído</p>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Metas */}
+              <div className="space-y-3">
+                <h3 className="font-semibold text-lg flex items-center gap-2">
+                  <Target className="h-4 w-4" />
+                  Metas
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <Card className="p-4">
+                    <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                      <Clock className="h-4 w-4" />
+                      Metas Ativas
+                    </div>
+                    <p className="text-2xl font-bold">{resumoAluno.metasAtivas}</p>
+                  </Card>
+                  <Card className="p-4">
+                    <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      Metas Concluídas
+                    </div>
+                    <p className="text-2xl font-bold">{resumoAluno.metasConcluidas}</p>
+                  </Card>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-center text-muted-foreground py-8">
+              Erro ao carregar resumo do aluno
+            </p>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResumoDialogOpen(false)}>
+              Fechar
+            </Button>
+            <Button onClick={() => {
+              setResumoDialogOpen(false);
+              setLocation(`/mentor/alunos/${selectedAluno?.id}`);
+            }}>
+              <Eye className="h-4 w-4 mr-2" />
+              Ver Área Completa
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

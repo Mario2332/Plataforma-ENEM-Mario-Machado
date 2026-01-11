@@ -1658,6 +1658,182 @@ const deleteAlunoMeta = functions
     }
   });
 
+/**
+ * Obter resumo completo de um aluno para o mentor
+ */
+const getAlunoResumo = functions
+  .region("southamerica-east1")
+  .https.onCall(async (data, context) => {
+    const auth = await getAuthContext(context);
+    requireRole(auth, "mentor");
+
+    const { alunoId } = data;
+
+    if (!alunoId) {
+      throw new functions.https.HttpsError("invalid-argument", "ID do aluno é obrigatório");
+    }
+
+    try {
+      // Buscar dados do aluno
+      const alunoDoc = await db.collection("alunos").doc(alunoId).get();
+      if (!alunoDoc.exists) {
+        throw new functions.https.HttpsError("not-found", "Aluno não encontrado");
+      }
+      const alunoData = alunoDoc.data()!;
+
+      // Buscar estudos
+      const estudosSnapshot = await db
+        .collection("alunos")
+        .doc(alunoId)
+        .collection("estudos")
+        .get();
+      const estudos = estudosSnapshot.docs.map((doc) => doc.data());
+
+      // Buscar simulados
+      const simuladosSnapshot = await db
+        .collection("alunos")
+        .doc(alunoId)
+        .collection("simulados")
+        .get();
+      const simulados = simuladosSnapshot.docs.map((doc) => doc.data());
+
+      // Buscar metas
+      const metasSnapshot = await db
+        .collection("alunos")
+        .doc(alunoId)
+        .collection("metas")
+        .get();
+      const metas = metasSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+
+      // Buscar progresso de conteúdos
+      const progressoSnapshot = await db
+        .collection("alunos")
+        .doc(alunoId)
+        .collection("conteudo_progresso")
+        .get();
+      const progresso = progressoSnapshot.docs.map((doc) => doc.data());
+
+      // Calcular métricas
+      const tempoTotal = estudos.reduce((acc, e: any) => acc + (e.tempoMinutos || 0), 0);
+      const questoesFeitas = estudos.reduce((acc, e: any) => acc + (e.questoesFeitas || 0), 0);
+      const questoesAcertadas = estudos.reduce((acc, e: any) => acc + (e.questoesAcertadas || 0), 0);
+      const desempenho = questoesFeitas > 0 ? Math.round((questoesAcertadas / questoesFeitas) * 100) : 0;
+
+      // Calcular streak (sequência de dias de estudo)
+      const hoje = new Date();
+      hoje.setHours(hoje.getHours() - 3); // Ajustar para Brasília
+      const hojeStr = hoje.toISOString().split("T")[0];
+      
+      const datasEstudo = new Set(
+        estudos
+          .filter((e: any) => e.data)
+          .map((e: any) => {
+            const d = typeof e.data === "string" ? e.data : e.data.toDate?.().toISOString().split("T")[0];
+            return d?.split("T")[0];
+          })
+          .filter(Boolean)
+      );
+
+      let streak = 0;
+      let dataCheck = new Date(hoje);
+      
+      // Verificar se estudou hoje
+      if (datasEstudo.has(hojeStr)) {
+        streak = 1;
+        dataCheck.setDate(dataCheck.getDate() - 1);
+      }
+      
+      // Contar dias consecutivos anteriores
+      while (datasEstudo.has(dataCheck.toISOString().split("T")[0])) {
+        streak++;
+        dataCheck.setDate(dataCheck.getDate() - 1);
+      }
+
+      // Calcular tópicos concluídos
+      const topicosTotal = progresso.length;
+      const topicosConcluidos = progresso.filter((p: any) => p.status === "concluido").length;
+
+      // Calcular metas ativas e concluídas
+      const metasAtivas = metas.filter((m: any) => m.status === "ativa" && !m.metaPaiId).length;
+      const metasConcluidas = metas.filter((m: any) => m.status === "concluida" && !m.metaPaiId).length;
+
+      // Calcular média de desempenho nos simulados
+      const simuladosComNota = simulados.filter((s: any) => s.nota !== undefined && s.nota !== null);
+      const mediaSimulados = simuladosComNota.length > 0
+        ? Math.round(simuladosComNota.reduce((acc, s: any) => acc + (s.nota || 0), 0) / simuladosComNota.length)
+        : 0;
+
+      // Formatar data de cadastro
+      let dataCadastro = null;
+      if (alunoData.createdAt) {
+        const timestamp = alunoData.createdAt;
+        if (timestamp.toDate) {
+          dataCadastro = timestamp.toDate().toISOString();
+        } else if (timestamp.seconds || timestamp._seconds) {
+          const seconds = timestamp.seconds || timestamp._seconds;
+          dataCadastro = new Date(seconds * 1000).toISOString();
+        } else {
+          dataCadastro = new Date(timestamp).toISOString();
+        }
+      }
+
+      // Calcular nível baseado em XP ou atividade
+      const xp = alunoData.xp || 0;
+      const nivel = Math.floor(xp / 1000) + 1;
+
+      // Buscar ranking (posição entre todos os alunos)
+      const todosAlunosSnapshot = await db.collection("alunos").get();
+      const alunosComXP = todosAlunosSnapshot.docs
+        .map((doc) => ({ id: doc.id, xp: doc.data().xp || 0 }))
+        .sort((a, b) => b.xp - a.xp);
+      const posicaoRanking = alunosComXP.findIndex((a) => a.id === alunoId) + 1;
+
+      return {
+        // Dados básicos
+        id: alunoDoc.id,
+        nome: alunoData.nome || "",
+        email: alunoData.email || "",
+        celular: alunoData.celular || "",
+        plano: alunoData.plano || "",
+        ativo: alunoData.ativo !== false,
+        dataCadastro,
+        perfil: alunoData.perfil || null,
+        
+        // Métricas de estudo
+        horasEstudo: Math.round((tempoTotal / 60) * 10) / 10,
+        questoesFeitas,
+        questoesAcertadas,
+        desempenho,
+        totalEstudos: estudos.length,
+        
+        // Simulados
+        totalSimulados: simulados.length,
+        mediaSimulados,
+        
+        // Sequência
+        streak,
+        
+        // Progresso
+        topicosTotal,
+        topicosConcluidos,
+        progressoConteudo: topicosTotal > 0 ? Math.round((topicosConcluidos / topicosTotal) * 100) : 0,
+        
+        // Metas
+        metasAtivas,
+        metasConcluidas,
+        
+        // Gamificação
+        xp,
+        nivel,
+        posicaoRanking,
+        totalAlunos: todosAlunosSnapshot.size,
+      };
+    } catch (error: any) {
+      functions.logger.error("Erro ao buscar resumo do aluno:", error);
+      throw new functions.https.HttpsError("internal", error.message);
+    }
+  });
+
 // Exportar todas as funções do mentor
 export const mentorFunctions = {
   // Funções básicas do mentor
@@ -1726,4 +1902,7 @@ export const mentorFunctions = {
   createAlunoMeta,
   updateAlunoMeta,
   deleteAlunoMeta,
+  
+  // Resumo
+  getAlunoResumo,
 };

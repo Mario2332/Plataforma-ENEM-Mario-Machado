@@ -89,6 +89,9 @@ export const mentorApi = {
   // Visualização da área do aluno
   getAlunoAreaCompleta: (alunoId: string) => callFunction("mentorFunctions-getAlunoAreaCompleta", { alunoId }),
   
+  // Resumo do aluno
+  getAlunoResumo: (alunoId: string) => callFunction("mentorFunctions-getAlunoResumo", { alunoId }),
+  
   // Funções para mentor gerenciar dados do aluno
   createAlunoEstudo: (data: {
     alunoId: string;

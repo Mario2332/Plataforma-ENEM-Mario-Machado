@@ -71,36 +71,49 @@ export const cachedAlunoApi = {
   createEstudo: async (data: Parameters<typeof alunoApi.createEstudo>[0]) => {
     const result = await alunoApi.createEstudo(data);
     invalidateEstudosCache();
+    // Invalidar cache de metas para atualizar progresso automaticamente
+    // O trigger onEstudoWrite atualiza as metas no backend
+    setTimeout(() => invalidateMetasCache(), 2000); // Delay para o trigger processar
     return result;
   },
 
   updateEstudo: async (estudoId: string, data: Parameters<typeof alunoApi.updateEstudo>[1]) => {
     const result = await alunoApi.updateEstudo(estudoId, data);
     invalidateEstudosCache();
+    // Invalidar cache de metas para atualizar progresso automaticamente
+    setTimeout(() => invalidateMetasCache(), 2000);
     return result;
   },
 
   deleteEstudo: async (estudoId: string) => {
     const result = await alunoApi.deleteEstudo(estudoId);
     invalidateEstudosCache();
+    // Invalidar cache de metas para atualizar progresso automaticamente
+    setTimeout(() => invalidateMetasCache(), 2000);
     return result;
   },
 
   createSimulado: async (data: Parameters<typeof alunoApi.createSimulado>[0]) => {
     const result = await alunoApi.createSimulado(data);
     invalidateSimuladosCache();
+    // Invalidar cache de metas para atualizar progresso automaticamente
+    setTimeout(() => invalidateMetasCache(), 2000);
     return result;
   },
 
   updateSimulado: async (data: Parameters<typeof alunoApi.updateSimulado>[0]) => {
     const result = await alunoApi.updateSimulado(data);
     invalidateSimuladosCache();
+    // Invalidar cache de metas para atualizar progresso automaticamente
+    setTimeout(() => invalidateMetasCache(), 2000);
     return result;
   },
 
   deleteSimulado: async (simuladoId: string) => {
     const result = await alunoApi.deleteSimulado(simuladoId);
     invalidateSimuladosCache();
+    // Invalidar cache de metas para atualizar progresso automaticamente
+    setTimeout(() => invalidateMetasCache(), 2000);
     return result;
   },
 

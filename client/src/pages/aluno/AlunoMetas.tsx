@@ -180,6 +180,18 @@ export default function AlunoMetas() {
 
   useEffect(() => {
     loadMetas();
+    
+    // Atualizar metas automaticamente a cada 5 segundos para refletir mudanças do backend
+    const interval = setInterval(() => {
+      // Recarregar metas silenciosamente (sem mostrar loading)
+      api.getMetas().then((metasData) => {
+        setMetas(metasData as Meta[]);
+      }).catch(() => {
+        // Ignorar erros silenciosos
+      });
+    }, 5000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   const handleOpenDialog = (meta?: Meta) => {

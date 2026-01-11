@@ -175,6 +175,36 @@ export default function CronogramaAnual() {
     };
   };
 
+  // Calcula o progresso de um ciclo específico
+  const calculateCycleProgress = (cycle: Cycle) => {
+    let total = 0;
+    let completed = 0;
+
+    cycle.subjects.forEach(subject => {
+      subject.topics.forEach((topic, idx) => {
+        const topicId = `${tipo}-${cycle.cycle}-${subject.name}-${idx}`;
+        total++;
+        if (completedTopics[topicId]) completed++;
+      });
+    });
+
+    return {
+      completed,
+      total,
+      percentage: total > 0 ? Math.round((completed / total) * 100) : 0
+    };
+  };
+
+  // Retorna a cor baseada na porcentagem de progresso
+  const getProgressColor = (percentage: number) => {
+    if (percentage === 0) return { bg: 'bg-gray-200 dark:bg-gray-700', fill: 'bg-gray-400', text: 'text-gray-600 dark:text-gray-400' };
+    if (percentage < 25) return { bg: 'bg-red-100 dark:bg-red-950/30', fill: 'bg-gradient-to-r from-red-500 to-red-400', text: 'text-red-600 dark:text-red-400' };
+    if (percentage < 50) return { bg: 'bg-orange-100 dark:bg-orange-950/30', fill: 'bg-gradient-to-r from-orange-500 to-amber-400', text: 'text-orange-600 dark:text-orange-400' };
+    if (percentage < 75) return { bg: 'bg-yellow-100 dark:bg-yellow-950/30', fill: 'bg-gradient-to-r from-yellow-500 to-lime-400', text: 'text-yellow-600 dark:text-yellow-400' };
+    if (percentage < 100) return { bg: 'bg-emerald-100 dark:bg-emerald-950/30', fill: 'bg-gradient-to-r from-emerald-500 to-green-400', text: 'text-emerald-600 dark:text-emerald-400' };
+    return { bg: 'bg-green-100 dark:bg-green-950/30', fill: 'bg-gradient-to-r from-green-500 to-emerald-400', text: 'text-green-600 dark:text-green-400' };
+  };
+
   const handlePrint = () => {
     window.print();
   };
@@ -394,6 +424,8 @@ export default function CronogramaAnual() {
       <div className="space-y-4">
         {cyclesToDisplay.map((cycle, index) => {
           const isExpanded = expandedCycles.has(cycle.cycle);
+          const cycleProgress = calculateCycleProgress(cycle);
+          const progressColors = getProgressColor(cycleProgress.percentage);
           
           return (
             <div 
@@ -403,17 +435,39 @@ export default function CronogramaAnual() {
             >
               <button
                 onClick={() => toggleCycle(cycle.cycle)}
-                className="w-full bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 px-6 py-5 border-b-2 border-blue-100 dark:border-blue-900 flex items-center justify-between hover:from-blue-100 hover:to-cyan-100 dark:hover:from-blue-900/30 dark:hover:to-cyan-900/30 transition-all group"
+                className="w-full px-6 py-5 border-b-2 border-blue-100 dark:border-blue-900 hover:bg-blue-50/50 dark:hover:bg-blue-950/30 transition-all group"
               >
-                <h3 className="text-xl font-black bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
-                  Ciclo {cycle.cycle}
-                </h3>
-                <div className="p-2 bg-blue-500 rounded-xl group-hover:scale-110 transition-transform">
-                  {isExpanded ? (
-                    <ChevronDown className="w-5 h-5 text-white" />
-                  ) : (
-                    <ChevronRight className="w-5 h-5 text-white" />
-                  )}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-xl font-black bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
+                      Ciclo {cycle.cycle}
+                    </h3>
+                    {cycleProgress.percentage === 100 && (
+                      <span className="px-2 py-1 text-xs font-bold bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" />
+                        Completo
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className={`text-sm font-bold ${progressColors.text}`}>
+                      {cycleProgress.completed}/{cycleProgress.total} ({cycleProgress.percentage}%)
+                    </span>
+                    <div className="p-2 bg-blue-500 rounded-xl group-hover:scale-110 transition-transform">
+                      {isExpanded ? (
+                        <ChevronDown className="w-5 h-5 text-white" />
+                      ) : (
+                        <ChevronRight className="w-5 h-5 text-white" />
+                      )}
+                    </div>
+                  </div>
+                </div>
+                {/* Barra de progresso do ciclo */}
+                <div className={`w-full h-3 rounded-full ${progressColors.bg} overflow-hidden`}>
+                  <div 
+                    className={`h-full rounded-full ${progressColors.fill} transition-all duration-500 ease-out`}
+                    style={{ width: `${cycleProgress.percentage}%` }}
+                  />
                 </div>
               </button>
               

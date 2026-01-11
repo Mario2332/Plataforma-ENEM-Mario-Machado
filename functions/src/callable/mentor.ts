@@ -1498,24 +1498,27 @@ const createAlunoMeta = functions
 
         const estudos = estudosSnapshot.docs.map((doc) => doc.data());
         
+        // Usar fuso horário de Brasília para extrair datas
         const datasEstudo = [...new Set(estudos.map((e: any) => {
           const data = e.data.toDate();
-          return data.toISOString().split('T')[0];
+          return data.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
         }))].sort().reverse();
 
         let streak = 0;
-        const hoje = new Date().toISOString().split('T')[0];
+        const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
         
         if (datasEstudo.length > 0) {
-          let dataAtual = new Date(hoje);
+          let dataAtualStr = hoje;
           
           for (const dataStr of datasEstudo) {
-            const dataEstudo = new Date(dataStr);
-            const diffDias = Math.floor((dataAtual.getTime() - dataEstudo.getTime()) / (1000 * 60 * 60 * 24));
+            // Calcular diferença em dias usando strings de data
+            const dataAtualDate = new Date(dataAtualStr + 'T12:00:00Z');
+            const dataEstudoDate = new Date(dataStr + 'T12:00:00Z');
+            const diffDias = Math.round((dataAtualDate.getTime() - dataEstudoDate.getTime()) / (1000 * 60 * 60 * 24));
             
             if (diffDias === 0 || diffDias === 1) {
               streak++;
-              dataAtual = dataEstudo;
+              dataAtualStr = dataStr;
             } else {
               break;
             }
@@ -1525,6 +1528,13 @@ const createAlunoMeta = functions
         valorAtual = streak;
       }
 
+      // Helper para converter data para fuso de Brasília
+      const parseDateBrasilia = (dateString: string): Date => {
+        const dateOnly = dateString.includes('T') ? dateString.split('T')[0] : dateString;
+        const [year, month, day] = dateOnly.split('-').map(Number);
+        return new Date(Date.UTC(year, month - 1, day, 15, 0, 0, 0)); // 15:00 UTC = 12:00 Brasília
+      };
+
       const metaData: any = {
         alunoId,
         tipo,
@@ -1533,8 +1543,8 @@ const createAlunoMeta = functions
         valorAlvo: Number(valorAlvo),
         valorAtual,
         unidade,
-        dataInicio: admin.firestore.Timestamp.fromDate(new Date(dataInicio)),
-        dataFim: admin.firestore.Timestamp.fromDate(new Date(dataFim)),
+        dataInicio: admin.firestore.Timestamp.fromDate(parseDateBrasilia(dataInicio)),
+        dataFim: admin.firestore.Timestamp.fromDate(parseDateBrasilia(dataFim)),
         status: 'ativa',
         createdAt: admin.firestore.Timestamp.now(),
         updatedAt: admin.firestore.Timestamp.now(),

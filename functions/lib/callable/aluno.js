@@ -111,17 +111,20 @@ const getDashboardData = functions
         data: doc.data().data.toDate(),
     }));
     // Calcular streak (dias consecutivos de estudo)
-    const datasEstudo = [...new Set(estudos.map((e) => e.data.toISOString().split('T')[0]))].sort().reverse();
+    // Usar fuso horário de Brasília para extrair datas
+    const datasEstudo = [...new Set(estudos.map((e) => e.data.toDate().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })))].sort().reverse();
     let streak = 0;
-    const hoje = new Date().toISOString().split('T')[0];
+    const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
     if (datasEstudo.length > 0) {
-        let dataAtual = new Date(hoje);
+        let dataAtualStr = hoje;
         for (const dataStr of datasEstudo) {
-            const dataEstudo = new Date(dataStr);
-            const diffDias = Math.floor((dataAtual.getTime() - dataEstudo.getTime()) / (1000 * 60 * 60 * 24));
+            // Calcular diferença em dias usando strings de data
+            const dataAtualDate = new Date(dataAtualStr + 'T12:00:00Z');
+            const dataEstudoDate = new Date(dataStr + 'T12:00:00Z');
+            const diffDias = Math.round((dataAtualDate.getTime() - dataEstudoDate.getTime()) / (1000 * 60 * 60 * 24));
             if (diffDias === 0 || diffDias === 1) {
                 streak++;
-                dataAtual = dataEstudo;
+                dataAtualStr = dataStr;
             }
             else {
                 break;

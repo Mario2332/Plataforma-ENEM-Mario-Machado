@@ -7,21 +7,60 @@ import { getAuthContext, requireRole } from "../utils/auth";
 const db = admin.firestore();
 
 /**
- * Helper para converter string de data para Date com horário meio-dia UTC
- * Evita problemas de fuso horário ao armazenar datas
+ * Helper para converter string de data para Date no fuso horário de Brasília
+ * Usa meio-dia de Brasília (15:00 UTC) para evitar problemas de mudança de dia
  */
-function parseDateWithNoonUTC(dateString: string): Date {
-  // Se já tem horário, usar como está
+function parseDateWithBrasiliaTimezone(dateString: string): Date {
+  // Extrair apenas a parte da data (YYYY-MM-DD)
+  let dateOnly = dateString;
   if (dateString.includes('T')) {
-    const date = new Date(dateString);
-    // Ajustar para meio-dia UTC se necessário
-    date.setUTCHours(12, 0, 0, 0);
-    return date;
+    dateOnly = dateString.split('T')[0];
   }
   
-  // Se é apenas data (YYYY-MM-DD), criar com meio-dia UTC
-  const [year, month, day] = dateString.split('-').map(Number);
-  return new Date(Date.UTC(year, month - 1, day, 12, 0, 0, 0));
+  // Criar data com meio-dia de Brasília (15:00 UTC, pois Brasília = UTC-3)
+  const [year, month, day] = dateOnly.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day, 15, 0, 0, 0));
+}
+
+/**
+ * Helper para obter a data de hoje no fuso horário de Brasília
+ * Retorna a data à meia-noite de Brasília
+ */
+function getHojeBrasilia(): Date {
+  const agora = new Date();
+  // Converter para string no fuso de Brasília e extrair apenas a data
+  const dataBrasilia = agora.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+  // Criar Date com meio-dia de Brasília
+  return parseDateWithBrasiliaTimezone(dataBrasilia);
+}
+
+/**
+ * Helper para comparar datas ignorando o horário
+ * Compara apenas ano, mês e dia
+ */
+function isSameDateBrasilia(date1: Date, date2: Date): boolean {
+  const d1 = date1.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+  const d2 = date2.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+  return d1 === d2;
+}
+
+/**
+ * Helper para verificar se uma data é anterior a outra (ignorando horário)
+ */
+function isBeforeDateBrasilia(date1: Date, date2: Date): boolean {
+  const d1 = date1.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+  const d2 = date2.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+  return d1 < d2;
+}
+
+/**
+ * Helper para verificar se uma data está dentro de um período (inclusive)
+ */
+function isDateInRangeBrasilia(date: Date, inicio: Date, fim: Date): boolean {
+  const d = date.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+  const i = inicio.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+  const f = fim.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+  return d >= i && d <= f;
 }
 
 /**
@@ -175,8 +214,9 @@ const createMeta = functions
         const estudos = estudosSnapshot.docs.map((doc) => doc.data());
         const simulados = simuladosSnapshot.docs.map((doc) => doc.data());
         
-        const dataInicioDate = new Date(dataInicio);
-        const dataFimDate = new Date(dataFim);
+        // Usar helpers de data com fuso horário de Brasília
+        const dataInicioDate = parseDateWithBrasiliaTimezone(dataInicio);
+        const dataFimDate = parseDateWithBrasiliaTimezone(dataFim);
         
         switch (tipo) {
           case 'horas': {
@@ -184,7 +224,7 @@ const createMeta = functions
             valorAtual = estudos
               .filter((e: any) => {
                 const dataEstudo = e.data.toDate();
-                return dataEstudo >= dataInicioDate && dataEstudo <= dataFimDate;
+                return isDateInRangeBrasilia(dataEstudo, dataInicioDate, dataFimDate);
               })
               .reduce((acc: number, e: any) => acc + (e.tempoMinutos || 0), 0) / 60;
             valorAtual = Math.round(valorAtual * 10) / 10;
@@ -196,7 +236,7 @@ const createMeta = functions
             valorAtual = estudos
               .filter((e: any) => {
                 const dataEstudo = e.data.toDate();
-                const matchPeriodo = dataEstudo >= dataInicioDate && dataEstudo <= dataFimDate;
+                const matchPeriodo = isDateInRangeBrasilia(dataEstudo, dataInicioDate, dataFimDate);
                 const matchMateria = !materia || e.materia === materia;
                 return matchPeriodo && matchMateria;
               })
@@ -208,7 +248,7 @@ const createMeta = functions
             // Contar simulados no período
             valorAtual = simulados.filter((s: any) => {
               const dataSimulado = s.data.toDate();
-              return dataSimulado >= dataInicioDate && dataSimulado <= dataFimDate;
+              return isDateInRangeBrasilia(dataSimulado, dataInicioDate, dataFimDate);
             }).length;
             break;
           }
@@ -218,7 +258,7 @@ const createMeta = functions
             valorAtual = simulados
               .filter((s: any) => {
                 const dataSimulado = s.data.toDate();
-                const matchPeriodo = dataSimulado >= dataInicioDate && dataSimulado <= dataFimDate;
+                const matchPeriodo = isDateInRangeBrasilia(dataSimulado, dataInicioDate, dataFimDate);
                 const matchMateria = !materia || s.questoes?.some((q: any) => q.materia === materia);
                 return matchPeriodo && matchMateria;
               })
@@ -247,7 +287,7 @@ const createMeta = functions
               
               if (!dataConclusao) return false;
               
-              const matchPeriodo = dataConclusao >= dataInicioDate && dataConclusao <= dataFimDate;
+              const matchPeriodo = isDateInRangeBrasilia(dataConclusao, dataInicioDate, dataFimDate);
               
               // Filtrar por incidencia apenas se a meta especificar E o progresso tiver incidencia
               const matchIncidencia = !incidencia || !progresso.incidencia || progresso.incidencia === incidencia;
@@ -259,24 +299,27 @@ const createMeta = functions
           
           case 'sequencia': {
             // Calcular streak (dias consecutivos de estudo)
+            // Usar fuso horário de Brasília para extrair datas
             const datasEstudo = [...new Set(estudos.map((e: any) => {
               const data = e.data.toDate();
-              return data.toISOString().split('T')[0];
+              return data.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
             }))].sort().reverse();
 
             let streak = 0;
-            const hoje = new Date().toISOString().split('T')[0];
+            const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
             
             if (datasEstudo.length > 0) {
-              let dataAtual = new Date(hoje);
+              let dataAtualStr = hoje;
               
               for (const dataStr of datasEstudo) {
-                const dataEstudo = new Date(dataStr);
-                const diffDias = Math.floor((dataAtual.getTime() - dataEstudo.getTime()) / (1000 * 60 * 60 * 24));
+                // Calcular diferença em dias usando strings de data
+                const dataAtualDate = new Date(dataAtualStr + 'T12:00:00Z');
+                const dataEstudoDate = new Date(dataStr + 'T12:00:00Z');
+                const diffDias = Math.round((dataAtualDate.getTime() - dataEstudoDate.getTime()) / (1000 * 60 * 60 * 24));
                 
                 if (diffDias === 0 || diffDias === 1) {
                   streak++;
-                  dataAtual = dataEstudo;
+                  dataAtualStr = dataStr;
                 } else {
                   break;
                 }
@@ -306,8 +349,8 @@ const createMeta = functions
         valorAlvo: Number(valorAlvo),
         valorAtual,
         unidade,
-        dataInicio: admin.firestore.Timestamp.fromDate(parseDateWithNoonUTC(dataInicio)),
-        dataFim: admin.firestore.Timestamp.fromDate(parseDateWithNoonUTC(dataFim)),
+        dataInicio: admin.firestore.Timestamp.fromDate(parseDateWithBrasiliaTimezone(dataInicio)),
+        dataFim: admin.firestore.Timestamp.fromDate(parseDateWithBrasiliaTimezone(dataFim)),
         status,
         createdAt: admin.firestore.Timestamp.now(),
         updatedAt: admin.firestore.Timestamp.now(),
@@ -330,24 +373,25 @@ const createMeta = functions
 
       // Se for meta diária, criar instância para hoje
       if (repetirDiariamente) {
-        // Usar dataInicio do cliente (já está no timezone correto)
-        const dataInicioDate = new Date(dataInicio);
-        dataInicioDate.setHours(0, 0, 0, 0);
+        // Usar fuso horário de Brasília para determinar a data de referência
+        const dataInicioDate = parseDateWithBrasiliaTimezone(dataInicio);
+        const hojeBrasilia = getHojeBrasilia();
         
-        // Comparar usando strings de data (YYYY-MM-DD) para evitar problemas de timezone
-        const dataInicioStr = dataInicioDate.toISOString().split('T')[0];
-        const hojeStr = new Date().toISOString().split('T')[0];
+        // Comparar usando strings de data no fuso de Brasília
+        const dataInicioStr = dataInicioDate.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+        const hojeStr = hojeBrasilia.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
         
         // Se dataInicio for posterior a hoje, usar dataInicio
-        // Caso contrário, usar dataInicio mesmo (não mudar para hoje!)
-        const dataRef = dataInicioDate;
+        // Caso contrário, usar hoje (para criar a instância do dia atual)
+        const dataRefStr = dataInicioStr > hojeStr ? dataInicioStr : hojeStr;
+        const dataRef = parseDateWithBrasiliaTimezone(dataRefStr);
         
         const instanciaDiaria: Omit<Meta, 'id'> = {
           ...metaData,
           metaPaiId: metaRef.id,
           dataReferencia: admin.firestore.Timestamp.fromDate(dataRef),
           valorAtual: 0, // Instância começa zerada
-          nome: `${nome} - ${dataRef.toLocaleDateString('pt-BR')}`,
+          nome: `${nome} - ${dataRef.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`,
         };
         
         await db
@@ -432,10 +476,10 @@ const updateMeta = functions
       if (descricao !== undefined) updateData.descricao = descricao;
       if (valorAlvo !== undefined) updateData.valorAlvo = Number(valorAlvo);
       if (dataInicio !== undefined) {
-        updateData.dataInicio = admin.firestore.Timestamp.fromDate(parseDateWithNoonUTC(dataInicio));
+        updateData.dataInicio = admin.firestore.Timestamp.fromDate(parseDateWithBrasiliaTimezone(dataInicio));
       }
       if (dataFim !== undefined) {
-        updateData.dataFim = admin.firestore.Timestamp.fromDate(parseDateWithNoonUTC(dataFim));
+        updateData.dataFim = admin.firestore.Timestamp.fromDate(parseDateWithBrasiliaTimezone(dataFim));
       }
       if (status !== undefined) {
         updateData.status = status;

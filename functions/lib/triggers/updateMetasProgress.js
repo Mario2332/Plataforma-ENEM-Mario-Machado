@@ -40,6 +40,27 @@ const admin = __importStar(require("firebase-admin"));
 // import { verificarECriarNotificacoesMeta } from "../helpers/metaNotificacoes";
 const db = admin.firestore();
 /**
+ * Helper para obter a data de hoje no fuso horário de Brasília
+ */
+function getHojeBrasiliaStr() {
+    return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+}
+/**
+ * Helper para converter uma data para string no fuso de Brasília
+ */
+function toDateStrBrasilia(date) {
+    return date.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+}
+/**
+ * Helper para verificar se uma data está dentro de um período (inclusive) no fuso de Brasília
+ */
+function isDateInRangeBrasilia(date, inicio, fim) {
+    const d = toDateStrBrasilia(date);
+    const i = toDateStrBrasilia(inicio);
+    const f = toDateStrBrasilia(fim);
+    return d >= i && d <= f;
+}
+/**
  * Trigger: Atualizar progresso de metas quando um estudo é criado/atualizado
  */
 exports.onEstudoWrite = functions
@@ -61,9 +82,8 @@ exports.onEstudoWrite = functions
         // Filtrar metas:
         // - Excluir metas "pai" (repetirDiariamente=true sem metaPaiId)
         // - Para instâncias diárias, manter apenas as de hoje
-        const hoje = new Date();
-        hoje.setHours(0, 0, 0, 0);
-        const hojeStr = hoje.toISOString().split('T')[0];
+        // Usar fuso horário de Brasília
+        const hojeStr = getHojeBrasiliaStr();
         const metasValidas = metasSnapshot.docs.filter((doc) => {
             const meta = doc.data();
             // Excluir metas "pai" (templates)
@@ -73,8 +93,7 @@ exports.onEstudoWrite = functions
             // Se for instância diária, verificar se é de hoje
             if (meta.metaPaiId && meta.dataReferencia) {
                 const dataRef = meta.dataReferencia.toDate();
-                dataRef.setHours(0, 0, 0, 0);
-                const dataRefStr = dataRef.toISOString().split('T')[0];
+                const dataRefStr = toDateStrBrasilia(dataRef);
                 return dataRefStr === hojeStr;
             }
             return true;
@@ -96,25 +115,23 @@ exports.onEstudoWrite = functions
                 case 'horas': {
                     // Para metas diárias, contar apenas estudos de hoje
                     // Para metas normais, contar todo o período
-                    let dataInicio;
-                    let dataFim;
-                    if (meta.metaPaiId && meta.dataReferencia) {
-                        // Meta diária: apenas hoje
-                        const dataRef = meta.dataReferencia.toDate();
-                        dataRef.setHours(0, 0, 0, 0);
-                        dataInicio = dataRef;
-                        dataFim = new Date(dataRef);
-                        dataFim.setHours(23, 59, 59, 999);
-                    }
-                    else {
-                        // Meta normal: período completo
-                        dataInicio = meta.dataInicio.toDate();
-                        dataFim = meta.dataFim.toDate();
-                    }
+                    const dataInicio = meta.dataInicio.toDate();
+                    const dataFim = meta.dataFim.toDate();
+                    // Para metas diárias, usar a data de referência
+                    const dataRefStr = meta.metaPaiId && meta.dataReferencia
+                        ? toDateStrBrasilia(meta.dataReferencia.toDate())
+                        : null;
                     valorAtual = estudos
                         .filter((e) => {
                         const dataEstudo = e.data.toDate();
-                        return dataEstudo >= dataInicio && dataEstudo <= dataFim;
+                        if (dataRefStr) {
+                            // Meta diária: apenas estudos do dia de referência
+                            return toDateStrBrasilia(dataEstudo) === dataRefStr;
+                        }
+                        else {
+                            // Meta normal: período completo
+                            return isDateInRangeBrasilia(dataEstudo, dataInicio, dataFim);
+                        }
                     })
                         .reduce((acc, e) => acc + (e.tempoMinutos || 0), 0) / 60;
                     valorAtual = Math.round(valorAtual * 10) / 10; // Arredondar para 1 casa decimal
@@ -123,25 +140,24 @@ exports.onEstudoWrite = functions
                 case 'questoes': {
                     // Para metas diárias, contar apenas questões de hoje
                     // Para metas normais, contar todo o período
-                    let dataInicio;
-                    let dataFim;
-                    if (meta.metaPaiId && meta.dataReferencia) {
-                        // Meta diária: apenas hoje
-                        const dataRef = meta.dataReferencia.toDate();
-                        dataRef.setHours(0, 0, 0, 0);
-                        dataInicio = dataRef;
-                        dataFim = new Date(dataRef);
-                        dataFim.setHours(23, 59, 59, 999);
-                    }
-                    else {
-                        // Meta normal: período completo
-                        dataInicio = meta.dataInicio.toDate();
-                        dataFim = meta.dataFim.toDate();
-                    }
+                    const dataInicio = meta.dataInicio.toDate();
+                    const dataFim = meta.dataFim.toDate();
+                    // Para metas diárias, usar a data de referência
+                    const dataRefStr = meta.metaPaiId && meta.dataReferencia
+                        ? toDateStrBrasilia(meta.dataReferencia.toDate())
+                        : null;
                     valorAtual = estudos
                         .filter((e) => {
                         const dataEstudo = e.data.toDate();
-                        const matchPeriodo = dataEstudo >= dataInicio && dataEstudo <= dataFim;
+                        let matchPeriodo;
+                        if (dataRefStr) {
+                            // Meta diária: apenas estudos do dia de referência
+                            matchPeriodo = toDateStrBrasilia(dataEstudo) === dataRefStr;
+                        }
+                        else {
+                            // Meta normal: período completo
+                            matchPeriodo = isDateInRangeBrasilia(dataEstudo, dataInicio, dataFim);
+                        }
                         const matchMateria = !meta.materia || e.materia === meta.materia;
                         return matchPeriodo && matchMateria;
                     })
@@ -150,20 +166,23 @@ exports.onEstudoWrite = functions
                 }
                 case 'sequencia': {
                     // Calcular dias consecutivos de estudo
+                    // Usar fuso horário de Brasília
                     const datasEstudo = [...new Set(estudos.map((e) => {
                             const data = e.data.toDate();
-                            return data.toISOString().split('T')[0];
+                            return toDateStrBrasilia(data);
                         }))].sort().reverse();
                     let streak = 0;
-                    const hoje = new Date().toISOString().split('T')[0];
+                    const hoje = getHojeBrasiliaStr();
                     if (datasEstudo.length > 0) {
-                        let dataAtual = new Date(hoje);
+                        let dataAtualStr = hoje;
                         for (const dataStr of datasEstudo) {
-                            const dataEstudo = new Date(dataStr);
-                            const diffDias = Math.floor((dataAtual.getTime() - dataEstudo.getTime()) / (1000 * 60 * 60 * 24));
+                            // Calcular diferença em dias usando strings de data
+                            const dataAtualDate = new Date(dataAtualStr + 'T12:00:00Z');
+                            const dataEstudoDate = new Date(dataStr + 'T12:00:00Z');
+                            const diffDias = Math.round((dataAtualDate.getTime() - dataEstudoDate.getTime()) / (1000 * 60 * 60 * 24));
                             if (diffDias === 0 || diffDias === 1) {
                                 streak++;
-                                dataAtual = dataEstudo;
+                                dataAtualStr = dataStr;
                             }
                             else {
                                 break;
@@ -232,9 +251,7 @@ exports.onSimuladoWrite = functions
         // Filtrar metas:
         // - Excluir metas "pai" (repetirDiariamente=true sem metaPaiId)
         // - Para instâncias diárias, manter apenas as de hoje
-        const hoje = new Date();
-        hoje.setHours(0, 0, 0, 0);
-        const hojeStr = hoje.toISOString().split('T')[0];
+        const hojeStr = getHojeBrasiliaStr();
         const metasValidas = metasSnapshot.docs.filter((doc) => {
             const meta = doc.data();
             // Excluir metas "pai" (templates)
@@ -244,8 +261,7 @@ exports.onSimuladoWrite = functions
             // Se for instância diária, verificar se é de hoje
             if (meta.metaPaiId && meta.dataReferencia) {
                 const dataRef = meta.dataReferencia.toDate();
-                dataRef.setHours(0, 0, 0, 0);
-                const dataRefStr = dataRef.toISOString().split('T')[0];
+                const dataRefStr = toDateStrBrasilia(dataRef);
                 return dataRefStr === hojeStr;
             }
             return true;
@@ -380,9 +396,7 @@ exports.onConteudoProgressoWrite = functions
         // Filtrar metas:
         // - Excluir metas "pai" (repetirDiariamente=true sem metaPaiId)
         // - Para instâncias diárias, manter apenas as de hoje
-        const hoje = new Date();
-        hoje.setHours(0, 0, 0, 0);
-        const hojeStr = hoje.toISOString().split('T')[0];
+        const hojeStr = getHojeBrasiliaStr();
         const metasValidas = metasSnapshot.docs.filter((doc) => {
             const meta = doc.data();
             // Excluir metas "pai" (templates)
@@ -392,8 +406,7 @@ exports.onConteudoProgressoWrite = functions
             // Se for instância diária, verificar se é de hoje
             if (meta.metaPaiId && meta.dataReferencia) {
                 const dataRef = meta.dataReferencia.toDate();
-                dataRef.setHours(0, 0, 0, 0);
-                const dataRefStr = dataRef.toISOString().split('T')[0];
+                const dataRefStr = toDateStrBrasilia(dataRef);
                 return dataRefStr === hojeStr;
             }
             return true;

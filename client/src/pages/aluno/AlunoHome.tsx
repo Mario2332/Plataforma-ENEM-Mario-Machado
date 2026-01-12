@@ -383,8 +383,8 @@ export default function AlunoHome() {
               </div>
             </div>
             <div className="hidden md:flex gap-3">
-              <PerfilResumo onClick={() => setDiagnosticoModalOpen(true)} />
-              <RankingResumo onClick={() => setRankingModalOpen(true)} />
+              <PerfilResumo onClick={() => setDiagnosticoModalOpen(true)} overrideUserId={isMentorView ? mentorViewAlunoId : null} />
+              <RankingResumo onClick={() => setRankingModalOpen(true)} overrideUserId={isMentorView ? mentorViewAlunoId : null} />
             </div>
           </div>
           <p className="text-xl text-muted-foreground font-medium">
@@ -407,8 +407,8 @@ export default function AlunoHome() {
             
             {/* Botão de ranking e perfil para mobile */}
             <div className="md:hidden flex flex-wrap gap-2">
-              <PerfilResumo onClick={() => setDiagnosticoModalOpen(true)} />
-              <RankingResumo onClick={() => setRankingModalOpen(true)} />
+              <PerfilResumo onClick={() => setDiagnosticoModalOpen(true)} overrideUserId={isMentorView ? mentorViewAlunoId : null} />
+              <RankingResumo onClick={() => setRankingModalOpen(true)} overrideUserId={isMentorView ? mentorViewAlunoId : null} />
             </div>
           </div>
         </div>

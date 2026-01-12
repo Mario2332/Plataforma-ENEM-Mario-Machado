@@ -385,9 +385,10 @@ export function RankingModal({ open, onOpenChange, alunoAtual }: RankingModalPro
 // Componente de resumo do ranking para o box de boas-vindas
 interface RankingResumoProps {
   onClick: () => void;
+  overrideUserId?: string | null; // ID do aluno quando mentor está visualizando
 }
 
-export function RankingResumo({ onClick }: RankingResumoProps) {
+export function RankingResumo({ onClick, overrideUserId }: RankingResumoProps) {
   const [rankingData, setRankingData] = useState<{
     nivel: number;
     pontosSemanais: number;
@@ -398,36 +399,47 @@ export function RankingResumo({ onClick }: RankingResumoProps) {
 
   useEffect(() => {
     const loadRankingData = async () => {
-      const userId = auth.currentUser?.uid;
+      // Usar overrideUserId se fornecido, senão usar o usuário logado
+      const userId = overrideUserId || auth.currentUser?.uid;
       if (!userId) {
         setIsLoading(false);
         return;
       }
+      
+      // Se estiver visualizando como mentor, não atualizar a pontuação
+      const isMentorView = !!overrideUserId && overrideUserId !== auth.currentUser?.uid;
 
       try {
-        // Calcular pontuação atual em tempo real
-        const { total: pontosCalculados } = await calcularPontuacaoSemanal();
-        
         // Buscar dados do ranking do aluno
         const rankingRef = doc(db, "ranking", userId);
         const rankingSnap = await getDoc(rankingRef);
         
         let nivel = 1;
+        let pontosDoAluno = 0;
         
         if (rankingSnap.exists()) {
           const data = rankingSnap.data();
           nivel = data.nivel || 1;
+          pontosDoAluno = data.pontosSemanais || 0;
           
-          // Atualizar pontuação no Firestore se mudou
-          if (data.pontosSemanais !== pontosCalculados) {
-            await setDoc(rankingRef, {
-              ...data,
-              pontosSemanais: pontosCalculados,
-              ultimaAtualizacao: Timestamp.now(),
-            }, { merge: true });
+          // Só calcular e atualizar pontuação se NÃO estiver em modo mentor
+          if (!isMentorView) {
+            const { total: pontosCalculados } = await calcularPontuacaoSemanal();
+            pontosDoAluno = pontosCalculados;
+            
+            // Atualizar pontuação no Firestore se mudou
+            if (data.pontosSemanais !== pontosCalculados) {
+              await setDoc(rankingRef, {
+                ...data,
+                pontosSemanais: pontosCalculados,
+                ultimaAtualizacao: Timestamp.now(),
+              }, { merge: true });
+            }
           }
-        } else {
-          // Criar registro inicial no ranking
+        } else if (!isMentorView) {
+          // Criar registro inicial no ranking apenas se não for modo mentor
+          const { total: pontosCalculados } = await calcularPontuacaoSemanal();
+          pontosDoAluno = pontosCalculados;
           await setDoc(rankingRef, {
             nivel: 1,
             pontosSemanais: pontosCalculados,
@@ -455,7 +467,7 @@ export function RankingResumo({ onClick }: RankingResumoProps) {
             // Só contar se o aluno existir e tiver dados
             if (alunoSnap.exists() && alunoSnap.data() && Object.keys(alunoSnap.data()).length > 0) {
               totalNivel++;
-              if (docSnap.id !== userId && docData.pontosSemanais > pontosCalculados) {
+              if (docSnap.id !== userId && docData.pontosSemanais > pontosDoAluno) {
                 posicao++;
               }
             }
@@ -464,7 +476,7 @@ export function RankingResumo({ onClick }: RankingResumoProps) {
         
         setRankingData({
           nivel,
-          pontosSemanais: pontosCalculados,
+          pontosSemanais: pontosDoAluno,
           posicao,
           totalNivel: Math.max(totalNivel, 1),
         });
@@ -483,7 +495,7 @@ export function RankingResumo({ onClick }: RankingResumoProps) {
     };
 
     loadRankingData();
-  }, []);
+  }, [overrideUserId]);
 
   if (isLoading) {
     return (

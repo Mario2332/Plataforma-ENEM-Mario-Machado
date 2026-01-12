@@ -69,6 +69,7 @@ const getAlunos = functions
         const alunoData = doc.data();
         const alunoId = doc.id;
         let ultimaAtividade = null;
+        functions.logger.info(`[getAlunos] Processando aluno ${alunoId}`);
         try {
             // Buscar todos os estudos do aluno (sem ordenar para evitar problemas de índice)
             const estudosSnapshot = await db
@@ -76,6 +77,7 @@ const getAlunos = functions
                 .doc(alunoId)
                 .collection("estudos")
                 .get();
+            functions.logger.info(`[getAlunos] Aluno ${alunoId}: ${estudosSnapshot.docs.length} estudos encontrados`);
             // Encontrar o estudo mais recente manualmente
             estudosSnapshot.docs.forEach((estDoc) => {
                 const estudo = estDoc.data();
@@ -114,6 +116,7 @@ const getAlunos = functions
                 .doc(alunoId)
                 .collection("simulados")
                 .get();
+            functions.logger.info(`[getAlunos] Aluno ${alunoId}: ${simuladosSnapshot.docs.length} simulados encontrados`);
             // Encontrar o simulado mais recente manualmente
             simuladosSnapshot.docs.forEach((simDoc) => {
                 const simulado = simDoc.data();
@@ -172,6 +175,7 @@ const getAlunos = functions
             if (diasInatividade < 0)
                 diasInatividade = 0;
         }
+        functions.logger.info(`[getAlunos] Aluno ${alunoId}: diasInatividade=${diasInatividade}, ultimaAtividade=${ultimaAtividade}`);
         return {
             id: alunoId,
             ...alunoData,

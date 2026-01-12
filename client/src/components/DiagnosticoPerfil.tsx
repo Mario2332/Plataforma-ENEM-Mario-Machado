@@ -512,9 +512,10 @@ export function DiagnosticoPerfil({ open, onOpenChange, onComplete, perfilExiste
 // Componente de Card Resumo do Perfil (para exibir na página inicial)
 interface PerfilResumoProps {
   onClick: () => void;
+  overrideUserId?: string | null; // ID do aluno quando mentor está visualizando
 }
 
-export function PerfilResumo({ onClick }: PerfilResumoProps) {
+export function PerfilResumo({ onClick, overrideUserId }: PerfilResumoProps) {
   const [perfilData, setPerfilData] = useState<{
     perfilId: string | null;
     dataRealizacao: Date | null;
@@ -524,7 +525,8 @@ export function PerfilResumo({ onClick }: PerfilResumoProps) {
 
   useEffect(() => {
     const loadPerfilData = async () => {
-      const userId = auth.currentUser?.uid;
+      // Usar overrideUserId se fornecido, senão usar o usuário logado
+      const userId = overrideUserId || auth.currentUser?.uid;
       if (!userId) {
         setIsLoading(false);
         return;
@@ -566,7 +568,7 @@ export function PerfilResumo({ onClick }: PerfilResumoProps) {
     };
 
     loadPerfilData();
-  }, []);
+  }, [overrideUserId]);
 
   if (isLoading) {
     return (

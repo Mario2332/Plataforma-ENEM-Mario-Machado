@@ -1784,9 +1784,15 @@ const getAlunoResumo = functions
         let cronogramaAnualTopicosTotal = 0;
         try {
             // Buscar dados do cronograma anual do aluno
+            functions.logger.info("[getAlunoResumo] Buscando cronograma anual para:", alunoId);
             const cronogramaAnualDoc = await db.collection("cronogramas_anuais").doc(alunoId).get();
+            functions.logger.info("[getAlunoResumo] Cronograma anual existe:", cronogramaAnualDoc.exists);
             if (cronogramaAnualDoc.exists) {
                 const cronogramaAnualData = cronogramaAnualDoc.data();
+                functions.logger.info("[getAlunoResumo] Dados do cronograma anual:", {
+                    activeSchedule: cronogramaAnualData?.activeSchedule,
+                    completedTopicsCount: Object.keys(cronogramaAnualData?.completedTopics || {}).length
+                });
                 cronogramaAnualAtivo = cronogramaAnualData?.activeSchedule || "extensive";
                 const completedTopics = cronogramaAnualData?.completedTopics || {};
                 // Contar tópicos concluídos
@@ -1795,9 +1801,19 @@ const getAlunoResumo = functions
                 // Extensivo: 453 tópicos, Intensivo: 383 tópicos
                 cronogramaAnualTopicosTotal = cronogramaAnualAtivo === "intensive" ? 383 : 453;
             }
+            else {
+                // Se não existe documento, definir como extensivo por padrão
+                // Todos os alunos têm cronograma, mesmo que não tenham acessado ainda
+                cronogramaAnualAtivo = "extensive";
+                cronogramaAnualTopicosTotal = 453;
+                functions.logger.info("[getAlunoResumo] Cronograma anual não existe, usando padrão extensivo");
+            }
         }
         catch (e) {
             functions.logger.error("Erro ao buscar cronograma anual:", e);
+            // Em caso de erro, ainda definir valores padrão
+            cronogramaAnualAtivo = "extensive";
+            cronogramaAnualTopicosTotal = 453;
         }
         // ===== CRONOGRAMA DINÂMICO =====
         let cronogramaDinamicoAtivo = false;
@@ -1806,15 +1822,22 @@ const getAlunoResumo = functions
         let cronogramaDinamicoTipo = null;
         try {
             // Buscar dados do cronograma dinâmico do aluno
+            functions.logger.info("[getAlunoResumo] Buscando cronograma dinâmico para:", alunoId);
             const cronogramaDinamicoDoc = await db
                 .collection("alunos")
                 .doc(alunoId)
                 .collection("cronograma")
                 .doc("dinamico")
                 .get();
+            functions.logger.info("[getAlunoResumo] Cronograma dinâmico existe:", cronogramaDinamicoDoc.exists);
             if (cronogramaDinamicoDoc.exists) {
                 const cronogramaDinamicoData = cronogramaDinamicoDoc.data();
                 const schedule = cronogramaDinamicoData?.schedule || [];
+                functions.logger.info("[getAlunoResumo] Dados do cronograma dinâmico:", {
+                    scheduleLength: schedule.length,
+                    scheduleType: cronogramaDinamicoData?.scheduleType,
+                    checkedItemsCount: (cronogramaDinamicoData?.checkedItems || []).length
+                });
                 // Verificar se tem um cronograma criado (schedule não vazio)
                 if (schedule.length > 0) {
                     cronogramaDinamicoAtivo = true;
@@ -1831,6 +1854,12 @@ const getAlunoResumo = functions
                     // Contar tópicos concluídos (checkedItems)
                     const checkedItems = cronogramaDinamicoData?.checkedItems || [];
                     cronogramaDinamicoTopicosConcluidos = checkedItems.length;
+                    functions.logger.info("[getAlunoResumo] Cronograma dinâmico processado:", {
+                        ativo: cronogramaDinamicoAtivo,
+                        tipo: cronogramaDinamicoTipo,
+                        total: cronogramaDinamicoTopicosTotal,
+                        concluidos: cronogramaDinamicoTopicosConcluidos
+                    });
                 }
             }
         }

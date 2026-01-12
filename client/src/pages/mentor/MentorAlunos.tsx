@@ -520,6 +520,12 @@ export default function MentorAlunos() {
                         <ArrowUpDown className="ml-2 h-4 w-4" />
                       </Button>
                     </TableHead>
+                    <TableHead>
+                      <Button variant="ghost" size="sm" onClick={() => handleSort('diasInatividade')} className="h-8 px-2">
+                        Inatividade
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
@@ -541,6 +547,18 @@ export default function MentorAlunos() {
                         </span>
                       </TableCell>
                       <TableCell>{aluno.horasEstudo}h</TableCell>
+                      <TableCell>
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          aluno.diasInatividade === 0 ? 'bg-green-100 text-green-800' :
+                          aluno.diasInatividade <= 3 ? 'bg-yellow-100 text-yellow-800' :
+                          aluno.diasInatividade <= 7 ? 'bg-orange-100 text-orange-800' :
+                          'bg-red-100 text-red-800'
+                        }`}>
+                          {aluno.diasInatividade === 0 ? 'Hoje' :
+                           aluno.diasInatividade === 1 ? '1 dia' :
+                           `${aluno.diasInatividade} dias`}
+                        </span>
+                      </TableCell>
                       <TableCell>
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${aluno.ativo !== false ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}>
                           {aluno.ativo !== false ? "Ativo" : "Inativo"}
@@ -734,11 +752,35 @@ export default function MentorAlunos() {
                       </Badge>
                     </p>
                   </div>
+                  <div>
+                    <span className="text-muted-foreground">Dias de Inatividade:</span>
+                    <p>
+                      <Badge variant={resumoAluno.diasInatividade === 0 ? "default" : resumoAluno.diasInatividade <= 3 ? "secondary" : "destructive"}>
+                        {resumoAluno.diasInatividade === 0 ? 'Ativo hoje' :
+                         resumoAluno.diasInatividade === 1 ? '1 dia' :
+                         `${resumoAluno.diasInatividade} dias`}
+                      </Badge>
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Última Atividade:</span>
+                    <p className="font-medium">
+                      {resumoAluno.ultimaAtividade 
+                        ? new Date(resumoAluno.ultimaAtividade).toLocaleDateString('pt-BR')
+                        : "Nenhuma"}
+                    </p>
+                  </div>
                 </div>
                 {resumoAluno.perfil && (
                   <div>
                     <span className="text-muted-foreground text-sm">Perfil:</span>
                     <p className="font-medium">{resumoAluno.perfil}</p>
+                  </div>
+                )}
+                {resumoAluno.perfilEstudanteNome && (
+                  <div className="mt-2 p-3 bg-primary/5 rounded-lg border">
+                    <span className="text-muted-foreground text-sm">Perfil de Estudante (Diagnóstico):</span>
+                    <p className="font-semibold text-primary">{resumoAluno.perfilEstudanteNome}</p>
                   </div>
                 )}
               </div>
@@ -765,8 +807,12 @@ export default function MentorAlunos() {
                       <Trophy className="h-4 w-4" />
                       Ranking
                     </div>
-                    <p className="text-2xl font-bold">#{resumoAluno.posicaoRanking}</p>
-                    <p className="text-xs text-muted-foreground">de {resumoAluno.totalAlunos} alunos</p>
+                    <p className="text-2xl font-bold">
+                      {resumoAluno.posicaoRanking ? `#${resumoAluno.posicaoRanking}` : '-'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {resumoAluno.totalAlunos ? `de ${resumoAluno.totalAlunos} alunos` : 'sem ranking'}
+                    </p>
                   </Card>
                   <Card className="p-4">
                     <div className="flex items-center gap-2 text-muted-foreground text-sm">

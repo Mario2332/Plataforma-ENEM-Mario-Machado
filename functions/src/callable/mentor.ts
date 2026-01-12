@@ -36,10 +36,79 @@ const getAlunos = functions
       .collection("alunos")
       .get();
 
-    return alunosSnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    // Calcular dias de inatividade para cada aluno
+    const alunosComInatividade = await Promise.all(
+      alunosSnapshot.docs.map(async (doc) => {
+        const alunoData = doc.data();
+        const alunoId = doc.id;
+        
+        // Buscar estudos do aluno
+        const estudosSnapshot = await db
+          .collection("alunos")
+          .doc(alunoId)
+          .collection("estudos")
+          .orderBy("data", "desc")
+          .limit(1)
+          .get();
+        
+        // Buscar simulados do aluno
+        const simuladosSnapshot = await db
+          .collection("alunos")
+          .doc(alunoId)
+          .collection("simulados")
+          .orderBy("data", "desc")
+          .limit(1)
+          .get();
+        
+        let ultimaAtividade: Date | null = null;
+        
+        // Verificar último estudo
+        if (!estudosSnapshot.empty) {
+          const ultimoEstudo = estudosSnapshot.docs[0].data();
+          if (ultimoEstudo.data) {
+            ultimaAtividade = ultimoEstudo.data.toDate?.() || new Date(ultimoEstudo.data);
+          }
+        }
+        
+        // Verificar último simulado
+        if (!simuladosSnapshot.empty) {
+          const ultimoSimulado = simuladosSnapshot.docs[0].data();
+          const dataSimulado = ultimoSimulado.data?.toDate?.() || ultimoSimulado.createdAt?.toDate?.() || 
+            (ultimoSimulado.data ? new Date(ultimoSimulado.data) : null);
+          
+          if (dataSimulado && (!ultimaAtividade || dataSimulado > ultimaAtividade)) {
+            ultimaAtividade = dataSimulado;
+          }
+        }
+        
+        // Calcular dias de inatividade
+        let diasInatividade = 0;
+        if (ultimaAtividade) {
+          const agora = new Date();
+          agora.setHours(agora.getHours() - 3); // Ajustar para Brasília
+          const diffTime = agora.getTime() - ultimaAtividade.getTime();
+          diasInatividade = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+          if (diasInatividade < 0) diasInatividade = 0;
+        } else if (alunoData.createdAt) {
+          // Se não tem atividade, calcular desde o cadastro
+          const dataCadastro = alunoData.createdAt.toDate?.() || new Date(alunoData.createdAt);
+          const agora = new Date();
+          agora.setHours(agora.getHours() - 3);
+          const diffTime = agora.getTime() - dataCadastro.getTime();
+          diasInatividade = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+          if (diasInatividade < 0) diasInatividade = 0;
+        }
+        
+        return {
+          id: alunoId,
+          ...alunoData,
+          diasInatividade,
+          ultimaAtividade: ultimaAtividade ? ultimaAtividade.toISOString() : null,
+        };
+      })
+    );
+
+    return alunosComInatividade;
   });
 
 /**
@@ -1777,16 +1846,112 @@ const getAlunoResumo = functions
         }
       }
 
+      // Calcular dias de inatividade
+      let diasInatividade = 0;
+      let ultimaAtividade = null;
+      
+      // Verificar último estudo
+      const estudosOrdenados = estudos
+        .filter((e: any) => e.data)
+        .sort((a: any, b: any) => {
+          const dataA = a.data?.toDate?.() || new Date(a.data);
+          const dataB = b.data?.toDate?.() || new Date(b.data);
+          return dataB.getTime() - dataA.getTime();
+        });
+      
+      if (estudosOrdenados.length > 0) {
+        const ultimoEstudo = estudosOrdenados[0];
+        ultimaAtividade = ultimoEstudo.data?.toDate?.() || new Date(ultimoEstudo.data);
+      }
+      
+      // Verificar último simulado
+      const simuladosOrdenados = simulados
+        .filter((s: any) => s.data || s.createdAt)
+        .sort((a: any, b: any) => {
+          const dataA = a.data?.toDate?.() || a.createdAt?.toDate?.() || new Date(a.data || a.createdAt);
+          const dataB = b.data?.toDate?.() || b.createdAt?.toDate?.() || new Date(b.data || b.createdAt);
+          return dataB.getTime() - dataA.getTime();
+        });
+      
+      if (simuladosOrdenados.length > 0) {
+        const ultimoSimulado = simuladosOrdenados[0];
+        const dataSimulado = ultimoSimulado.data?.toDate?.() || ultimoSimulado.createdAt?.toDate?.() || new Date(ultimoSimulado.data || ultimoSimulado.createdAt);
+        if (!ultimaAtividade || dataSimulado > ultimaAtividade) {
+          ultimaAtividade = dataSimulado;
+        }
+      }
+      
+      if (ultimaAtividade) {
+        const agora = new Date();
+        agora.setHours(agora.getHours() - 3); // Ajustar para Brasília
+        const diffTime = agora.getTime() - ultimaAtividade.getTime();
+        diasInatividade = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        if (diasInatividade < 0) diasInatividade = 0;
+      } else {
+        // Se não tem atividade, calcular desde o cadastro
+        if (dataCadastro) {
+          const agora = new Date();
+          agora.setHours(agora.getHours() - 3);
+          const diffTime = agora.getTime() - new Date(dataCadastro).getTime();
+          diasInatividade = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+          if (diasInatividade < 0) diasInatividade = 0;
+        }
+      }
+
+      // Buscar perfil de estudante do diagnóstico
+      let perfilEstudante = alunoData.perfilEstudante || null;
+      let perfilEstudanteNome = null;
+      
+      // Se não tem no documento principal, buscar na subcoleção
+      if (!perfilEstudante) {
+        try {
+          const diagnosticoDoc = await db
+            .collection("alunos")
+            .doc(alunoId)
+            .collection("diagnostico")
+            .doc("perfil")
+            .get();
+          
+          if (diagnosticoDoc.exists) {
+            const diagnosticoData = diagnosticoDoc.data();
+            perfilEstudante = diagnosticoData?.perfilId || null;
+          }
+        } catch (e) {
+          // Ignorar erro se não existir
+        }
+      }
+      
+      // Buscar nome do perfil na configuração
+      if (perfilEstudante) {
+        try {
+          const perfisConfigDoc = await db
+            .collection("diagnostico_perfil_config")
+            .doc("perfis")
+            .get();
+          
+          if (perfisConfigDoc.exists) {
+            const perfisConfig = perfisConfigDoc.data();
+            if (perfisConfig && perfisConfig[perfilEstudante]) {
+              perfilEstudanteNome = perfisConfig[perfilEstudante].nome || perfilEstudante;
+            }
+          }
+        } catch (e) {
+          // Usar o ID como fallback
+          perfilEstudanteNome = perfilEstudante;
+        }
+      }
+
       // Calcular nível baseado em XP ou atividade
       const xp = alunoData.xp || 0;
       const nivel = Math.floor(xp / 1000) + 1;
 
-      // Buscar ranking (posição entre todos os alunos)
-      const todosAlunosSnapshot = await db.collection("alunos").get();
+      // Buscar ranking (posição entre todos os alunos ativos)
+      const todosAlunosSnapshot = await db.collection("alunos").where("ativo", "!=", false).get();
       const alunosComXP = todosAlunosSnapshot.docs
         .map((doc) => ({ id: doc.id, xp: doc.data().xp || 0 }))
         .sort((a, b) => b.xp - a.xp);
       const posicaoRanking = alunosComXP.findIndex((a) => a.id === alunoId) + 1;
+      const totalAlunosAtivos = alunosComXP.length;
 
       return {
         // Dados básicos
@@ -1798,6 +1963,14 @@ const getAlunoResumo = functions
         ativo: alunoData.ativo !== false,
         dataCadastro,
         perfil: alunoData.perfil || null,
+        
+        // Perfil de estudante (diagnóstico)
+        perfilEstudante,
+        perfilEstudanteNome,
+        
+        // Dias de inatividade
+        diasInatividade,
+        ultimaAtividade: ultimaAtividade ? ultimaAtividade.toISOString() : null,
         
         // Métricas de estudo
         horasEstudo: Math.round((tempoTotal / 60) * 10) / 10,
@@ -1825,8 +1998,8 @@ const getAlunoResumo = functions
         // Gamificação
         xp,
         nivel,
-        posicaoRanking,
-        totalAlunos: todosAlunosSnapshot.size,
+        posicaoRanking: posicaoRanking > 0 ? posicaoRanking : null,
+        totalAlunos: totalAlunosAtivos,
       };
     } catch (error: any) {
       functions.logger.error("Erro ao buscar resumo do aluno:", error);

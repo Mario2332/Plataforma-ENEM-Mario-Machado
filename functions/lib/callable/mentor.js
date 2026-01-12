@@ -1778,6 +1778,65 @@ const getAlunoResumo = functions
         catch (e) {
             functions.logger.error("Erro ao buscar ranking:", e);
         }
+        // ===== CRONOGRAMA ANUAL DE CICLOS =====
+        let cronogramaAnualAtivo = null;
+        let cronogramaAnualTopicosConcluidos = 0;
+        let cronogramaAnualTopicosTotal = 0;
+        try {
+            // Buscar dados do cronograma anual do aluno
+            const cronogramaAnualDoc = await db.collection("cronogramas_anuais").doc(alunoId).get();
+            if (cronogramaAnualDoc.exists) {
+                const cronogramaAnualData = cronogramaAnualDoc.data();
+                cronogramaAnualAtivo = cronogramaAnualData?.activeSchedule || "extensive";
+                const completedTopics = cronogramaAnualData?.completedTopics || {};
+                // Contar tópicos concluídos
+                cronogramaAnualTopicosConcluidos = Object.values(completedTopics).filter((v) => v === true).length;
+                // Total de tópicos baseado no tipo de cronograma ativo
+                // Extensivo: 453 tópicos, Intensivo: 383 tópicos
+                cronogramaAnualTopicosTotal = cronogramaAnualAtivo === "intensive" ? 383 : 453;
+            }
+        }
+        catch (e) {
+            functions.logger.error("Erro ao buscar cronograma anual:", e);
+        }
+        // ===== CRONOGRAMA DINÂMICO =====
+        let cronogramaDinamicoAtivo = false;
+        let cronogramaDinamicoTopicosConcluidos = 0;
+        let cronogramaDinamicoTopicosTotal = 0;
+        let cronogramaDinamicoTipo = null;
+        try {
+            // Buscar dados do cronograma dinâmico do aluno
+            const cronogramaDinamicoDoc = await db
+                .collection("alunos")
+                .doc(alunoId)
+                .collection("cronograma")
+                .doc("dinamico")
+                .get();
+            if (cronogramaDinamicoDoc.exists) {
+                const cronogramaDinamicoData = cronogramaDinamicoDoc.data();
+                const schedule = cronogramaDinamicoData?.schedule || [];
+                // Verificar se tem um cronograma criado (schedule não vazio)
+                if (schedule.length > 0) {
+                    cronogramaDinamicoAtivo = true;
+                    cronogramaDinamicoTipo = cronogramaDinamicoData?.scheduleType || "extensivo";
+                    // Contar total de tópicos no cronograma dinâmico
+                    // Cada dia tem um array de tasks, cada task é um tópico
+                    let totalTasks = 0;
+                    schedule.forEach((day) => {
+                        if (day.tasks && Array.isArray(day.tasks)) {
+                            totalTasks += day.tasks.length;
+                        }
+                    });
+                    cronogramaDinamicoTopicosTotal = totalTasks;
+                    // Contar tópicos concluídos (checkedItems)
+                    const checkedItems = cronogramaDinamicoData?.checkedItems || [];
+                    cronogramaDinamicoTopicosConcluidos = checkedItems.length;
+                }
+            }
+        }
+        catch (e) {
+            functions.logger.error("Erro ao buscar cronograma dinâmico:", e);
+        }
         return {
             // Dados básicos
             id: alunoDoc.id,
@@ -1818,6 +1877,15 @@ const getAlunoResumo = functions
             pontosSemanais,
             posicaoRanking: posicaoRanking > 0 ? posicaoRanking : null,
             totalAlunos: totalAlunosNoNivel,
+            // Cronograma Anual de Ciclos
+            cronogramaAnualAtivo,
+            cronogramaAnualTopicosConcluidos,
+            cronogramaAnualTopicosTotal,
+            // Cronograma Dinâmico
+            cronogramaDinamicoAtivo,
+            cronogramaDinamicoTopicosConcluidos,
+            cronogramaDinamicoTopicosTotal,
+            cronogramaDinamicoTipo,
         };
     }
     catch (error) {

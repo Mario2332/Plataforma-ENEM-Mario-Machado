@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { mentorApi } from "@/lib/api";
-import { Plus, Users, ArrowUpDown, Edit, Trash2, Search, TrendingUp, Eye, FileText, Calendar, Clock, Target, Award, Flame, BookOpen, Trophy, CheckCircle2, XCircle, User } from "lucide-react";
+import { Plus, Users, ArrowUpDown, Edit, Trash2, Search, TrendingUp, Eye, FileText, Calendar, Clock, Target, Award, Flame, BookOpen, Trophy, CheckCircle2, XCircle, User, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
@@ -880,19 +880,87 @@ export default function MentorAlunos() {
               <Separator />
 
               {/* Progresso de Conteúdo */}
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <h3 className="font-semibold text-lg flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4" />
                   Progresso de Conteúdo
                 </h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Tópicos concluídos</span>
-                    <span className="font-medium">{resumoAluno.topicosConcluidos} de {resumoAluno.topicosTotal}</span>
+                
+                {/* Cronograma Anual de Ciclos */}
+                <Card className="p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-blue-500" />
+                      <span className="font-medium">Cronograma Anual de Ciclos</span>
+                    </div>
+                    {resumoAluno.cronogramaAnualAtivo && (
+                      <Badge variant="outline" className="text-xs">
+                        {resumoAluno.cronogramaAnualAtivo === "intensive" ? "Intensivo" : "Extensivo"}
+                      </Badge>
+                    )}
                   </div>
-                  <Progress value={resumoAluno.progressoConteudo} className="h-2" />
-                  <p className="text-xs text-muted-foreground text-right">{resumoAluno.progressoConteudo}% concluído</p>
-                </div>
+                  {resumoAluno.cronogramaAnualAtivo ? (
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Tópicos concluídos</span>
+                        <span className="font-medium">
+                          {resumoAluno.cronogramaAnualTopicosConcluidos} de {resumoAluno.cronogramaAnualTopicosTotal}
+                        </span>
+                      </div>
+                      <Progress 
+                        value={resumoAluno.cronogramaAnualTopicosTotal > 0 
+                          ? Math.round((resumoAluno.cronogramaAnualTopicosConcluidos / resumoAluno.cronogramaAnualTopicosTotal) * 100) 
+                          : 0} 
+                        className="h-2" 
+                      />
+                      <p className="text-xs text-muted-foreground text-right">
+                        {resumoAluno.cronogramaAnualTopicosTotal > 0 
+                          ? Math.round((resumoAluno.cronogramaAnualTopicosConcluidos / resumoAluno.cronogramaAnualTopicosTotal) * 100) 
+                          : 0}% concluído
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Nenhum cronograma anual iniciado</p>
+                  )}
+                </Card>
+                
+                {/* Cronograma Dinâmico */}
+                <Card className="p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-4 w-4 text-purple-500" />
+                      <span className="font-medium">Cronograma Dinâmico</span>
+                    </div>
+                    {resumoAluno.cronogramaDinamicoAtivo && resumoAluno.cronogramaDinamicoTipo && (
+                      <Badge variant="outline" className="text-xs">
+                        {resumoAluno.cronogramaDinamicoTipo === "intensivo" ? "Intensivo" : "Extensivo"}
+                      </Badge>
+                    )}
+                  </div>
+                  {resumoAluno.cronogramaDinamicoAtivo ? (
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Tópicos concluídos</span>
+                        <span className="font-medium">
+                          {resumoAluno.cronogramaDinamicoTopicosConcluidos} de {resumoAluno.cronogramaDinamicoTopicosTotal}
+                        </span>
+                      </div>
+                      <Progress 
+                        value={resumoAluno.cronogramaDinamicoTopicosTotal > 0 
+                          ? Math.round((resumoAluno.cronogramaDinamicoTopicosConcluidos / resumoAluno.cronogramaDinamicoTopicosTotal) * 100) 
+                          : 0} 
+                        className="h-2" 
+                      />
+                      <p className="text-xs text-muted-foreground text-right">
+                        {resumoAluno.cronogramaDinamicoTopicosTotal > 0 
+                          ? Math.round((resumoAluno.cronogramaDinamicoTopicosConcluidos / resumoAluno.cronogramaDinamicoTopicosTotal) * 100) 
+                          : 0}% concluído
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Nenhum cronograma dinâmico criado</p>
+                  )}
+                </Card>
               </div>
 
               <Separator />

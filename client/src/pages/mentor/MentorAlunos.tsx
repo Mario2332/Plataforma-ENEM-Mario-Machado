@@ -799,19 +799,21 @@ export default function MentorAlunos() {
                       <Award className="h-4 w-4" />
                       Nível
                     </div>
-                    <p className="text-2xl font-bold">{resumoAluno.nivel}</p>
-                    <p className="text-xs text-muted-foreground">{resumoAluno.xp} XP</p>
+                    <p className="text-2xl font-bold">{resumoAluno.nivel || 1}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {resumoAluno.pontosSemanais ? `${resumoAluno.pontosSemanais} pts/semana` : `${resumoAluno.xp || 0} XP`}
+                    </p>
                   </Card>
                   <Card className="p-4">
                     <div className="flex items-center gap-2 text-muted-foreground text-sm">
                       <Trophy className="h-4 w-4" />
-                      Ranking
+                      Ranking (Nível {resumoAluno.nivel || 1})
                     </div>
                     <p className="text-2xl font-bold">
                       {resumoAluno.posicaoRanking ? `#${resumoAluno.posicaoRanking}` : '-'}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {resumoAluno.totalAlunos ? `de ${resumoAluno.totalAlunos} alunos` : 'sem ranking'}
+                      {resumoAluno.totalAlunos ? `de ${resumoAluno.totalAlunos} no nível` : 'sem ranking'}
                     </p>
                   </Card>
                   <Card className="p-4">

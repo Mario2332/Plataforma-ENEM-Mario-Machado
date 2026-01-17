@@ -432,50 +432,61 @@ export default function CronogramaLista() {
                 dia.atividades.map(atividade => (
                   <div
                     key={atividade.id}
-                    className="group relative p-3 rounded-lg border-l-4 bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-all"
-                    style={{ borderLeftColor: atividade.cor }}
+                    className="group relative p-3 rounded-xl border-2 shadow-sm hover:shadow-lg transition-all"
+                    style={{ 
+                      borderColor: atividade.cor,
+                      backgroundColor: `${atividade.cor}10`
+                    }}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-                          <Clock className="h-3 w-3" />
-                          <span>{atividade.horaInicio} - {atividade.horaFim}</span>
-                        </div>
-                        <p className="font-medium text-sm truncate" title={getAtividadeNome(atividade)}>
-                          {getAtividadeNome(atividade)}
-                        </p>
-                      </div>
-                      
-                      {/* Ações */}
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => handleCopyAtividade(atividade)}
-                          title="Copiar atividade"
-                        >
-                          <Copy className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => handleEditAtividade(atividade)}
-                          title="Editar atividade"
-                        >
-                          <Edit2 className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-red-500 hover:text-red-600 hover:bg-red-50"
-                          onClick={() => handleDeleteAtividade(atividade.id!)}
-                          title="Remover atividade"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
+                    {/* Horário */}
+                    <div 
+                      className="flex items-center gap-2 text-xs font-semibold mb-2 px-2 py-1 rounded-md w-fit"
+                      style={{ 
+                        backgroundColor: atividade.cor,
+                        color: 'white'
+                      }}
+                    >
+                      <Clock className="h-3 w-3" />
+                      <span>{atividade.horaInicio} - {atividade.horaFim}</span>
+                    </div>
+                    
+                    {/* Nome da atividade - texto completo com quebra de linha */}
+                    <p 
+                      className="font-bold text-sm leading-tight break-words"
+                      style={{ color: atividade.cor }}
+                    >
+                      {getAtividadeNome(atividade)}
+                    </p>
+                    
+                    {/* Ações - botões flutuantes no canto */}
+                    <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 dark:bg-gray-800/90 rounded-lg p-1 shadow-md">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => handleCopyAtividade(atividade)}
+                        title="Copiar atividade"
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => handleEditAtividade(atividade)}
+                        title="Editar atividade"
+                      >
+                        <Edit2 className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-red-500 hover:text-red-600 hover:bg-red-50"
+                        onClick={() => handleDeleteAtividade(atividade.id!)}
+                        title="Remover atividade"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
                   </div>
                 ))

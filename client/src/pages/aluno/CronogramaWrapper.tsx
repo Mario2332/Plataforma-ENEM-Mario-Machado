@@ -1,12 +1,14 @@
 import React, { useState } from "react";
-import { Calendar, Zap, BarChart2, CalendarDays, RefreshCw } from "lucide-react";
+import { Calendar, Zap, BarChart2, CalendarDays, RefreshCw, Grid3X3, ListTodo } from "lucide-react";
 import AlunoCronograma from "./AlunoCronograma";
+import CronogramaLista from "./CronogramaLista";
 import CronogramaAnual from "./cronograma/CronogramaAnual";
 import CronogramaEstatisticas from "./cronograma/CronogramaEstatisticas";
 import CronogramaDinamico from "./CronogramaDinamico";
 
 export default function CronogramaWrapper() {
   const [activeTab, setActiveTab] = useState<"semanal" | "anual-ciclos" | "anual-dinamico">("semanal");
+  const [semanalSubTab, setSemanalSubTab] = useState<"grade" | "lista">("grade");
   const [anualSubTab, setAnualSubTab] = useState<"ciclos" | "estatisticas">("ciclos");
 
   return (
@@ -119,9 +121,48 @@ export default function CronogramaWrapper() {
         </div>
       )}
 
+      {/* Sub-tabs para Semanal */}
+      {activeTab === "semanal" && (
+        <div className="bg-gray-50 rounded-lg p-1 inline-flex gap-1">
+          <button
+            onClick={() => setSemanalSubTab("grade")}
+            className={`
+              flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-all
+              ${
+                semanalSubTab === "grade"
+                  ? "bg-white text-indigo-600 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              }
+            `}
+          >
+            <Grid3X3 className="w-4 h-4" />
+            Grade
+          </button>
+          <button
+            onClick={() => setSemanalSubTab("lista")}
+            className={`
+              flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-all
+              ${
+                semanalSubTab === "lista"
+                  ? "bg-white text-indigo-600 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              }
+            `}
+          >
+            <ListTodo className="w-4 h-4" />
+            Lista
+          </button>
+        </div>
+      )}
+
       {/* Conteúdo das tabs */}
       <div>
-        {activeTab === "semanal" && <AlunoCronograma />}
+        {activeTab === "semanal" && (
+          <>
+            {semanalSubTab === "grade" && <AlunoCronograma />}
+            {semanalSubTab === "lista" && <CronogramaLista />}
+          </>
+        )}
         {activeTab === "anual-ciclos" && (
           <>
             {anualSubTab === "ciclos" && <CronogramaAnual />}

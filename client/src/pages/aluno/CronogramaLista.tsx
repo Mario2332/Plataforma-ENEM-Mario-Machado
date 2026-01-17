@@ -257,9 +257,15 @@ export default function CronogramaLista() {
       return;
     }
     
+    // Para "Outra atividade", usar a cor selecionada pelo usuário
+    // Para atividades padrão, usar a cor definida em CORES_ATIVIDADES
+    const corFinal = formData.atividade === "Outra atividade" 
+      ? formData.cor 
+      : (CORES_ATIVIDADES[formData.atividade] || formData.cor);
+    
     const novaAtividade: Atividade = {
       ...formData,
-      cor: CORES_ATIVIDADES[formData.atividade] || formData.cor,
+      cor: corFinal,
     };
     
     if (editingAtividade) {
@@ -399,11 +405,11 @@ export default function CronogramaLista() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7 gap-4">
         {atividadesPorDia.map(dia => (
           <Card key={dia.value} className="overflow-hidden">
-            <CardHeader className="pb-2 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+            <CardHeader className="py-3 px-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 -mt-0 rounded-t-lg">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-lg">{dia.label}</CardTitle>
-                  <CardDescription>
+                  <CardTitle className="text-lg font-bold">{dia.label}</CardTitle>
+                  <CardDescription className="text-sm">
                     {dia.atividades.length > 0 
                       ? calcularHorasDia(dia.atividades)
                       : "Nenhuma atividade"}

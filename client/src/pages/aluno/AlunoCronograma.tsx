@@ -42,6 +42,13 @@ const COLORS = [
   { name: "Vermelho", value: "#E74C3C" },
   { name: "Cinza", value: "#95A5A6" },
   { name: "Branco", value: "#FFFFFF" },
+  { name: "Turquesa", value: "#1ABC9C" },
+  { name: "Azul Marinho", value: "#2C3E50" },
+  { name: "Lilás", value: "#BB8FCE" },
+  { name: "Coral", value: "#FF7F50" },
+  { name: "Verde Limão", value: "#32CD32" },
+  { name: "Azul Claro", value: "#87CEEB" },
+  { name: "Salmão", value: "#FA8072" },
 ];
 
 export default function AlunoCronograma() {
@@ -498,7 +505,7 @@ export default function AlunoCronograma() {
           <DialogHeader>
             <DialogTitle className="text-lg font-bold">Escolher Cor</DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-3 gap-3 py-2">
+          <div className="grid grid-cols-4 gap-2 py-2">
             {COLORS.map((color) => (
               <button
                 key={color.value}

@@ -306,6 +306,20 @@ service cloud.firestore {
         // Gestor pode ler e escrever todos os cronogramas
         allow read, create, update, delete: if hasRole('gestor');
       }
+      
+      // ============================================
+      // CRONOGRAMA LISTA (subcoleção - to-do list style)
+      // ============================================
+      match /cronograma_lista/{atividadeId} {
+        // Aluno pode gerenciar sua própria lista de atividades
+        allow read, create, update, delete: if hasRole('aluno') && isOwner(alunoId);
+        
+        // Mentor pode ler e escrever lista de atividades de qualquer aluno
+        allow read, create, update, delete: if hasRole('mentor');
+        
+        // Gestor pode ler e escrever todas as listas de atividades
+        allow read, create, update, delete: if hasRole('gestor');
+      }
     }
     
     // ============================================

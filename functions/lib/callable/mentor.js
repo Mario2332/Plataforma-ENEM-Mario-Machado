@@ -534,6 +534,7 @@ const getAlunosMetricas = functions
             return {
                 alunoId,
                 questoesFeitas,
+                questoesAcertadas,
                 desempenho,
                 horasEstudo,
             };

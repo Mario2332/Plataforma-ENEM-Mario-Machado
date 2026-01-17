@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { mentorApi } from "@/lib/api";
-import { Plus, Users, ArrowUpDown, Edit, Trash2, Search, TrendingUp, Eye, FileText, Calendar, Clock, Target, Award, Flame, BookOpen, Trophy, CheckCircle2, XCircle, User, Zap } from "lucide-react";
+import { Plus, Users, ArrowUpDown, Edit, Trash2, Search, TrendingUp, Eye, FileText, Calendar, Clock, Target, Award, Flame, BookOpen, Trophy, CheckCircle2, XCircle, User, Zap, HelpCircle } from "lucide-react";
 import { toast } from "sonner";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
@@ -356,7 +356,7 @@ export default function MentorAlunos() {
       </div>
 
       {/* Cards de Resumo */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total de Alunos</CardTitle>
@@ -369,16 +369,30 @@ export default function MentorAlunos() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total de Questões</CardTitle>
+            <HelpCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {metricas.reduce((acc, m) => acc + (m.questoesFeitas || 0), 0).toLocaleString('pt-BR')}
+            </div>
+            <p className="text-xs text-muted-foreground">Feitas por todos os alunos</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Média de Desempenho</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {metricas.length > 0 
-                ? Math.round(metricas.reduce((acc, m) => acc + (m.desempenho || 0), 0) / metricas.length)
-                : 0}%
+              {(() => {
+                const totalQuestoes = metricas.reduce((acc, m) => acc + (m.questoesFeitas || 0), 0);
+                const totalAcertos = metricas.reduce((acc, m) => acc + (m.questoesAcertadas || 0), 0);
+                return totalQuestoes > 0 ? Math.round((totalAcertos / totalQuestoes) * 100) : 0;
+              })()}%
             </div>
-            <p className="text-xs text-muted-foreground">Baseado em questões</p>
+            <p className="text-xs text-muted-foreground">Média ponderada de acertos</p>
           </CardContent>
         </Card>
         <Card>

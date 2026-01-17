@@ -125,10 +125,69 @@ export default function AlunoMetricas() {
   }, [estudos, periodo]);
 
   const dadosEvolucao = useMemo(() => {
-    if (!estudosFiltrados.length) return [];
+    // Calcular data limite baseado no período
+    const agora = new Date();
+    let dataLimite = new Date();
     
-    // Agrupar por data, guardando timestamp para ordenação
-    const porDia = estudosFiltrados.reduce((acc, estudo) => {
+    switch (periodo) {
+      case "7d":
+        dataLimite.setDate(agora.getDate() - 7);
+        break;
+      case "30d":
+        dataLimite.setDate(agora.getDate() - 30);
+        break;
+      case "3m":
+        dataLimite.setMonth(agora.getMonth() - 3);
+        break;
+      case "6m":
+        dataLimite.setMonth(agora.getMonth() - 6);
+        break;
+      case "1a":
+        dataLimite.setFullYear(agora.getFullYear() - 1);
+        break;
+      case "all":
+        // Para "all", usar a data do estudo mais antigo ou 1 ano atrás
+        if (estudosFiltrados.length > 0) {
+          let dataMinima = new Date();
+          estudosFiltrados.forEach(estudo => {
+            try {
+              let data: Date;
+              if (estudo.data?.seconds || estudo.data?._seconds) {
+                const seconds = estudo.data.seconds || estudo.data._seconds;
+                data = new Date(seconds * 1000);
+              } else if (estudo.data?.toDate) {
+                data = estudo.data.toDate();
+              } else {
+                data = new Date(estudo.data);
+              }
+              if (!isNaN(data.getTime()) && data < dataMinima) {
+                dataMinima = data;
+              }
+            } catch {}
+          });
+          dataLimite = dataMinima;
+        } else {
+          dataLimite.setFullYear(agora.getFullYear() - 1);
+        }
+        break;
+    }
+    
+    // Gerar todos os dias do período
+    const todosDias: Record<string, any> = {};
+    const dataAtual = new Date(dataLimite);
+    dataAtual.setHours(0, 0, 0, 0);
+    const hoje = new Date();
+    hoje.setHours(23, 59, 59, 999);
+    
+    while (dataAtual <= hoje) {
+      const dataFormatada = dataAtual.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+      const timestamp = dataAtual.getTime();
+      todosDias[dataFormatada] = { data: dataFormatada, tempo: 0, questoes: 0, acertos: 0, timestamp };
+      dataAtual.setDate(dataAtual.getDate() + 1);
+    }
+    
+    // Preencher com dados dos estudos
+    estudosFiltrados.forEach(estudo => {
       let dataFormatada: string;
       let timestamp: number = 0;
       try {
@@ -145,28 +204,21 @@ export default function AlunoMetricas() {
           dataFormatada = data.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
           timestamp = data.getTime();
         } else {
-          dataFormatada = 'Inválida';
+          return;
         }
       } catch {
-        dataFormatada = 'Inválida';
+        return;
       }
       
-      if (!acc[dataFormatada]) {
-        acc[dataFormatada] = { data: dataFormatada, tempo: 0, questoes: 0, acertos: 0, timestamp };
+      if (todosDias[dataFormatada]) {
+        todosDias[dataFormatada].tempo += estudo.tempoMinutos || 0;
+        todosDias[dataFormatada].questoes += estudo.questoesFeitas || 0;
+        todosDias[dataFormatada].acertos += estudo.questoesAcertadas || 0;
       }
-      // Atualizar timestamp para o mais recente do dia (para garantir consistência)
-      if (timestamp > acc[dataFormatada].timestamp) {
-        acc[dataFormatada].timestamp = timestamp;
-      }
-      acc[dataFormatada].tempo += estudo.tempoMinutos;
-      acc[dataFormatada].questoes += estudo.questoesFeitas;
-      acc[dataFormatada].acertos += estudo.questoesAcertadas;
-      return acc;
-    }, {} as Record<string, any>);
+    });
     
     // Ordenar por timestamp (mais antigo primeiro = à esquerda do gráfico)
-    const dadosOrdenados = Object.values(porDia)
-      .filter((d: any) => d.data !== 'Inválida')
+    const dadosOrdenados = Object.values(todosDias)
       .sort((a: any, b: any) => a.timestamp - b.timestamp);
     
     return dadosOrdenados.map((d: any) => ({
@@ -176,7 +228,7 @@ export default function AlunoMetricas() {
       acertos: d.acertos,
       percentual: d.questoes > 0 ? Math.round((d.acertos / d.questoes) * 100) : 0,
     }));
-  }, [estudosFiltrados]);
+  }, [estudosFiltrados, periodo]);
 
   const dadosPorMateria = useMemo(() => {
     const porMateria: Record<string, any> = {};

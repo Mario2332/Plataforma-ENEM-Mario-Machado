@@ -15,6 +15,20 @@
       ]
     },
     {
+      "collectionGroup": "cronograma_lista",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "diaSemana",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "horaInicio",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "metas",
       "queryScope": "COLLECTION",
       "fields": [

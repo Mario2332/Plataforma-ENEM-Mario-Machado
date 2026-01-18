@@ -173,22 +173,47 @@ export default function CronogramaLista() {
       
       const batch = writeBatch(db);
       
-      // Deletar existentes
-      snapshot.docs.forEach(doc => batch.delete(doc.ref));
+      // Mapear IDs existentes no Firestore
+      const existingIds = new Set(snapshot.docs.map(d => d.id));
       
-      // Adicionar novas
+      // IDs das atividades atuais (excluindo IDs temporários)
+      const currentIds = new Set(data.filter(a => a.id && !a.id.startsWith('temp_')).map(a => a.id));
+      
+      // Deletar atividades que foram removidas
+      snapshot.docs.forEach(docSnap => {
+        if (!currentIds.has(docSnap.id)) {
+          batch.delete(docSnap.ref);
+        }
+      });
+      
+      // Adicionar ou atualizar atividades
       data.forEach(atividade => {
-        const newDocRef = doc(atividadesCollRef);
-        batch.set(newDocRef, {
-          ...atividade,
-          id: undefined,
-          createdAt: Timestamp.now()
-        });
+        const { id, ...atividadeData } = atividade;
+        
+        if (id && !id.startsWith('temp_') && existingIds.has(id)) {
+          // Atualizar existente
+          const docRef = doc(atividadesCollRef, id);
+          batch.update(docRef, {
+            ...atividadeData,
+            updatedAt: Timestamp.now()
+          });
+        } else {
+          // Criar nova
+          const newDocRef = doc(atividadesCollRef);
+          batch.set(newDocRef, {
+            ...atividadeData,
+            createdAt: Timestamp.now()
+          });
+        }
       });
       
       await batch.commit();
+      
+      // Recarregar atividades para obter IDs corretos do Firestore
+      await loadAtividades();
     } catch (error) {
       console.error("Erro ao salvar atividades:", error);
+      throw error;
     }
   };
 
@@ -404,8 +429,8 @@ export default function CronogramaLista() {
       {/* Grid de dias da semana */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7 gap-4">
         {atividadesPorDia.map(dia => (
-          <Card key={dia.value} className="overflow-hidden">
-            <CardHeader className="py-3 px-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 -mt-0 rounded-t-lg">
+          <Card key={dia.value} className="overflow-hidden border-0 shadow-md">
+            <div className="py-3 px-4 bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700">
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-lg font-bold">{dia.label}</CardTitle>
@@ -427,7 +452,7 @@ export default function CronogramaLista() {
                   </Button>
                 )}
               </div>
-            </CardHeader>
+            </div>
             <CardContent className="pt-3 space-y-2 min-h-[200px]">
               {dia.atividades.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">

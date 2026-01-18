@@ -429,12 +429,12 @@ export default function CronogramaLista() {
       {/* Grid de dias da semana */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7 gap-4">
         {atividadesPorDia.map(dia => (
-          <Card key={dia.value} className="overflow-hidden border-0 shadow-md">
-            <div className="py-3 px-4 bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700">
+          <Card key={dia.value} className="overflow-hidden border-2 border-blue-400 dark:border-blue-500 shadow-md rounded-xl bg-white dark:bg-gray-900">
+            <div className="py-3 px-4 border-b-2 border-blue-400 dark:border-blue-500">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-lg font-bold">{dia.label}</CardTitle>
-                  <CardDescription className="text-sm">
+                  <CardTitle className="text-lg font-bold text-gray-800 dark:text-gray-100">{dia.label}</CardTitle>
+                  <CardDescription className="text-sm text-blue-600 dark:text-blue-400 font-medium">
                     {dia.atividades.length > 0 
                       ? calcularHorasDia(dia.atividades)
                       : "Nenhuma atividade"}

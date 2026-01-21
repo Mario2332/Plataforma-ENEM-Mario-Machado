@@ -226,6 +226,11 @@ export const cachedAlunoApi = {
   updateTarefa: alunoApi.updateTarefa,
   deleteTarefa: alunoApi.deleteTarefa,
   checkExpiredMetas: alunoApi.checkExpiredMetas,
+  
+  // Métricas da Plataforma (comparação com média)
+  getMediasPlataforma: alunoApi.getMediasPlataforma,
+  getPreferenciaComparacao: alunoApi.getPreferenciaComparacao,
+  updatePreferenciaComparacao: alunoApi.updatePreferenciaComparacao,
 };
 
 /**

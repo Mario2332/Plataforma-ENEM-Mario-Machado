@@ -60,6 +60,8 @@ export const getMediasPlataforma = functions
       .where("role", "==", "aluno")
       .get();
 
+    functions.logger.info(`🔍 Total de alunos encontrados: ${usersSnapshot.size}`);
+
     if (usersSnapshot.empty) {
       return {
         tempoMedio: 0,
@@ -85,12 +87,14 @@ export const getMediasPlataforma = functions
     for (const userDoc of usersSnapshot.docs) {
       const alunoId = userDoc.id;
 
-      // Buscar estudos do aluno
+      // Buscar estudos do aluno (coleção correta é 'alunos', não 'users')
       const estudosSnapshot = await db
-        .collection("users")
+        .collection("alunos")
         .doc(alunoId)
         .collection("estudos")
         .get();
+
+      functions.logger.info(`📚 Aluno ${alunoId}: ${estudosSnapshot.size} estudos encontrados`);
 
       if (estudosSnapshot.empty) {
         continue; // Pular alunos sem registros
@@ -120,8 +124,14 @@ export const getMediasPlataforma = functions
           }
         }
 
-        if (!dataEstudo || isNaN(dataEstudo.getTime()) || dataEstudo < dataLimite) {
-          continue; // Pular estudos fora do período
+        if (!dataEstudo || isNaN(dataEstudo.getTime())) {
+          functions.logger.info(`  - Estudo ignorado: data inválida`);
+          continue; // Pular estudos com data inválida
+        }
+        
+        if (dataEstudo < dataLimite) {
+          // Estudo fora do período - não logar para evitar spam
+          continue;
         }
 
         // Acumular tempo
@@ -139,10 +149,14 @@ export const getMediasPlataforma = functions
       // Só adicionar alunos que têm dados no período
       if (dados.tempoTotal > 0 || dados.questoesTotal > 0) {
         dadosPorAluno.set(alunoId, dados);
+        functions.logger.info(`✅ Aluno ${alunoId} adicionado: tempo=${dados.tempoTotal}, questões=${dados.questoesTotal}, acertos=${dados.acertosTotal}, dias=${dados.diasEstudo.size}`);
+      } else {
+        functions.logger.info(`❌ Aluno ${alunoId} ignorado: sem dados no período`);
       }
     }
 
     const totalAlunos = dadosPorAluno.size;
+    functions.logger.info(`📊 Total de alunos com dados no período: ${totalAlunos}`);
 
     if (totalAlunos === 0) {
       return {

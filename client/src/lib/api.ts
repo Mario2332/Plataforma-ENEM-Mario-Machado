@@ -564,4 +564,13 @@ export const alunoApi = {
   }) => callFunction("metasFunctions-updateMetaProgress", data),
   
   checkExpiredMetas: () => callFunction("metasFunctions-checkExpiredMetas"),
+
+  // Métricas da Plataforma (comparação com média)
+  getMediasPlataforma: (periodo: "7d" | "30d" | "3m" | "6m" | "1a" | "all") => 
+    callFunction("getMediasPlataforma", { periodo }),
+  
+  getPreferenciaComparacao: () => callFunction("getPreferenciaComparacao"),
+  
+  updatePreferenciaComparacao: (mostrar: boolean) => 
+    callFunction("updatePreferenciaComparacao", { mostrar }),
 };

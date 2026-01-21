@@ -2,7 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAlunoApi } from "@/hooks/useAlunoApi";
-import { BarChart3, Calendar, TrendingUp, PieChart, Activity, Zap, Target, Award, Clock } from "lucide-react";
+import { BarChart3, Calendar, TrendingUp, PieChart, Activity, Zap, Target, Award, Clock, Eye, EyeOff, ChevronLeft, ChevronRight, Users } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import {
   BarChart,
@@ -18,10 +18,22 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  ReferenceLine,
 } from "recharts";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 
 type PeriodoFiltro = "7d" | "30d" | "3m" | "6m" | "1a" | "all";
+
+interface MediasPlataforma {
+  tempoMedio: number;
+  questoesMedia: number;
+  acertosMedia: number;
+  taxaAcertoMedia: number;
+  diasEstudoMedia: number;
+  totalAlunos: number;
+}
 
 const MATERIAS_ENEM = [
   "Matemática",
@@ -57,12 +69,29 @@ const CORES_GRAFICOS = [
   "#eab308", // yellow - Preenchimento de lacunas
 ];
 
+// Cores para intensidade do heatmap
+const HEATMAP_CORES = [
+  "#f3f4f6", // 0 - sem estudo
+  "#dcfce7", // 1 - pouco
+  "#86efac", // 2 - médio
+  "#22c55e", // 3 - bom
+  "#15803d", // 4 - muito
+];
+
 export default function AlunoMetricas() {
   const api = useAlunoApi();
   const [periodo, setPeriodo] = useState<PeriodoFiltro>("30d");
   const [estudos, setEstudos] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [itensOcultos, setItensOcultos] = useState<Set<string>>(new Set());
+  
+  // Estados para comparação com média da plataforma
+  const [mostrarComparacao, setMostrarComparacao] = useState(true);
+  const [mediasPlataforma, setMediasPlataforma] = useState<MediasPlataforma | null>(null);
+  const [loadingMedias, setLoadingMedias] = useState(false);
+  
+  // Estados para o Heatmap
+  const [mesHeatmap, setMesHeatmap] = useState(new Date());
 
   const loadEstudos = async () => {
     try {
@@ -76,9 +105,48 @@ export default function AlunoMetricas() {
     }
   };
 
+  const loadMediasPlataforma = async () => {
+    try {
+      setLoadingMedias(true);
+      const medias = await api.getMediasPlataforma(periodo);
+      setMediasPlataforma(medias as MediasPlataforma);
+    } catch (error: any) {
+      console.error("Erro ao carregar médias da plataforma:", error);
+      // Não mostrar toast para não atrapalhar a experiência
+    } finally {
+      setLoadingMedias(false);
+    }
+  };
+
+  const loadPreferenciaComparacao = async () => {
+    try {
+      const result = await api.getPreferenciaComparacao();
+      setMostrarComparacao((result as any).mostrar ?? true);
+    } catch (error) {
+      console.error("Erro ao carregar preferência de comparação:", error);
+    }
+  };
+
+  const toggleComparacao = async () => {
+    const novoValor = !mostrarComparacao;
+    setMostrarComparacao(novoValor);
+    try {
+      await api.updatePreferenciaComparacao(novoValor);
+    } catch (error) {
+      console.error("Erro ao salvar preferência de comparação:", error);
+    }
+  };
+
   useEffect(() => {
     loadEstudos();
+    loadPreferenciaComparacao();
   }, []);
+
+  useEffect(() => {
+    if (mostrarComparacao) {
+      loadMediasPlataforma();
+    }
+  }, [periodo, mostrarComparacao]);
 
   const estudosFiltrados = useMemo(() => {
     if (!estudos) return [];
@@ -123,6 +191,62 @@ export default function AlunoMetricas() {
       }
     });
   }, [estudos, periodo]);
+
+  // Dados do Heatmap
+  const dadosHeatmap = useMemo(() => {
+    const ano = mesHeatmap.getFullYear();
+    const mes = mesHeatmap.getMonth();
+    const primeiroDia = new Date(ano, mes, 1);
+    const ultimoDia = new Date(ano, mes + 1, 0);
+    
+    // Criar mapa de estudos por data
+    const estudosPorData: Record<string, number> = {};
+    estudos.forEach(estudo => {
+      try {
+        let data: Date;
+        if (estudo.data?.seconds || estudo.data?._seconds) {
+          const seconds = estudo.data.seconds || estudo.data._seconds;
+          data = new Date(seconds * 1000);
+        } else if (estudo.data?.toDate) {
+          data = estudo.data.toDate();
+        } else {
+          data = new Date(estudo.data);
+        }
+        if (!isNaN(data.getTime())) {
+          const dataStr = data.toISOString().split('T')[0];
+          estudosPorData[dataStr] = (estudosPorData[dataStr] || 0) + (estudo.tempoMinutos || 0);
+        }
+      } catch {}
+    });
+    
+    // Gerar dias do mês
+    const dias: { data: Date; tempo: number; intensidade: number }[] = [];
+    const dataAtual = new Date(primeiroDia);
+    
+    while (dataAtual <= ultimoDia) {
+      const dataStr = dataAtual.toISOString().split('T')[0];
+      const tempo = estudosPorData[dataStr] || 0;
+      
+      // Calcular intensidade (0-4)
+      let intensidade = 0;
+      if (tempo > 0) {
+        if (tempo < 30) intensidade = 1;
+        else if (tempo < 60) intensidade = 2;
+        else if (tempo < 120) intensidade = 3;
+        else intensidade = 4;
+      }
+      
+      dias.push({
+        data: new Date(dataAtual),
+        tempo,
+        intensidade,
+      });
+      
+      dataAtual.setDate(dataAtual.getDate() + 1);
+    }
+    
+    return dias;
+  }, [estudos, mesHeatmap]);
 
   const dadosEvolucao = useMemo(() => {
     // Calcular data limite baseado no período
@@ -227,8 +351,11 @@ export default function AlunoMetricas() {
       questoes: d.questoes,
       acertos: d.acertos,
       percentual: d.questoes > 0 ? Math.round((d.acertos / d.questoes) * 100) : 0,
+      // Adicionar médias da plataforma para linhas de referência
+      mediaTempo: mostrarComparacao && mediasPlataforma ? Math.round(mediasPlataforma.tempoMedio / (periodo === "7d" ? 7 : periodo === "30d" ? 30 : periodo === "3m" ? 90 : periodo === "6m" ? 180 : 365)) : undefined,
+      mediaTaxaAcerto: mostrarComparacao && mediasPlataforma ? mediasPlataforma.taxaAcertoMedia : undefined,
     }));
-  }, [estudosFiltrados, periodo]);
+  }, [estudosFiltrados, periodo, mostrarComparacao, mediasPlataforma]);
 
   const dadosPorMateria = useMemo(() => {
     const porMateria: Record<string, any> = {};
@@ -327,6 +454,29 @@ export default function AlunoMetricas() {
     };
   }, [estudosFiltrados]);
 
+  // Funções do Heatmap
+  const mesAnterior = () => {
+    setMesHeatmap(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+  };
+
+  const mesProximo = () => {
+    setMesHeatmap(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+  };
+
+  const formatarMes = (data: Date) => {
+    return data.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  };
+
+  // Formatar tempo médio
+  const formatarTempoMedio = (minutos: number) => {
+    const horas = Math.floor(minutos / 60);
+    const mins = minutos % 60;
+    if (horas > 0) {
+      return `${horas}h ${mins}m`;
+    }
+    return `${mins}m`;
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -371,21 +521,33 @@ export default function AlunoMetricas() {
             </p>
           </div>
           
-          <div className="flex items-center gap-3 px-4 py-2 bg-white/50 dark:bg-black/30 rounded-2xl border-2 border-white/30 backdrop-blur-sm">
-            <Calendar className="h-5 w-5 text-purple-500" />
-            <Select value={periodo} onValueChange={(v) => setPeriodo(v as PeriodoFiltro)}>
-              <SelectTrigger className="w-[180px] border-2 font-semibold">
-                <SelectValue placeholder="Selecione o período" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="7d">Últimos 7 dias</SelectItem>
-                <SelectItem value="30d">Últimos 30 dias</SelectItem>
-                <SelectItem value="3m">Últimos 3 meses</SelectItem>
-                <SelectItem value="6m">Últimos 6 meses</SelectItem>
-                <SelectItem value="1a">Último ano</SelectItem>
-                <SelectItem value="all">Todo o período</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            {/* Toggle de comparação */}
+            <div className="flex items-center gap-2 px-4 py-2 bg-white/50 dark:bg-black/30 rounded-2xl border-2 border-white/30 backdrop-blur-sm">
+              <Users className="h-4 w-4 text-purple-500" />
+              <span className="text-sm font-medium">Comparar com média</span>
+              <Switch
+                checked={mostrarComparacao}
+                onCheckedChange={toggleComparacao}
+              />
+            </div>
+            
+            <div className="flex items-center gap-3 px-4 py-2 bg-white/50 dark:bg-black/30 rounded-2xl border-2 border-white/30 backdrop-blur-sm">
+              <Calendar className="h-5 w-5 text-purple-500" />
+              <Select value={periodo} onValueChange={(v) => setPeriodo(v as PeriodoFiltro)}>
+                <SelectTrigger className="w-[180px] border-2 font-semibold">
+                  <SelectValue placeholder="Selecione o período" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7d">Últimos 7 dias</SelectItem>
+                  <SelectItem value="30d">Últimos 30 dias</SelectItem>
+                  <SelectItem value="3m">Últimos 3 meses</SelectItem>
+                  <SelectItem value="6m">Últimos 6 meses</SelectItem>
+                  <SelectItem value="1a">Último ano</SelectItem>
+                  <SelectItem value="all">Todo o período</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
       </div>
@@ -406,6 +568,12 @@ export default function AlunoMetricas() {
               {Math.floor(metricas.tempoTotal / 60)}h {metricas.tempoTotal % 60}m
             </div>
             <p className="text-xs text-muted-foreground mt-1 font-medium">de estudo dedicado</p>
+            {mostrarComparacao && mediasPlataforma && (
+              <p className="text-xs text-blue-600 mt-2 font-semibold flex items-center gap-1">
+                <Users className="h-3 w-3" />
+                Média da plataforma: {formatarTempoMedio(mediasPlataforma.tempoMedio)}
+              </p>
+            )}
           </CardContent>
         </Card>
 
@@ -423,6 +591,12 @@ export default function AlunoMetricas() {
               {metricas.questoesTotal}
             </div>
             <p className="text-xs text-muted-foreground mt-1 font-medium">questões resolvidas</p>
+            {mostrarComparacao && mediasPlataforma && (
+              <p className="text-xs text-emerald-600 mt-2 font-semibold flex items-center gap-1">
+                <Users className="h-3 w-3" />
+                Média da plataforma: {mediasPlataforma.questoesMedia}
+              </p>
+            )}
           </CardContent>
         </Card>
 
@@ -440,6 +614,12 @@ export default function AlunoMetricas() {
               {metricas.acertosTotal}
             </div>
             <p className="text-xs text-muted-foreground mt-1 font-medium">questões corretas</p>
+            {mostrarComparacao && mediasPlataforma && (
+              <p className="text-xs text-purple-600 mt-2 font-semibold flex items-center gap-1">
+                <Users className="h-3 w-3" />
+                Média da plataforma: {mediasPlataforma.acertosMedia}
+              </p>
+            )}
           </CardContent>
         </Card>
 
@@ -457,6 +637,12 @@ export default function AlunoMetricas() {
               {metricas.percentualAcerto}%
             </div>
             <p className="text-xs text-muted-foreground mt-1 font-medium">de aproveitamento</p>
+            {mostrarComparacao && mediasPlataforma && (
+              <p className="text-xs text-amber-600 mt-2 font-semibold flex items-center gap-1">
+                <Users className="h-3 w-3" />
+                Média da plataforma: {mediasPlataforma.taxaAcertoMedia}%
+              </p>
+            )}
           </CardContent>
         </Card>
 
@@ -474,6 +660,12 @@ export default function AlunoMetricas() {
               {metricas.diasEstudo}
             </div>
             <p className="text-xs text-muted-foreground mt-1 font-medium">dias praticados</p>
+            {mostrarComparacao && mediasPlataforma && (
+              <p className="text-xs text-rose-600 mt-2 font-semibold flex items-center gap-1">
+                <Users className="h-3 w-3" />
+                Média da plataforma: {mediasPlataforma.diasEstudoMedia}
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -520,7 +712,7 @@ export default function AlunoMetricas() {
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis dataKey="data" stroke="#6b7280" style={{ fontSize: '12px', fontWeight: 600 }} />
                     <YAxis yAxisId="left" stroke="#3b82f6" style={{ fontSize: '12px', fontWeight: 600 }} />
-                    <YAxis yAxisId="right" orientation="right" stroke="#10b981" style={{ fontSize: '12px', fontWeight: 600 }} />
+                    <YAxis yAxisId="right" orientation="right" stroke="#10b981" style={{ fontSize: '12px', fontWeight: 600 }} domain={[0, 100]} />
                     <Tooltip 
                       contentStyle={{ 
                         backgroundColor: 'rgba(255, 255, 255, 0.95)', 
@@ -550,6 +742,19 @@ export default function AlunoMetricas() {
                       dot={{ fill: '#10b981', r: 5 }}
                       activeDot={{ r: 8 }}
                     />
+                    {/* Linhas de referência da média da plataforma */}
+                    {mostrarComparacao && mediasPlataforma && (
+                      <>
+                        <ReferenceLine 
+                          yAxisId="right" 
+                          y={mediasPlataforma.taxaAcertoMedia} 
+                          stroke="#10b981" 
+                          strokeDasharray="5 5" 
+                          strokeWidth={2}
+                          label={{ value: `Média: ${mediasPlataforma.taxaAcertoMedia}%`, position: 'right', fill: '#10b981', fontSize: 11, fontWeight: 600 }}
+                        />
+                      </>
+                    )}
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
@@ -594,6 +799,25 @@ export default function AlunoMetricas() {
                     <Legend wrapperStyle={{ fontWeight: 600 }} />
                     <Bar dataKey="questoes" fill="#3b82f6" name="Questões Feitas" radius={[8, 8, 0, 0]} />
                     <Bar dataKey="acertos" fill="#10b981" name="Acertos" radius={[8, 8, 0, 0]} />
+                    {/* Linhas de referência da média da plataforma */}
+                    {mostrarComparacao && mediasPlataforma && (
+                      <>
+                        <ReferenceLine 
+                          y={Math.round(mediasPlataforma.questoesMedia / MATERIAS_ENEM.length)} 
+                          stroke="#3b82f6" 
+                          strokeDasharray="5 5" 
+                          strokeWidth={2}
+                          label={{ value: `Média questões`, position: 'right', fill: '#3b82f6', fontSize: 10, fontWeight: 600 }}
+                        />
+                        <ReferenceLine 
+                          y={Math.round(mediasPlataforma.acertosMedia / MATERIAS_ENEM.length)} 
+                          stroke="#10b981" 
+                          strokeDasharray="5 5" 
+                          strokeWidth={2}
+                          label={{ value: `Média acertos`, position: 'right', fill: '#10b981', fontSize: 10, fontWeight: 600 }}
+                        />
+                      </>
+                    )}
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
@@ -642,7 +866,7 @@ export default function AlunoMetricas() {
                           </span>
                         </div>
                       </div>
-                      <div className="w-full bg-gray-200 dark:bg-gray-800 rounded-full h-3 overflow-hidden">
+                      <div className="relative w-full bg-gray-200 dark:bg-gray-800 rounded-full h-3 overflow-hidden">
                         <div
                           className={`h-3 rounded-full transition-all duration-1000 ${
                             item.percentual >= 80
@@ -655,7 +879,21 @@ export default function AlunoMetricas() {
                           }`}
                           style={{ width: `${item.percentual}%` }}
                         />
+                        {/* Marcador da média da plataforma */}
+                        {mostrarComparacao && mediasPlataforma && (
+                          <div 
+                            className="absolute top-0 h-full w-0.5 bg-purple-600"
+                            style={{ left: `${mediasPlataforma.taxaAcertoMedia}%` }}
+                            title={`Média da plataforma: ${mediasPlataforma.taxaAcertoMedia}%`}
+                          />
+                        )}
                       </div>
+                      {mostrarComparacao && mediasPlataforma && (
+                        <p className="text-xs text-purple-600 font-semibold flex items-center gap-1">
+                          <Users className="h-3 w-3" />
+                          Média da plataforma: {mediasPlataforma.taxaAcertoMedia}%
+                        </p>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -673,106 +911,175 @@ export default function AlunoMetricas() {
         </TabsContent>
 
         <TabsContent value="distribuicao" className="space-y-4">
-          <Card className="border-2 hover:shadow-xl transition-shadow">
-            <CardHeader>
-              <CardTitle className="text-2xl font-black flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-br from-pink-500 to-rose-500 rounded-xl shadow-lg">
-                  <PieChart className="h-5 w-5 text-white" />
-                </div>
-                Distribuição de Tempo por Matéria/Atividade
-              </CardTitle>
-              <CardDescription className="text-base">Veja como você distribui seu tempo de estudo</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {dadosDistribuicaoTempo.length > 0 ? (
-                <div className="flex flex-col lg:flex-row gap-6">
-                  {/* Gráfico de Pizza */}
-                  <div className="flex-1">
-                    <ResponsiveContainer width="100%" height={450}>
-                      <RechartsPie>
-                        <Pie
-                          data={dadosDistribuicaoTempoFiltrados}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                          outerRadius={140}
-                          fill="#8884d8"
-                          dataKey="value"
-                          style={{ fontSize: '12px', fontWeight: 700 }}
-                        >
-                          {dadosDistribuicaoTempoFiltrados.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip 
-                          contentStyle={{ 
-                            backgroundColor: 'rgba(255, 255, 255, 0.95)', 
-                            border: '2px solid #e5e7eb',
-                            borderRadius: '12px',
-                            fontWeight: 600
-                          }}
-                          formatter={(value: number) => [`${Math.floor(value / 60)}h ${value % 60}min`, 'Tempo']}
-                        />
-                      </RechartsPie>
-                    </ResponsiveContainer>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Gráfico de Pizza - 2/3 da largura */}
+            <Card className="border-2 hover:shadow-xl transition-shadow lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="text-2xl font-black flex items-center gap-3">
+                  <div className="p-2 bg-gradient-to-br from-pink-500 to-rose-500 rounded-xl shadow-lg">
+                    <PieChart className="h-5 w-5 text-white" />
                   </div>
-                  
-                  {/* Legenda Interativa */}
-                  <div className="lg:w-64 space-y-2">
-                    <p className="text-sm font-semibold text-muted-foreground mb-3">Clique para ocultar/exibir:</p>
-                    <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
-                      {dadosDistribuicaoTempo.map((item) => {
-                        const isOculto = itensOcultos.has(item.name);
-                        const tempoHoras = Math.floor(item.value / 60);
-                        const tempoMinutos = item.value % 60;
-                        return (
-                          <button
-                            key={item.name}
-                            onClick={() => toggleItemVisibilidade(item.name)}
-                            className={`w-full flex items-center gap-3 p-2 rounded-lg border-2 transition-all duration-200 text-left ${
-                              isOculto 
-                                ? 'opacity-40 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900' 
-                                : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 bg-white dark:bg-gray-800'
-                            }`}
+                  Distribuição de Tempo por Matéria/Atividade
+                </CardTitle>
+                <CardDescription className="text-base">Veja como você distribui seu tempo de estudo</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {dadosDistribuicaoTempo.length > 0 ? (
+                  <div className="flex flex-col lg:flex-row gap-6">
+                    {/* Gráfico de Pizza */}
+                    <div className="flex-1">
+                      <ResponsiveContainer width="100%" height={400}>
+                        <RechartsPie>
+                          <Pie
+                            data={dadosDistribuicaoTempoFiltrados}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                            outerRadius={120}
+                            fill="#8884d8"
+                            dataKey="value"
+                            style={{ fontSize: '11px', fontWeight: 700 }}
                           >
-                            <div 
-                              className={`w-4 h-4 rounded-full flex-shrink-0 transition-opacity ${isOculto ? 'opacity-40' : ''}`}
-                              style={{ backgroundColor: item.color }}
-                            />
-                            <div className="flex-1 min-w-0">
-                              <p className={`text-sm font-semibold truncate ${isOculto ? 'line-through text-muted-foreground' : ''}`}>
-                                {item.name}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {tempoHoras > 0 ? `${tempoHoras}h ` : ''}{tempoMinutos}min
-                              </p>
-                            </div>
-                          </button>
-                        );
-                      })}
+                            {dadosDistribuicaoTempoFiltrados.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip 
+                            contentStyle={{ 
+                              backgroundColor: 'rgba(255, 255, 255, 0.95)', 
+                              border: '2px solid #e5e7eb',
+                              borderRadius: '12px',
+                              fontWeight: 600
+                            }}
+                            formatter={(value: number) => [`${Math.floor(value / 60)}h ${value % 60}min`, 'Tempo']}
+                          />
+                        </RechartsPie>
+                      </ResponsiveContainer>
                     </div>
-                    {itensOcultos.size > 0 && (
-                      <button
-                        onClick={() => setItensOcultos(new Set())}
-                        className="w-full mt-3 p-2 text-sm font-semibold text-pink-600 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-950/30 rounded-lg transition-colors"
-                      >
-                        Mostrar todos ({itensOcultos.size} oculto{itensOcultos.size > 1 ? 's' : ''})
-                      </button>
-                    )}
+                    
+                    {/* Legenda Interativa */}
+                    <div className="lg:w-56 space-y-2">
+                      <p className="text-sm font-semibold text-muted-foreground mb-3">Clique para ocultar/exibir:</p>
+                      <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2">
+                        {dadosDistribuicaoTempo.map((item) => {
+                          const isOculto = itensOcultos.has(item.name);
+                          const tempoHoras = Math.floor(item.value / 60);
+                          const tempoMinutos = item.value % 60;
+                          return (
+                            <button
+                              key={item.name}
+                              onClick={() => toggleItemVisibilidade(item.name)}
+                              className={`w-full flex items-center gap-3 p-2 rounded-lg border-2 transition-all duration-200 text-left ${
+                                isOculto 
+                                  ? 'opacity-40 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900' 
+                                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 bg-white dark:bg-gray-800'
+                              }`}
+                            >
+                              <div 
+                                className={`w-4 h-4 rounded-full flex-shrink-0 transition-opacity ${isOculto ? 'opacity-40' : ''}`}
+                                style={{ backgroundColor: item.color }}
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-sm font-semibold truncate ${isOculto ? 'line-through text-muted-foreground' : ''}`}>
+                                  {item.name}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {tempoHoras > 0 ? `${tempoHoras}h ` : ''}{tempoMinutos}min
+                                </p>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {itensOcultos.size > 0 && (
+                        <button
+                          onClick={() => setItensOcultos(new Set())}
+                          className="w-full mt-3 p-2 text-sm font-semibold text-pink-600 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-950/30 rounded-lg transition-colors"
+                        >
+                          Mostrar todos ({itensOcultos.size} oculto{itensOcultos.size > 1 ? 's' : ''})
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-[450px]">
-                  <div className="p-6 bg-gradient-to-br from-pink-500/10 to-rose-500/10 rounded-full mb-4">
-                    <PieChart className="h-12 w-12 text-pink-500" />
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-[400px]">
+                    <div className="p-6 bg-gradient-to-br from-pink-500/10 to-rose-500/10 rounded-full mb-4">
+                      <PieChart className="h-12 w-12 text-pink-500" />
+                    </div>
+                    <p className="text-lg font-semibold text-muted-foreground">Nenhum dado disponível</p>
+                    <p className="text-sm text-muted-foreground">para o período selecionado</p>
                   </div>
-                  <p className="text-lg font-semibold text-muted-foreground">Nenhum dado disponível</p>
-                  <p className="text-sm text-muted-foreground">para o período selecionado</p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Heatmap de Estudos - 1/3 da largura */}
+            <Card className="border-2 hover:shadow-xl transition-shadow">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg font-black flex items-center gap-2">
+                  <div className="p-1.5 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg shadow-lg">
+                    <Calendar className="h-4 w-4 text-white" />
+                  </div>
+                  Heatmap de Estudos
+                </CardTitle>
+                <div className="flex items-center justify-between mt-2">
+                  <Button variant="ghost" size="sm" onClick={mesAnterior} className="h-8 w-8 p-0">
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm font-semibold capitalize">{formatarMes(mesHeatmap)}</span>
+                  <Button variant="ghost" size="sm" onClick={mesProximo} className="h-8 w-8 p-0">
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </CardHeader>
+              <CardContent className="pt-2">
+                {/* Dias da semana */}
+                <div className="grid grid-cols-7 gap-1 mb-1">
+                  {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((dia, i) => (
+                    <div key={i} className="text-center text-xs font-semibold text-muted-foreground">
+                      {dia}
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Calendário */}
+                <div className="grid grid-cols-7 gap-1">
+                  {/* Espaços vazios para alinhar o primeiro dia */}
+                  {Array.from({ length: dadosHeatmap[0]?.data.getDay() || 0 }).map((_, i) => (
+                    <div key={`empty-${i}`} className="aspect-square" />
+                  ))}
+                  
+                  {/* Dias do mês */}
+                  {dadosHeatmap.map((dia, i) => (
+                    <div
+                      key={i}
+                      className="aspect-square rounded-sm flex items-center justify-center text-xs font-medium cursor-default transition-all hover:scale-110"
+                      style={{ backgroundColor: HEATMAP_CORES[dia.intensidade] }}
+                      title={`${dia.data.getDate()}/${dia.data.getMonth() + 1}: ${dia.tempo > 0 ? `${Math.floor(dia.tempo / 60)}h ${dia.tempo % 60}min` : 'Sem estudo'}`}
+                    >
+                      <span className={dia.intensidade >= 3 ? 'text-white' : 'text-gray-600'}>
+                        {dia.data.getDate()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Legenda */}
+                <div className="flex items-center justify-center gap-1 mt-3">
+                  <span className="text-xs text-muted-foreground mr-1">Menos</span>
+                  {HEATMAP_CORES.map((cor, i) => (
+                    <div
+                      key={i}
+                      className="w-3 h-3 rounded-sm"
+                      style={{ backgroundColor: cor }}
+                    />
+                  ))}
+                  <span className="text-xs text-muted-foreground ml-1">Mais</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
 

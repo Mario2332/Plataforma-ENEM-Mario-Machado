@@ -85,8 +85,8 @@ export default function AlunoMetricas() {
   const [isLoading, setIsLoading] = useState(true);
   const [itensOcultos, setItensOcultos] = useState<Set<string>>(new Set());
   
-  // Estados para comparação com média da plataforma
-  const [mostrarComparacao, setMostrarComparacao] = useState(true);
+  // Estados para comparação com média da plataforma - OCULTO TEMPORARIAMENTE
+  const [mostrarComparacao, setMostrarComparacao] = useState(false); // Desabilitado temporariamente
   const [mediasPlataforma, setMediasPlataforma] = useState<MediasPlataforma | null>(null);
   const [loadingMedias, setLoadingMedias] = useState(false);
   
@@ -139,7 +139,7 @@ export default function AlunoMetricas() {
 
   useEffect(() => {
     loadEstudos();
-    loadPreferenciaComparacao();
+    // loadPreferenciaComparacao(); // OCULTO TEMPORARIAMENTE
   }, []);
 
   useEffect(() => {
@@ -522,7 +522,7 @@ export default function AlunoMetricas() {
           </div>
           
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            {/* Toggle de comparação */}
+            {/* Toggle de comparação - OCULTO TEMPORARIAMENTE
             <div className="flex items-center gap-2 px-4 py-2 bg-white/50 dark:bg-black/30 rounded-2xl border-2 border-white/30 backdrop-blur-sm">
               <Users className="h-4 w-4 text-purple-500" />
               <span className="text-sm font-medium">Comparar com média</span>
@@ -531,6 +531,7 @@ export default function AlunoMetricas() {
                 onCheckedChange={toggleComparacao}
               />
             </div>
+            */}
             
             <div className="flex items-center gap-3 px-4 py-2 bg-white/50 dark:bg-black/30 rounded-2xl border-2 border-white/30 backdrop-blur-sm">
               <Calendar className="h-5 w-5 text-purple-500" />

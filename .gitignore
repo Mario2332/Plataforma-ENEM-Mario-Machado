@@ -119,3 +119,4 @@ functions/serviceAccountKey.json
 functions/libfunctions/.env
 functions/.env.local
 functions/plataforma-mentoria-mario-firebase-adminsdk-fbsvc-03a936a1c6.json
+firebase-key.json

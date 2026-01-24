@@ -12,7 +12,7 @@ import {
   Link2, Link2Off, AlertCircle, Star
 } from "lucide-react";
 import { toast } from "sonner";
-import { collection, doc, getDocs, setDoc, deleteDoc, writeBatch, Timestamp, query, getDoc } from "firebase/firestore";
+import { collection, doc, getDocs, setDoc, deleteDoc, writeBatch, Timestamp, query, getDoc, onSnapshot } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase";
 import { useEffectiveUserId } from "@/contexts/MentorViewContext";
 import { CronogramaSkeleton } from "@/components/ui/skeleton-loader";
@@ -287,6 +287,119 @@ export default function CronogramaAgenda() {
       }
     }, 1500);
   }, []);
+
+  // Função para sincronizar a agenda com o cronograma semanal
+  const sincronizarAgenda = useCallback(async (atividadesSemanaisAtuais: AtividadeSemanal[], configAtual: AgendaConfig) => {
+    if (!configAtual.sincronizacaoAtiva || !configAtual.dataFimSincronizacao) {
+      return;
+    }
+
+    try {
+      const userId = effectiveUserId || auth.currentUser?.uid;
+      if (!userId) return;
+
+      // Carregar atividades atuais da agenda
+      const atividadesRef = collection(db, "alunos", userId, "agenda");
+      const snapshot = await getDocs(atividadesRef);
+      const atividadesAtuais = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as AtividadeAgenda[];
+
+      // Separar atividades manuais das sincronizadas
+      const atividadesManuais = atividadesAtuais.filter(a => a.isManual);
+
+      // Gerar novas atividades sincronizadas
+      const novasAtividadesSincronizadas: AtividadeAgenda[] = [];
+      
+      const dataFim = new Date(configAtual.dataFimSincronizacao);
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+      
+      let dataAtual = new Date(hoje);
+      while (dataAtual <= dataFim) {
+        const diaSemana = dataAtual.getDay();
+        const dataStr = dataAtual.toISOString().split('T')[0];
+        
+        // Encontrar atividades do cronograma semanal para este dia
+        const atividadesDoDia = atividadesSemanaisAtuais.filter(a => a.diaSemana === diaSemana);
+        
+        atividadesDoDia.forEach(atividadeSemanal => {
+          novasAtividadesSincronizadas.push({
+            id: `sync_${dataStr}_${atividadeSemanal.id}`,
+            data: dataStr,
+            horaInicio: atividadeSemanal.horaInicio,
+            horaFim: atividadeSemanal.horaFim,
+            atividade: atividadeSemanal.atividade,
+            atividadePersonalizada: atividadeSemanal.atividadePersonalizada,
+            cor: atividadeSemanal.cor,
+            isManual: false,
+          });
+        });
+        
+        dataAtual.setDate(dataAtual.getDate() + 1);
+      }
+
+      // Combinar atividades manuais com as novas sincronizadas
+      const todasAtividades = [...atividadesManuais, ...novasAtividadesSincronizadas];
+
+      // Salvar no Firestore
+      const batch = writeBatch(db);
+      
+      // Deletar todas as atividades existentes
+      snapshot.docs.forEach(docSnap => {
+        batch.delete(docSnap.ref);
+      });
+      
+      // Adicionar novas atividades
+      todasAtividades.forEach(atividade => {
+        const { id, ...atividadeData } = atividade;
+        const newDocRef = doc(atividadesRef);
+        batch.set(newDocRef, {
+          ...atividadeData,
+          createdAt: Timestamp.now()
+        });
+      });
+      
+      await batch.commit();
+      
+      // Atualizar estado local
+      setAtividades(todasAtividades);
+      
+      console.log('Sincronização automática concluída:', todasAtividades.length, 'atividades');
+    } catch (error) {
+      console.error('Erro na sincronização automática:', error);
+    }
+  }, [effectiveUserId]);
+
+  // Listener para mudanças no cronograma semanal (sincronização em tempo real)
+  useEffect(() => {
+    if (!effectiveUserId || !config.sincronizacaoAtiva) return;
+
+    const userId = effectiveUserId;
+    const cronogramaRef = collection(db, "alunos", userId, "cronograma_lista");
+    
+    // Usar onSnapshot para detectar mudanças em tempo real
+    const unsubscribe = onSnapshot(cronogramaRef, (snapshot) => {
+      const atividadesSemanaisAtualizadas = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as AtividadeSemanal[];
+      
+      // Atualizar estado local das atividades semanais
+      setAtividadesSemanais(atividadesSemanaisAtualizadas);
+      
+      // Executar sincronização com as atividades atualizadas
+      sincronizarAgenda(atividadesSemanaisAtualizadas, config);
+    }, (error) => {
+      console.error('Erro no listener do cronograma semanal:', error);
+    });
+
+    // Cleanup: remover listener quando o componente for desmontado ou a sincronização for desativada
+    return () => {
+      unsubscribe();
+    };
+  }, [effectiveUserId, config.sincronizacaoAtiva, config.dataFimSincronizacao, sincronizarAgenda]);
 
   // Funções do calendário
   const getDiasDoMes = (mes: number, ano: number) => {

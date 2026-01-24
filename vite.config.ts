@@ -26,12 +26,14 @@ export default defineConfig({
     emptyOutDir: true,
     // Cache busting: adicionar hash nos nomes dos arquivos
     assetsInlineLimit: 0,
+    // Usar esbuild para minificação (padrão do Vite, mais rápido)
+    minify: 'esbuild',
     rollupOptions: {
       output: {
         manualChunks: {
-          // Separar React e bibliotecas principais
-          'vendor-react': ['react', 'react-dom', 'react/jsx-runtime'],
-          // Separar Firebase
+          // Separar React e bibliotecas principais (juntos para evitar circular)
+          'vendor-react': ['react', 'react-dom', 'react/jsx-runtime', 'scheduler'],
+          // Separar Firebase (tudo junto para evitar circular)
           'vendor-firebase': [
             'firebase/app',
             'firebase/auth',
@@ -39,14 +41,29 @@ export default defineConfig({
             'firebase/storage',
             'firebase/functions'
           ],
-          // Separar Recharts (gráficos)
+          // Separar Recharts (gráficos) - só carrega quando necessário
           'vendor-recharts': ['recharts'],
-          // Separar UI components
-          'vendor-ui': ['wouter', 'sonner', '@radix-ui/react-dialog', '@radix-ui/react-select'],
+          // Separar UI components (juntos para evitar circular)
+          'vendor-ui': ['wouter', 'sonner'],
         },
       },
     },
-    chunkSizeWarningLimit: 1000,
+    chunkSizeWarningLimit: 500, // Reduzido para alertar sobre chunks grandes
+    // Otimização de sourcemaps para produção
+    sourcemap: false,
+  },
+  // Otimizações de desenvolvimento
+  optimizeDeps: {
+    include: [
+      'react',
+      'react-dom',
+      'wouter',
+      'sonner',
+    ],
+  },
+  // Configuração de esbuild para remover console.log em produção
+  esbuild: {
+    drop: ['console', 'debugger'],
   },
   server: {
     host: true,

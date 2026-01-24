@@ -1,11 +1,24 @@
-import React, { useState } from "react";
-import { Calendar, Zap, BarChart2, CalendarDays, RefreshCw, Grid3X3, ListTodo, CalendarRange } from "lucide-react";
-import AlunoCronograma from "./AlunoCronograma";
-import CronogramaLista from "./CronogramaLista";
-import CronogramaAgenda from "./CronogramaAgenda";
-import CronogramaAnual from "./cronograma/CronogramaAnual";
-import CronogramaEstatisticas from "./cronograma/CronogramaEstatisticas";
-import CronogramaDinamico from "./CronogramaDinamico";
+import React, { useState, lazy, Suspense } from "react";
+import { Calendar, Zap, BarChart2, CalendarDays, RefreshCw, Grid3X3, ListTodo, CalendarRange, Loader2 } from "lucide-react";
+
+// Lazy loading para cada componente de cronograma
+// Isso garante que apenas o componente ativo seja carregado
+const AlunoCronograma = lazy(() => import("./AlunoCronograma"));
+const CronogramaLista = lazy(() => import("./CronogramaLista"));
+const CronogramaAgenda = lazy(() => import("./CronogramaAgenda"));
+const CronogramaAnual = lazy(() => import("./cronograma/CronogramaAnual"));
+const CronogramaEstatisticas = lazy(() => import("./cronograma/CronogramaEstatisticas"));
+const CronogramaDinamico = lazy(() => import("./CronogramaDinamico"));
+
+// Componente de loading para os sub-componentes
+const ComponentLoader = () => (
+  <div className="flex items-center justify-center min-h-[400px]">
+    <div className="flex flex-col items-center gap-3">
+      <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+      <p className="text-sm text-gray-500">Carregando...</p>
+    </div>
+  </div>
+);
 
 export default function CronogramaWrapper() {
   const [activeTab, setActiveTab] = useState<"semanal" | "anual-ciclos" | "anual-dinamico">("semanal");
@@ -170,22 +183,26 @@ export default function CronogramaWrapper() {
         </div>
       )}
 
-      {/* Conteúdo das tabs */}
+      {/* Conteúdo das tabs com Suspense para lazy loading */}
       <div>
         {activeTab === "semanal" && (
-          <>
+          <Suspense fallback={<ComponentLoader />}>
             {semanalSubTab === "grade" && <AlunoCronograma />}
             {semanalSubTab === "lista" && <CronogramaLista />}
             {semanalSubTab === "agenda" && <CronogramaAgenda />}
-          </>
+          </Suspense>
         )}
         {activeTab === "anual-ciclos" && (
-          <>
+          <Suspense fallback={<ComponentLoader />}>
             {anualSubTab === "ciclos" && <CronogramaAnual />}
             {anualSubTab === "estatisticas" && <CronogramaEstatisticas />}
-          </>
+          </Suspense>
         )}
-        {activeTab === "anual-dinamico" && <CronogramaDinamico />}
+        {activeTab === "anual-dinamico" && (
+          <Suspense fallback={<ComponentLoader />}>
+            <CronogramaDinamico />
+          </Suspense>
+        )}
       </div>
     </div>
   );

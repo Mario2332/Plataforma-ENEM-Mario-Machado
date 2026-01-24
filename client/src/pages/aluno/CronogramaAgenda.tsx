@@ -106,6 +106,9 @@ export default function CronogramaAgenda() {
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [isEditSingleDialogOpen, setIsEditSingleDialogOpen] = useState(false);
   const [editSingleOrAll, setEditSingleOrAll] = useState<'single' | 'all'>('single');
+  const [tempDataFimSync, setTempDataFimSync] = useState<string>("");
+  const [isDayDetailDialogOpen, setIsDayDetailDialogOpen] = useState(false);
+  const [selectedDayForDetail, setSelectedDayForDetail] = useState<string>("");
   
   // Form data
   const [formData, setFormData] = useState<AtividadeAgenda>({
@@ -457,15 +460,17 @@ export default function CronogramaAgenda() {
       handleDesativarSincronizacao();
     } else {
       // Abrir dialog para ativar
+      setTempDataFimSync("");
       setIsSyncDialogOpen(true);
     }
   };
 
   const handleAbrirConfirmacaoSync = () => {
-    if (!config.dataFimSincronizacao) {
+    if (!tempDataFimSync) {
       toast.error("Defina a data de término da sincronização");
       return;
     }
+    setConfig(prev => ({ ...prev, dataFimSincronizacao: tempDataFimSync }));
     setIsSyncDialogOpen(false);
     setIsConfirmSyncDialogOpen(true);
   };
@@ -759,9 +764,16 @@ export default function CronogramaAgenda() {
                       </div>
                     ))}
                     {atividadesDoDia.length > 3 && (
-                      <div className="text-xs text-gray-500 px-1">
+                      <button
+                        className="text-xs text-blue-600 hover:text-blue-800 hover:underline px-1 cursor-pointer font-medium"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedDayForDetail(dia.data);
+                          setIsDayDetailDialogOpen(true);
+                        }}
+                      >
                         +{atividadesDoDia.length - 3} mais
-                      </div>
+                      </button>
                     )}
                   </div>
                 </div>
@@ -884,8 +896,8 @@ export default function CronogramaAgenda() {
               <Label>Data de Término da Sincronização</Label>
               <Input
                 type="date"
-                value={config.dataFimSincronizacao}
-                onChange={(e) => setConfig(prev => ({ ...prev, dataFimSincronizacao: e.target.value }))}
+                value={tempDataFimSync}
+                onChange={(e) => setTempDataFimSync(e.target.value)}
                 min={new Date().toISOString().split('T')[0]}
               />
               <p className="text-xs text-muted-foreground">
@@ -898,7 +910,11 @@ export default function CronogramaAgenda() {
             <Button variant="outline" onClick={() => setIsSyncDialogOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleAbrirConfirmacaoSync} className="bg-gradient-to-r from-emerald-500 to-teal-500">
+            <Button 
+              type="button"
+              onClick={handleAbrirConfirmacaoSync}
+              className="bg-gradient-to-r from-emerald-500 to-teal-500"
+            >
               Continuar
             </Button>
           </DialogFooter>
@@ -1032,6 +1048,99 @@ export default function CronogramaAgenda() {
             </Button>
             <Button onClick={handleConfirmEditType} className="bg-gradient-to-r from-emerald-500 to-teal-500">
               Continuar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para ver todas as atividades do dia */}
+      <Dialog open={isDayDetailDialogOpen} onOpenChange={setIsDayDetailDialogOpen}>
+        <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CalendarDays className="h-5 w-5 text-blue-500" />
+              Atividades do Dia
+            </DialogTitle>
+            <DialogDescription>
+              {selectedDayForDetail && new Date(selectedDayForDetail + 'T00:00:00').toLocaleDateString('pt-BR', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+              })}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-3 py-4">
+            {selectedDayForDetail && getAtividadesDoDia(selectedDayForDetail).map(atividade => (
+              <div
+                key={atividade.id}
+                className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                style={{ borderLeft: `4px solid ${atividade.cor}` }}
+              >
+                <div className="flex items-center gap-3">
+                  {atividade.isManual ? (
+                    <Star className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                  ) : (
+                    <Link2 className="h-4 w-4 text-emerald-500 flex-shrink-0" />
+                  )}
+                  <div>
+                    <p className="font-medium" style={{ color: atividade.cor }}>
+                      {getAtividadeNome(atividade)}
+                    </p>
+                    <p className="text-sm text-muted-foreground flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {atividade.horaInicio} - {atividade.horaFim}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => {
+                      setIsDayDetailDialogOpen(false);
+                      handleEditAtividade(atividade);
+                    }}
+                  >
+                    <Edit2 className="h-4 w-4 text-blue-500" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => {
+                      handleDeleteAtividade(atividade.id!);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4 text-red-500" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+            
+            {selectedDayForDetail && getAtividadesDoDia(selectedDayForDetail).length === 0 && (
+              <p className="text-center text-muted-foreground py-4">
+                Nenhuma atividade neste dia.
+              </p>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsDayDetailDialogOpen(false);
+                handleAddAtividade(selectedDayForDetail);
+              }}
+              className="mr-auto"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Adicionar Atividade
+            </Button>
+            <Button onClick={() => setIsDayDetailDialogOpen(false)}>
+              Fechar
             </Button>
           </DialogFooter>
         </DialogContent>

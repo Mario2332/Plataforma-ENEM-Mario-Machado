@@ -320,6 +320,34 @@ service cloud.firestore {
         // Gestor pode ler e escrever todas as listas de atividades
         allow read, create, update, delete: if hasRole('gestor');
       }
+      
+      // ============================================
+      // AGENDA (subcoleção - calendário mensal)
+      // ============================================
+      match /agenda/{atividadeId} {
+        // Aluno pode gerenciar suas próprias atividades da agenda
+        allow read, create, update, delete: if hasRole('aluno') && isOwner(alunoId);
+        
+        // Mentor pode ler e escrever agenda de qualquer aluno
+        allow read, create, update, delete: if hasRole('mentor');
+        
+        // Gestor pode ler e escrever todas as agendas
+        allow read, create, update, delete: if hasRole('gestor');
+      }
+      
+      // ============================================
+      // AGENDA CONFIG (subcoleção - configuração da agenda)
+      // ============================================
+      match /agenda_config/{configId} {
+        // Aluno pode gerenciar sua própria configuração da agenda
+        allow read, create, update, delete: if hasRole('aluno') && isOwner(alunoId);
+        
+        // Mentor pode ler e escrever configuração de qualquer aluno
+        allow read, create, update, delete: if hasRole('mentor');
+        
+        // Gestor pode ler e escrever todas as configurações
+        allow read, create, update, delete: if hasRole('gestor');
+      }
     }
     
     // ============================================

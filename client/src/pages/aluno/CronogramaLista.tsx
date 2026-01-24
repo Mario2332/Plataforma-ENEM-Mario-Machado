@@ -5,9 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Plus, Copy, Clipboard, Trash2, Clock, Edit2, CheckCircle, Loader2, GripVertical, ListTodo, Info } from "lucide-react";
+import { Plus, Copy, Clipboard, Trash2, Clock, Edit2, CheckCircle, Loader2, GripVertical, ListTodo, Info, Link2 } from "lucide-react";
 import { toast } from "sonner";
-import { collection, doc, getDocs, setDoc, deleteDoc, writeBatch, Timestamp, query, orderBy } from "firebase/firestore";
+import { collection, doc, getDocs, setDoc, deleteDoc, writeBatch, Timestamp, query, orderBy, getDoc } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase";
 import { useEffectiveUserId } from "@/contexts/MentorViewContext";
 import { CronogramaSkeleton } from "@/components/ui/skeleton-loader";
@@ -105,6 +105,10 @@ export default function CronogramaLista() {
   // Estado para copiar/colar
   const [copiedAtividade, setCopiedAtividade] = useState<Atividade | null>(null);
   
+  // Estado de sincronização com a Agenda
+  const [sincronizacaoAtiva, setSincronizacaoAtiva] = useState(false);
+  const [dataFimSincronizacao, setDataFimSincronizacao] = useState<string>("");
+  
   // Refs para auto-save
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hasUnsavedChanges = useRef(false);
@@ -129,6 +133,7 @@ export default function CronogramaLista() {
       hasUnsavedChanges.current = false;
       try {
         await loadAtividades();
+        await loadSincronizacaoConfig();
       } finally {
         setIsLoading(false);
       }
@@ -163,6 +168,24 @@ export default function CronogramaLista() {
       setSaveStatus('idle');
     } catch (error: any) {
       toast.error(error.message || "Erro ao carregar atividades");
+    }
+  };
+
+  const loadSincronizacaoConfig = async () => {
+    try {
+      const userId = effectiveUserId || auth.currentUser?.uid;
+      if (!userId) return;
+
+      const configRef = doc(db, "alunos", userId, "agenda_config", "config");
+      const configSnap = await getDoc(configRef);
+      
+      if (configSnap.exists()) {
+        const data = configSnap.data();
+        setSincronizacaoAtiva(data.sincronizacaoAtiva || false);
+        setDataFimSincronizacao(data.dataFimSincronizacao || "");
+      }
+    } catch (error: any) {
+      console.error("Erro ao carregar configuração de sincronização:", error);
     }
   };
 
@@ -425,6 +448,20 @@ export default function CronogramaLista() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Indicador de sincronização com a Agenda */}
+      {sincronizacaoAtiva && (
+        <Card className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30 border-emerald-200 dark:border-emerald-800">
+          <CardContent className="py-3 px-4">
+            <div className="flex items-center gap-3">
+              <Link2 className="h-5 w-5 text-emerald-500 flex-shrink-0" />
+              <p className="text-sm text-emerald-700 dark:text-emerald-300">
+                <strong>Sincronizado com a Agenda</strong> até {dataFimSincronizacao ? new Date(dataFimSincronizacao + 'T00:00:00').toLocaleDateString('pt-BR') : 'data não definida'}. As atividades definidas aqui serão replicadas automaticamente na Agenda.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Grid de dias da semana */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7 gap-4">

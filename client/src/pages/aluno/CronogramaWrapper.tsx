@@ -1,14 +1,15 @@
 import React, { useState } from "react";
-import { Calendar, Zap, BarChart2, CalendarDays, RefreshCw, Grid3X3, ListTodo } from "lucide-react";
+import { Calendar, Zap, BarChart2, CalendarDays, RefreshCw, Grid3X3, ListTodo, CalendarRange } from "lucide-react";
 import AlunoCronograma from "./AlunoCronograma";
 import CronogramaLista from "./CronogramaLista";
+import CronogramaAgenda from "./CronogramaAgenda";
 import CronogramaAnual from "./cronograma/CronogramaAnual";
 import CronogramaEstatisticas from "./cronograma/CronogramaEstatisticas";
 import CronogramaDinamico from "./CronogramaDinamico";
 
 export default function CronogramaWrapper() {
   const [activeTab, setActiveTab] = useState<"semanal" | "anual-ciclos" | "anual-dinamico">("semanal");
-  const [semanalSubTab, setSemanalSubTab] = useState<"grade" | "lista">("grade");
+  const [semanalSubTab, setSemanalSubTab] = useState<"grade" | "lista" | "agenda">("grade");
   const [anualSubTab, setAnualSubTab] = useState<"ciclos" | "estatisticas">("ciclos");
 
   return (
@@ -152,6 +153,20 @@ export default function CronogramaWrapper() {
             <ListTodo className="w-4 h-4" />
             Lista
           </button>
+          <button
+            onClick={() => setSemanalSubTab("agenda")}
+            className={`
+              flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-all
+              ${
+                semanalSubTab === "agenda"
+                  ? "bg-white text-emerald-600 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              }
+            `}
+          >
+            <CalendarRange className="w-4 h-4" />
+            Agenda
+          </button>
         </div>
       )}
 
@@ -161,6 +176,7 @@ export default function CronogramaWrapper() {
           <>
             {semanalSubTab === "grade" && <AlunoCronograma />}
             {semanalSubTab === "lista" && <CronogramaLista />}
+            {semanalSubTab === "agenda" && <CronogramaAgenda />}
           </>
         )}
         {activeTab === "anual-ciclos" && (

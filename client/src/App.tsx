@@ -37,6 +37,9 @@ import { AuthProvider } from "./contexts/AuthContext";
 import Home from "./pages/Home";
 import DashboardLayout from "./components/DashboardLayout";
 
+// Lazy load da Landing Page
+const LandingPage = lazy(() => import("./pages/LandingPage"));
+
 // Lazy load de páginas de autenticação
 const LoginAluno = lazy(() => import("./pages/auth/LoginAluno"));
 const LoginMentor = lazy(() => import("./pages/auth/LoginMentor"));
@@ -96,7 +99,8 @@ const PageLoader = () => (
 function Router() {
   return (
     <Switch>
-      <Route path={"/"} component={Home} />
+      <Route path={"/"} component={LandingPage} />
+      <Route path={"/home"} component={Home} />
       
       {/* Rotas de Login */}
       <Route path="/login/aluno">

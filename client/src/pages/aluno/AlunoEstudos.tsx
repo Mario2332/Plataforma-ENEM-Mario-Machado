@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { useTimer } from "@/contexts/TimerContext";
 import { DailySummary } from "@/components/aluno/DailySummary";
 import { StudyHistoryChart } from "@/components/aluno/StudyHistoryChart";
+import { useLocation } from "wouter";
 
 const CRONOMETRO_STORAGE_KEY = "aluno_cronometro_estado";
 
@@ -93,6 +94,19 @@ export default function AlunoEstudos() {
   const [dialogTempoOpen, setDialogTempoOpen] = useState(false);
   const [horasMeta, setHorasMeta] = useState("0");
   const [minutosMeta, setMinutosMeta] = useState("30");
+  
+  const [location, setLocation] = useLocation();
+
+  // Verifica se deve abrir o modal de salvar via URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('action') === 'save') {
+      salvarCronometro();
+      // Limpa o parâmetro da URL sem recarregar a página
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [location]);
 
   const [formData, setFormData] = useState({
     data: new Date().toISOString().split("T")[0],
@@ -891,7 +905,7 @@ export default function AlunoEstudos() {
       
       {/* Modo Foco - Tela Cheia */}
       {modoFocoGlobal && (
-        <div className="fixed inset-0 z-50 bg-gradient-to-br from-blue-950 via-indigo-950 to-cyan-950 flex items-center justify-center">
+        <div className="fixed inset-0 z-[9999] bg-gradient-to-br from-blue-950 via-indigo-950 to-cyan-950 flex items-center justify-center">
           {/* Elementos decorativos */}
           <div className="absolute top-20 right-20 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-float" />
           <div className="absolute bottom-20 left-20 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-float-delayed" />
@@ -924,10 +938,10 @@ export default function AlunoEstudos() {
             </div>
             
             {/* Indicador de meta (se definido) */}
-            {tempoMeta && (
+            {tempoMetaGlobal && (
               <div className="w-full max-w-2xl space-y-4">
                 <div className="flex items-center justify-between text-white text-xl font-bold">
-                  <span>Meta: {formatarTempo(tempoMeta)}</span>
+                  <span>Meta: {formatarTempo(tempoMetaGlobal)}</span>
                   <span className="text-cyan-300">Restante: {formatarTempo(tempoRestante)}</span>
                 </div>
                 <div className="relative h-6 bg-white/10 rounded-full overflow-hidden backdrop-blur-sm">

@@ -7,8 +7,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAlunoApi } from "@/hooks/useAlunoApi";
 import { BookOpen, Clock, Edit, Play, Plus, Trash2, Pause, RotateCcw, Save, ArrowUpDown, Zap, Timer, CheckCircle2, Target, Maximize2, X, AlertCircle } from "lucide-react";
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
+import { useTimer } from "@/contexts/TimerContext";
+import { DailySummary } from "@/components/aluno/DailySummary";
+import { StudyHistoryChart } from "@/components/aluno/StudyHistoryChart";
 
 const CRONOMETRO_STORAGE_KEY = "aluno_cronometro_estado";
 
@@ -39,22 +42,54 @@ interface CronometroEstado {
 type OrdenacaoColuna = "data" | "materia" | "tempo" | "questoes" | "acertos" | null;
 type DirecaoOrdenacao = "asc" | "desc";
 
+// Função auxiliar para parsear datas de forma segura (exportada para uso em componentes filhos)
+export const parseDataSegura = (data: any): Date => {
+  if (!data) return new Date();
+  
+  try {
+    if (data.seconds || data._seconds) {
+      const seconds = data.seconds || data._seconds;
+      return new Date(seconds * 1000);
+    } 
+    
+    if (data.toDate && typeof data.toDate === 'function') {
+      return data.toDate();
+    }
+    
+    const parsed = new Date(data);
+    if (!isNaN(parsed.getTime())) {
+      return parsed;
+    }
+    
+    return new Date();
+  } catch (error) {
+    console.error("Erro ao parsear data:", error);
+    return new Date();
+  }
+};
+
 export default function AlunoEstudos() {
   const api = useAlunoApi();
+  const { 
+    ativo: cronometroAtivo, 
+    tempoDecorrido, 
+    iniciar: iniciarCronometroGlobal, 
+    pausar: pausarCronometroGlobal, 
+    resetar: resetarCronometroGlobal,
+    definirMeta: definirMetaGlobal,
+    tempoMeta: tempoMetaGlobal,
+    modoFoco: modoFocoGlobal,
+    toggleModoFoco: toggleModoFocoGlobal
+  } = useTimer();
+
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [cronometroAtivo, setCronometroAtivo] = useState(false);
-  const [tempoDecorrido, setTempoDecorrido] = useState(0);
   const [estudos, setEstudos] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [colunaOrdenacao, setColunaOrdenacao] = useState<OrdenacaoColuna>(null);
   const [direcaoOrdenacao, setDirecaoOrdenacao] = useState<DirecaoOrdenacao>("desc");
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Novos estados para tempo meta e modo foco
-  const [tempoMeta, setTempoMeta] = useState<number | null>(null); // em segundos
-  const [modoFoco, setModoFoco] = useState(false);
   const [dialogTempoOpen, setDialogTempoOpen] = useState(false);
   const [horasMeta, setHorasMeta] = useState("0");
   const [minutosMeta, setMinutosMeta] = useState("30");
@@ -68,80 +103,6 @@ export default function AlunoEstudos() {
     questoesAcertadas: 0,
     flashcardsRevisados: 0,
   });
-
-  const tempoInicioRef = useRef<number | null>(null);
-  const tempoAcumuladoRef = useRef<number>(0);
-
-  // Carregar estado do cronômetro do localStorage
-  useEffect(() => {
-    const estadoSalvo = localStorage.getItem(CRONOMETRO_STORAGE_KEY);
-    if (estadoSalvo) {
-      try {
-        const estado: CronometroEstado = JSON.parse(estadoSalvo);
-        
-        tempoInicioRef.current = estado.tempoInicio;
-        tempoAcumuladoRef.current = estado.tempoAcumulado;
-        
-        if (estado.ativo && estado.tempoInicio) {
-          setCronometroAtivo(true);
-        } else {
-          setTempoDecorrido(estado.tempoAcumulado);
-          setCronometroAtivo(false);
-        }
-      } catch (error) {
-        console.error("Erro ao carregar estado do cronômetro:", error);
-      }
-    }
-  }, []);
-
-  // Atualizar cronômetro a cada segundo
-  useEffect(() => {
-    if (cronometroAtivo) {
-      intervalRef.current = setInterval(() => {
-        if (tempoInicioRef.current) {
-          const agora = Date.now();
-          const tempoDecorridoAtual = Math.floor((agora - tempoInicioRef.current) / 1000) + tempoAcumuladoRef.current;
-          setTempoDecorrido(tempoDecorridoAtual);
-          
-          // Verificar se atingiu o tempo meta
-          if (tempoMeta && tempoDecorridoAtual >= tempoMeta) {
-            pausarCronometro();
-            toast.success("⏰ Tempo de estudos concluído! Parabéns!", {
-              duration: 5000,
-            });
-            // Tocar som de notificação (opcional)
-            try {
-              const audio = new Audio('/notification.mp3');
-              audio.play().catch(() => {});
-            } catch {}
-          }
-        }
-      }, 100);
-    } else {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    }
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, [cronometroAtivo, tempoMeta]);
-
-  // Salvar estado do cronômetro no localStorage quando mudar
-  useEffect(() => {
-    if (cronometroAtivo || tempoDecorrido > 0) {
-      const estado: CronometroEstado = {
-        ativo: cronometroAtivo,
-        tempoInicio: tempoInicioRef.current,
-        tempoAcumulado: tempoAcumuladoRef.current,
-      };
-      localStorage.setItem(CRONOMETRO_STORAGE_KEY, JSON.stringify(estado));
-    }
-  }, [cronometroAtivo, tempoDecorrido]);
 
   const loadEstudos = async () => {
     try {
@@ -247,23 +208,15 @@ export default function AlunoEstudos() {
   };
 
   const iniciarCronometro = () => {
-    tempoInicioRef.current = Date.now();
-    tempoAcumuladoRef.current = tempoDecorrido;
-    setCronometroAtivo(true);
+    iniciarCronometroGlobal();
   };
 
   const pausarCronometro = () => {
-    tempoAcumuladoRef.current = tempoDecorrido;
-    tempoInicioRef.current = null;
-    setCronometroAtivo(false);
+    pausarCronometroGlobal();
   };
 
   const resetarCronometro = () => {
-    setCronometroAtivo(false);
-    setTempoDecorrido(0);
-    tempoInicioRef.current = null;
-    tempoAcumuladoRef.current = 0;
-    localStorage.removeItem(CRONOMETRO_STORAGE_KEY);
+    resetarCronometroGlobal();
   };
 
   const salvarCronometro = () => {
@@ -278,7 +231,7 @@ export default function AlunoEstudos() {
       tempoMinutos: minutos,
     });
     setDialogOpen(true);
-    resetarCronometro();
+    resetarCronometroGlobal();
   };
 
   const formatarTempo = (segundos: number) => {
@@ -298,34 +251,26 @@ export default function AlunoEstudos() {
       return;
     }
     
-    setTempoMeta(totalSegundos);
+    definirMetaGlobal(totalSegundos);
     setDialogTempoOpen(false);
     toast.success(`Meta de tempo definida: ${horas}h ${minutos}min`);
   };
   
   const removerTempoMeta = () => {
-    setTempoMeta(null);
+    definirMetaGlobal(null);
     toast.info("Meta de tempo removida");
   };
   
   const ativarModoFoco = () => {
-    setModoFoco(true);
-    // Tentar entrar em fullscreen
-    try {
-      document.documentElement.requestFullscreen?.();
-    } catch {}
+    toggleModoFocoGlobal();
   };
   
   const desativarModoFoco = () => {
-    setModoFoco(false);
-    // Sair do fullscreen
-    try {
-      document.exitFullscreen?.();
-    } catch {}
+    toggleModoFocoGlobal();
   };
   
-  const tempoRestante = tempoMeta ? Math.max(0, tempoMeta - tempoDecorrido) : 0;
-  const progressoPercentual = tempoMeta ? Math.min(100, (tempoDecorrido / tempoMeta) * 100) : 0;
+  const tempoRestante = tempoMetaGlobal ? Math.max(0, tempoMetaGlobal - tempoDecorrido) : 0;
+  const progressoPercentual = tempoMetaGlobal ? Math.min(100, (tempoDecorrido / tempoMetaGlobal) * 100) : 0;
   
   const handleOrdenar = (coluna: OrdenacaoColuna) => {
     if (colunaOrdenacao === coluna) {
@@ -570,151 +515,191 @@ export default function AlunoEstudos() {
         </div>
       </div>
 
-      {/* Cronômetro Premium */}
-      <Card className="border-2 hover:shadow-2xl transition-all duration-500 animate-slide-up" style={{ animationDelay: '0.1s' }}>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-3 text-2xl font-black">
-                <div className="relative">
-                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl blur-md opacity-50" />
-                  <div className="relative p-3 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl shadow-xl">
-                    <Timer className="h-6 w-6 text-white" />
-                  </div>
+      {/* Cronômetro e Resumo */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-slide-up" style={{ animationDelay: '0.1s' }}>
+        {/* Cronômetro (ocupa 2 colunas) */}
+        <div className="lg:col-span-2">
+          <Card className={`relative overflow-hidden transition-all duration-500 ${modoFocoGlobal ? 'fixed inset-0 z-50 rounded-none bg-slate-950 border-0' : 'bg-white dark:bg-gray-900 border-2 hover:shadow-xl h-full'}`}>
+            {/* Efeitos de fundo do card (apenas no modo foco ou sutis no modo normal) */}
+            {modoFocoGlobal ? (
+              <>
+                <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl" />
+                <div className="absolute bottom-0 left-0 w-64 h-64 bg-cyan-500/5 rounded-full blur-3xl" />
+              </>
+            ) : (
+              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl" />
+            )}
+
+            <CardHeader className={modoFocoGlobal ? 'hidden' : 'relative z-10'}>
+              <CardTitle className="flex items-center gap-3 text-2xl font-bold text-gray-800 dark:text-gray-100">
+                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl text-blue-600 dark:text-blue-400">
+                  <Timer className="h-6 w-6" />
                 </div>
-                Cronômetro de Estudo
+                Cronômetro
               </CardTitle>
-              <CardDescription className="mt-2 text-base">
-                Inicie o cronômetro para registrar o tempo de estudo em tempo real
+              <CardDescription className="text-muted-foreground">
+                Foque nos estudos e registre seu tempo automaticamente
               </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center gap-8">
-            {/* Display do tempo com design moderno */}
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 via-cyan-500/20 to-blue-500/20 rounded-3xl blur-2xl animate-pulse-slow" />
-              <div className="relative px-12 py-8 bg-gradient-to-br from-blue-50/50 to-cyan-50/50 dark:from-blue-950/30 dark:to-cyan-950/30 rounded-3xl border-2 border-blue-200 dark:border-blue-800">
-                <div className="text-7xl font-mono font-black tabular-nums bg-gradient-to-r from-blue-600 via-cyan-600 to-blue-600 bg-clip-text text-transparent">
+            </CardHeader>
+            <CardContent className={`relative z-10 flex flex-col items-center justify-center ${modoFocoGlobal ? 'h-screen p-10' : 'py-12'}`}>
+              
+              {modoFocoGlobal && (
+                <div className="absolute top-8 right-8">
+                  <Button variant="ghost" size="icon" onClick={desativarModoFoco} className="h-12 w-12 rounded-full hover:bg-white/10 text-white">
+                    <X className="h-6 w-6" />
+                  </Button>
+                </div>
+              )}
+
+              {/* Display do Cronômetro */}
+              <div className="relative mb-12 group">
+                <div className={`absolute inset-0 bg-blue-500/20 blur-3xl rounded-full transition-all duration-1000 ${cronometroAtivo ? 'opacity-100 scale-110' : 'opacity-0 scale-90'}`} />
+                <div className={`font-mono font-bold tabular-nums tracking-wider transition-all duration-500 ${modoFocoGlobal ? 'text-[12rem] text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-400' : 'text-8xl text-gray-900 dark:text-white'} drop-shadow-2xl`}>
                   {formatarTempo(tempoDecorrido)}
                 </div>
               </div>
-            </div>
-
-            {/* Botões com design premium */}
-            <div className="flex flex-wrap gap-4 justify-center">
-              {!cronometroAtivo ? (
-                <Button 
-                  onClick={iniciarCronometro} 
-                  size="lg"
-                  className="relative overflow-hidden bg-gradient-to-r from-cyan-500 to-sky-500 hover:from-cyan-600 hover:to-sky-600 shadow-xl hover:shadow-2xl hover:shadow-cyan-500/30 transition-all duration-300 font-bold px-8 py-6 text-lg"
-                >
-                  <Play className="h-6 w-6 mr-2" />
-                  Iniciar
-                </Button>
-              ) : (
-                <Button 
-                  onClick={pausarCronometro} 
-                  size="lg"
-                  className="relative overflow-hidden bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-xl hover:shadow-2xl hover:shadow-blue-500/30 transition-all duration-300 font-bold px-8 py-6 text-lg"
-                >
-                  <Pause className="h-6 w-6 mr-2" />
-                  Pausar
-                </Button>
+              
+              {tempoMetaGlobal && (
+                <div className="mb-10 w-full max-w-md space-y-3">
+                  <div className="flex justify-between text-sm font-medium text-muted-foreground">
+                    <span>Progresso da Meta</span>
+                    <span className={modoFocoGlobal ? "text-white" : "text-gray-900 dark:text-white"}>{Math.round(progressoPercentual)}%</span>
+                  </div>
+                  <div className={`h-2 w-full rounded-full overflow-hidden ${modoFocoGlobal ? 'bg-slate-800' : 'bg-gray-100 dark:bg-gray-800'}`}>
+                    <div 
+                      className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 shadow-[0_0_10px_rgba(59,130,246,0.5)] transition-all duration-1000 ease-out"
+                      style={{ width: `${progressoPercentual}%` }}
+                    />
+                  </div>
+                  <p className="text-center text-sm text-muted-foreground mt-2">
+                    Faltam <span className={`font-medium ${modoFocoGlobal ? "text-white" : "text-gray-900 dark:text-white"}`}>{formatarTempo(tempoRestante)}</span> para sua meta
+                  </p>
+                </div>
               )}
-              
-              <Button 
-                onClick={resetarCronometro} 
-                size="lg"
-                variant="outline"
-                className="border-2 hover:bg-gradient-to-r hover:from-gray-500 hover:to-gray-600 hover:text-white hover:border-transparent transition-all duration-300 font-bold px-8 py-6 text-lg"
-              >
-                <RotateCcw className="h-6 w-6 mr-2" />
-                Resetar
-              </Button>
-              
-              <Button 
-                onClick={salvarCronometro} 
-                size="lg"
-                disabled={tempoDecorrido === 0}
-                className="relative overflow-hidden bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 shadow-xl hover:shadow-2xl hover:shadow-blue-500/30 transition-all duration-300 font-bold px-8 py-6 text-lg disabled:opacity-50"
-              >
-                <Save className="h-6 w-6 mr-2" />
-                Salvar Sessão
-              </Button>
-              
-              <Button 
-                onClick={() => setDialogTempoOpen(true)} 
-                size="lg"
-                variant="outline"
-                className="border-2 border-blue-500 hover:bg-blue-500 hover:text-white transition-all duration-300 font-bold px-8 py-6 text-lg"
-              >
-                <Target className="h-6 w-6 mr-2" />
-                Definir Tempo
-              </Button>
-              
-              <Button 
-                onClick={ativarModoFoco} 
-                size="lg"
-                variant="outline"
-                className="border-2 border-indigo-500 hover:bg-indigo-500 hover:text-white transition-all duration-300 font-bold px-8 py-6 text-lg"
-              >
-                <Maximize2 className="h-6 w-6 mr-2" />
-                Modo Foco
-              </Button>
-            </div>
-            
-            {/* Indicador de tempo meta */}
-            {tempoMeta && (
-              <div className="w-full space-y-3">
-                <div className="flex items-center justify-between text-sm font-semibold">
-                  <span className="text-blue-600 dark:text-blue-400">Meta: {formatarTempo(tempoMeta)}</span>
-                  <span className="text-cyan-600 dark:text-cyan-400">Restante: {formatarTempo(tempoRestante)}</span>
+
+              <div className="flex flex-wrap gap-4 justify-center items-center">
+                {!cronometroAtivo ? (
                   <Button 
-                    onClick={removerTempoMeta} 
-                    size="sm" 
-                    variant="ghost"
-                    className="h-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                    size="lg" 
+                    className={`bg-blue-600 hover:bg-blue-500 text-white shadow-lg hover:shadow-blue-500/25 transition-all duration-300 font-bold rounded-full ${modoFocoGlobal ? 'h-20 px-12 text-2xl' : 'h-14 px-10 text-lg'}`}
+                    onClick={iniciarCronometro}
                   >
-                    <X className="h-4 w-4 mr-1" />
-                    Remover
+                    <Play className={`${modoFocoGlobal ? 'h-8 w-8' : 'h-6 w-6'} mr-2 fill-current`} />
+                    Iniciar
+                  </Button>
+                ) : (
+                  <Button 
+                    size="lg" 
+                    className={`bg-amber-500 hover:bg-amber-400 text-white shadow-lg hover:shadow-amber-500/25 transition-all duration-300 font-bold rounded-full ${modoFocoGlobal ? 'h-20 px-12 text-2xl' : 'h-14 px-10 text-lg'}`}
+                    onClick={pausarCronometro}
+                  >
+                    <Pause className={`${modoFocoGlobal ? 'h-8 w-8' : 'h-6 w-6'} mr-2 fill-current`} />
+                    Pausar
+                  </Button>
+                )}
+                
+                <Button 
+                  size="lg" 
+                  variant="outline"
+                  className={`transition-all font-medium rounded-full ${modoFocoGlobal ? 'border-white/10 hover:bg-white/5 text-slate-300 hover:text-white h-20 px-10 text-xl' : 'border-2 hover:bg-gray-50 dark:hover:bg-gray-800 h-14 px-8'}`}
+                  onClick={resetarCronometro}
+                  disabled={tempoDecorrido === 0 && !cronometroAtivo}
+                >
+                  <RotateCcw className={`${modoFocoGlobal ? 'h-8 w-8' : 'h-5 w-5'} mr-2`} />
+                  Resetar
+                </Button>
+                
+                <Button 
+                  size="lg" 
+                  className={`transition-all font-medium rounded-full ${modoFocoGlobal ? 'bg-slate-800 hover:bg-slate-700 text-white border border-white/5 h-20 px-10 text-xl' : 'bg-gray-900 hover:bg-gray-800 text-white dark:bg-gray-700 dark:hover:bg-gray-600 h-14 px-8'}`}
+                  onClick={salvarCronometro}
+                  disabled={tempoDecorrido === 0}
+                >
+                  <Save className={`${modoFocoGlobal ? 'h-6 w-6' : 'h-4 w-4'} mr-2`} />
+                  Salvar Sessão
+                </Button>
+
+                {!modoFocoGlobal && (
+                  <Dialog open={dialogTempoOpen} onOpenChange={setDialogTempoOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="lg" className="border-2 font-bold h-12 px-6">
+                        <Target className="h-4 w-4 mr-2" />
+                        Definir Tempo
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Definir Meta de Tempo</DialogTitle>
+                        <DialogDescription>
+                          Estabeleça um tempo alvo para sua sessão de estudos.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="flex items-center justify-center gap-4 py-6">
+                        <div className="flex flex-col items-center gap-2">
+                          <Label>Horas</Label>
+                          <Input 
+                            type="number" 
+                            min="0" 
+                            max="23" 
+                            value={horasMeta} 
+                            onChange={(e) => setHorasMeta(e.target.value)}
+                            className="w-20 text-center text-2xl font-bold h-14"
+                          />
+                        </div>
+                        <span className="text-2xl font-bold mt-6">:</span>
+                        <div className="flex flex-col items-center gap-2">
+                          <Label>Minutos</Label>
+                          <Input 
+                            type="number" 
+                            min="0" 
+                            max="59" 
+                            value={minutosMeta} 
+                            onChange={(e) => setMinutosMeta(e.target.value)}
+                            className="w-20 text-center text-2xl font-bold h-14"
+                          />
+                        </div>
+                      </div>
+                      <DialogFooter className="sm:justify-between">
+                        <Button type="button" variant="ghost" onClick={removerTempoMeta} className="text-red-500 hover:text-red-600 hover:bg-red-50">
+                          Remover Meta
+                        </Button>
+                        <Button type="button" onClick={definirTempoMeta} className="bg-blue-600 hover:bg-blue-700">
+                          Definir Meta
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                )}
+              </div>
+
+              {!modoFocoGlobal && (
+                <div className="mt-8">
+                  <Button variant="outline" className="gap-2 text-muted-foreground hover:text-primary" onClick={ativarModoFoco}>
+                    <Maximize2 className="h-4 w-4" />
+                    Modo Foco
                   </Button>
                 </div>
-                <div className="relative h-3 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
-                  <div 
-                    className="absolute h-full bg-gradient-to-r from-blue-500 to-cyan-500 transition-all duration-300 rounded-full"
-                    style={{ width: `${progressoPercentual}%` }}
-                  />
-                </div>
-              </div>
-            )}
-            
-            {cronometroAtivo && (
-              <div className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-500/20 to-sky-500/20 rounded-full border-2 border-cyan-500/30 backdrop-blur-sm animate-pulse-slow">
-                <div className="w-3 h-3 bg-cyan-500 rounded-full animate-ping" />
-                <p className="text-sm font-bold text-cyan-700 dark:text-cyan-300">
-                  Cronômetro ativo - Continue estudando!
-                </p>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
-      {/* Lista de Estudos Premium */}
-      <Card className="border-2 hover:shadow-xl transition-shadow animate-slide-up" style={{ animationDelay: '0.2s' }}>
+        {/* Resumo do Dia (ocupa 1 coluna) */}
+        <div className="lg:col-span-1 h-full">
+          <DailySummary estudos={estudos} tempoDecorridoAtual={cronometroAtivo ? tempoDecorrido : 0} />
+        </div>
+      </div>
+
+      {/* Gráfico de Histórico */}
+      <div className="animate-slide-up" style={{ animationDelay: '0.2s' }}>
+        <StudyHistoryChart estudos={estudos} />
+      </div>
+
+      {/* Tabela de Registros */}
+      <Card className="border-2 shadow-lg animate-slide-up" style={{ animationDelay: '0.3s' }}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-3 text-2xl font-black">
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-blue-500 rounded-xl blur-md opacity-50" />
-              <div className="relative p-3 bg-gradient-to-br from-indigo-500 to-blue-500 rounded-xl shadow-xl">
-                <BookOpen className="h-6 w-6 text-white" />
-              </div>
-            </div>
-            Histórico de Estudos
-          </CardTitle>
-          <CardDescription className="text-base">Suas sessões de estudo registradas</CardDescription>
+          <CardTitle className="text-xl font-bold">Registros Recentes</CardTitle>
+          <CardDescription>Histórico detalhado das suas sessões de estudo</CardDescription>
         </CardHeader>
         <CardContent>
           {estudos.length === 0 ? (
@@ -905,7 +890,7 @@ export default function AlunoEstudos() {
       </Dialog>
       
       {/* Modo Foco - Tela Cheia */}
-      {modoFoco && (
+      {modoFocoGlobal && (
         <div className="fixed inset-0 z-50 bg-gradient-to-br from-blue-950 via-indigo-950 to-cyan-950 flex items-center justify-center">
           {/* Elementos decorativos */}
           <div className="absolute top-20 right-20 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-float" />

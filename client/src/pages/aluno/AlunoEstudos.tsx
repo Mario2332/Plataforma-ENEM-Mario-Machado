@@ -76,11 +76,11 @@ export default function AlunoEstudos() {
     tempoDecorrido, 
     iniciar: iniciarCronometroGlobal, 
     pausar: pausarCronometroGlobal, 
-    resetar: resetarCronometroGlobal,
+    parar: resetarCronometroGlobal,
     definirMeta: definirMetaGlobal,
     tempoMeta: tempoMetaGlobal,
     modoFoco: modoFocoGlobal,
-    toggleModoFoco: toggleModoFocoGlobal
+    alternarModoFoco: toggleModoFocoGlobal
   } = useTimer();
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -234,18 +234,21 @@ export default function AlunoEstudos() {
   };
 
   const salvarCronometro = () => {
-    const minutos = Math.floor(tempoDecorrido / 60);
-    if (minutos === 0) {
-      toast.error("O tempo deve ser maior que zero");
+    if (tempoDecorrido === 0) {
+      toast.error("O cronômetro está zerado");
       return;
     }
+
+    // Arredonda para cima ou garante no mínimo 1 minuto se houver algum tempo decorrido
+    const minutos = Math.max(1, Math.round(tempoDecorrido / 60));
     
     setFormData({
       ...formData,
       tempoMinutos: minutos,
     });
     setDialogOpen(true);
-    resetarCronometroGlobal();
+    // Não reseta automaticamente ao abrir o modal, espera o usuário salvar ou cancelar
+    // resetarCronometroGlobal(); 
   };
 
   const formatarTempo = (segundos: number) => {

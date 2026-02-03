@@ -91,7 +91,7 @@ export function FloatingTimer() {
               {!ativo ? (
                 <Button 
                   size="sm" 
-                  className="w-full bg-green-500 hover:bg-green-600 text-white font-bold"
+                  className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold"
                   onClick={iniciar}
                 >
                   <Play className="w-4 h-4 mr-2" />
@@ -100,7 +100,7 @@ export function FloatingTimer() {
               ) : (
                 <Button 
                   size="sm" 
-                  className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold"
+                  className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white font-bold"
                   onClick={pausar}
                 >
                   <Pause className="w-4 h-4 mr-2" />

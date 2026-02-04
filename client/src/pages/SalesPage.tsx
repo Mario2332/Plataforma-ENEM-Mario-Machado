@@ -244,7 +244,7 @@ export default function SalesPage() {
                   </div>
                   <ul className="text-xs text-gray-400 space-y-2 list-disc pl-4">
                     <li>Acesso a dois simulados completos da Evolucional com análise TRI (3 primeiros)</li>
-                    <li>Mentoria gravada de +2h com tudo sobre provas - estratégias de prova, correção, preenchimento de lacunas e muito mais!</li>
+                    <li>Mentoria gravada de +2h com tudo sobre provas - estratégias de prova, correção, preenchimento de lacunas e muito mais! (50 primeiros)</li>
                   </ul>
                 </div>
 
@@ -321,7 +321,7 @@ export default function SalesPage() {
                     </div>
                     <ul className="text-xs text-gray-400 space-y-2 list-disc pl-4">
                       <li>Acesso a dois simulados completos da Evolucional com análise TRI (3 primeiros)</li>
-                      <li>Mentoria gravada de +2h com tudo sobre provas - estratégias de prova, correção, preenchimento de lacunas e muito mais!</li>
+                      <li>Mentoria gravada de +2h com tudo sobre provas - estratégias de prova, correção, preenchimento de lacunas e muito mais! (50 primeiros)</li>
                     </ul>
                   </div>
                 </div>

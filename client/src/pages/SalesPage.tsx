@@ -329,7 +329,7 @@ export default function SalesPage() {
                 <div className="mt-auto space-y-4">
                   <Button 
                     className="w-full h-auto py-4 text-lg md:text-2xl font-bold bg-[#9aff00] text-[#0a1628] hover:bg-[#88e600] hover:scale-105 transition-all duration-300 shadow-[0_0_50px_rgba(154,255,0,0.5)] rounded-xl group border-2 border-transparent hover:border-white/50 whitespace-normal leading-tight"
-                    onClick={() => window.open('https://pay.kiwify.com.br/combo-link-placeholder', '_blank')} // TODO: Substituir pelo link real
+                    onClick={() => window.open('https://pay.kiwify.com.br/IVBq2Hn', '_blank')}
                   >
                     QUERO O COMBO COMPLETO
                     <ArrowRight className="ml-3 w-6 h-6 group-hover:translate-x-2 transition-transform" />

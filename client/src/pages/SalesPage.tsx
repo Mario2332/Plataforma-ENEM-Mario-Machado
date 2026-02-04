@@ -250,7 +250,7 @@ export default function SalesPage() {
 
                 <div className="mt-auto space-y-4">
                   <Button 
-                    className="w-full h-16 text-xl font-bold bg-[#9aff00] text-[#0a1628] hover:bg-[#88e600] hover:scale-105 transition-all duration-300 shadow-[0_0_30px_rgba(154,255,0,0.3)] rounded-xl group border-2 border-transparent hover:border-white/50"
+                    className="w-full h-auto py-4 text-lg md:text-xl font-bold bg-[#9aff00] text-[#0a1628] hover:bg-[#88e600] hover:scale-105 transition-all duration-300 shadow-[0_0_30px_rgba(154,255,0,0.3)] rounded-xl group border-2 border-transparent hover:border-white/50 whitespace-normal leading-tight"
                     onClick={() => window.open('https://pay.kiwify.com.br/ecz6BOK', '_blank')}
                   >
                     QUERO A PLATAFORMA
@@ -316,7 +316,7 @@ export default function SalesPage() {
 
                 <div className="mt-auto space-y-4">
                   <Button 
-                    className="w-full h-20 text-2xl font-bold bg-[#9aff00] text-[#0a1628] hover:bg-[#88e600] hover:scale-105 transition-all duration-300 shadow-[0_0_50px_rgba(154,255,0,0.5)] rounded-xl group border-2 border-transparent hover:border-white/50"
+                    className="w-full h-auto py-4 text-lg md:text-2xl font-bold bg-[#9aff00] text-[#0a1628] hover:bg-[#88e600] hover:scale-105 transition-all duration-300 shadow-[0_0_50px_rgba(154,255,0,0.5)] rounded-xl group border-2 border-transparent hover:border-white/50 whitespace-normal leading-tight"
                     onClick={() => window.open('https://pay.kiwify.com.br/combo-link-placeholder', '_blank')} // TODO: Substituir pelo link real
                   >
                     QUERO O COMBO COMPLETO

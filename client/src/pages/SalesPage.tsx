@@ -44,7 +44,7 @@ export default function SalesPage() {
             <Countdown />
             
             <Button 
-              onClick={() => window.open('https://pay.kiwify.com.br/ecz6BOK', '_blank')}
+              onClick={scrollToOffer}
               className="h-16 px-12 text-lg font-bold bg-[#9aff00] text-[#0a1628] hover:bg-[#88e600] hover:scale-105 transition-all duration-300 shadow-[0_0_40px_rgba(154,255,0,0.4)] rounded-full group border-2 border-transparent hover:border-[#ccff66]"
             >
               QUERO GARANTIR MINHA VAGA

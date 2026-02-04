@@ -389,6 +389,10 @@ export default function SalesPage() {
           <div className="space-y-4">
             {[
               {
+                question: "A plataforma inclui acompanhamento?",
+                answer: "Não. Ao assinar a plataforma, você garante a ferramenta para planejar, metrificar e analisar sua preparação para o ENEM, sem acompanhamento do mentor. A ferramenta foi idealizada pelo Mário Machado, mentor que alcançou 829 de média. As informações da plataforma que incluem sugestões para a sua preparação (como o cronograma inteligente e o plano de ação) seguem as mesmas lógicas usadas na Mentoria."
+              },
+              {
                 question: "Por quanto tempo terei acesso à plataforma?",
                 answer: "Você terá acesso completo à plataforma por 1 ano. Durante todo esse período, você poderá utilizar todas as funcionalidades sem restrições."
               },

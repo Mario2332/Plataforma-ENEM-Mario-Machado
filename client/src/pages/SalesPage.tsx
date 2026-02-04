@@ -242,9 +242,9 @@ export default function SalesPage() {
                     <Trophy className="w-4 h-4 text-[#9aff00]" />
                     <h3 className="text-sm font-bold text-white">BÔNUS INCLUÍDOS:</h3>
                   </div>
-                  <ul className="text-xs text-gray-400 space-y-1 list-disc pl-4">
-                    <li>Acesso à plataforma Evolucional (3 primeiros)</li>
-                    <li>Mentoria gravada de +2h sobre provas</li>
+                  <ul className="text-xs text-gray-400 space-y-2 list-disc pl-4">
+                    <li>Acesso a dois simulados completos da Evolucional com análise TRI (3 primeiros)</li>
+                    <li>Mentoria gravada de +2h com tudo sobre provas - estratégias de prova, correção, preenchimento de lacunas e muito mais!</li>
                   </ul>
                 </div>
 
@@ -311,6 +311,18 @@ export default function SalesPage() {
                         </p>
                       </div>
                     </div>
+                  </div>
+
+                  {/* Bônus também no Combo */}
+                  <div className="bg-[#9aff00]/5 border border-[#9aff00]/20 rounded-xl p-4 text-left">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Trophy className="w-4 h-4 text-[#9aff00]" />
+                      <h3 className="text-sm font-bold text-white">BÔNUS INCLUÍDOS:</h3>
+                    </div>
+                    <ul className="text-xs text-gray-400 space-y-2 list-disc pl-4">
+                      <li>Acesso a dois simulados completos da Evolucional com análise TRI (3 primeiros)</li>
+                      <li>Mentoria gravada de +2h com tudo sobre provas - estratégias de prova, correção, preenchimento de lacunas e muito mais!</li>
+                    </ul>
                   </div>
                 </div>
 

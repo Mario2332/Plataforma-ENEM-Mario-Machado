@@ -1,4 +1,5 @@
 import * as functions from "firebase-functions";
+import { onRequest } from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 import * as crypto from "crypto";
 
@@ -174,7 +175,32 @@ async function criarAluno(
     ativo: true,
   });
 
-  functions.logger.info("Documento do aluno criado no Firestore", {
+  functions.logger.info("Documento do aluno criado no Firestore (users)", {
+    uid: userRecord.uid,
+  });
+
+  // Criar documento na coleção 'alunos'
+  await admin.firestore().collection("alunos").doc(userRecord.uid).set({
+    nome,
+    email,
+    photoURL: null,
+    ativo: true,
+    criadoEm: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  functions.logger.info("Documento do aluno criado no Firestore (alunos)", {
+    uid: userRecord.uid,
+  });
+
+  // Criar documento inicial no ranking
+  await admin.firestore().collection("ranking").doc(userRecord.uid).set({
+    nivel: 1, // Começa no nível Bronze
+    pontosSemanais: 0,
+    ultimaAtualizacao: admin.firestore.FieldValue.serverTimestamp(),
+    criadoEm: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  functions.logger.info("Documento do aluno criado no ranking", {
     uid: userRecord.uid,
   });
 
@@ -207,18 +233,13 @@ function validarAssinatura(
 /**
  * Cloud Function HTTP para receber webhook da Kiwify
  */
-export const kiwifyWebhook = functions
-  .region("southamerica-east1")
-  .https.onRequest(async (req, res) => {
-    // Configurar CORS
-    res.set("Access-Control-Allow-Origin", "*");
-    res.set("Access-Control-Allow-Methods", "POST");
-    res.set("Access-Control-Allow-Headers", "Content-Type, X-Kiwify-Signature");
-
-    if (req.method === "OPTIONS") {
-      res.status(204).send("");
-      return;
-    }
+export const kiwifyWebhook = onRequest(
+  {
+    region: "southamerica-east1",
+    cors: true,
+  },
+  async (req, res) => {
+    // CORS já configurado nas opções da função
 
     if (req.method !== "POST") {
       res.status(405).json({ error: "Método não permitido" });

@@ -398,6 +398,17 @@ service cloud.firestore {
     }
     
     // ============================================
+    // METAS DO MENTOR
+    // ============================================
+    match /metas_mentor/{alunoId} {
+      // Mentor e Gestor podem ler e escrever metas de qualquer aluno
+      allow read, write: if isMentorOrGestor();
+      
+      // Aluno pode ler suas próprias metas definidas pelo mentor
+      allow read: if hasRole('aluno') && isOwner(alunoId);
+    }
+    
+    // ============================================
     // CONTEÚDOS CUSTOMIZADOS (tópicos personalizados)
     // ============================================
     match /conteudos_customizados/{materiaKey} {

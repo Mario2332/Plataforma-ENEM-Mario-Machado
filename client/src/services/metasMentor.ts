@@ -49,6 +49,8 @@ export async function salvarMetaMentor(
   mentorId: string
 ): Promise<void> {
   try {
+    console.log("[metasMentor] Salvando meta:", { alunoId, tempoMedioDiario, mentorId });
+    
     const metaRef = doc(db, "metas_mentor", alunoId);
     const metaExistente = await getDoc(metaRef);
     
@@ -60,18 +62,31 @@ export async function salvarMetaMentor(
     };
     
     if (metaExistente.exists()) {
-      // Atualizar meta existente
+      console.log("[metasMentor] Atualizando meta existente");
       await setDoc(metaRef, metaData, { merge: true });
     } else {
-      // Criar nova meta
+      console.log("[metasMentor] Criando nova meta");
       await setDoc(metaRef, {
         ...metaData,
         criadoEm: Timestamp.now(),
       });
     }
-  } catch (error) {
-    console.error("Erro ao salvar meta do mentor:", error);
-    throw new Error("Erro ao salvar meta do mentor");
+    
+    console.log("[metasMentor] Meta salva com sucesso");
+  } catch (error: any) {
+    console.error("[metasMentor] Erro ao salvar meta:", error);
+    console.error("[metasMentor] Detalhes do erro:", {
+      message: error.message,
+      code: error.code,
+      stack: error.stack
+    });
+    
+    // Lançar erro com mensagem mais descritiva
+    if (error.code === 'permission-denied') {
+      throw new Error("Permissão negada. Verifique as regras do Firestore.");
+    } else {
+      throw new Error(`Erro ao salvar meta: ${error.message}`);
+    }
   }
 }
 

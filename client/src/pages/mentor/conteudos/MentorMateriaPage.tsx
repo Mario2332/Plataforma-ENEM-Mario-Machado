@@ -56,6 +56,8 @@ export default function MentorMateriaPage({ materiaKey }: MentorMateriaPageProps
   const [sortColumn, setSortColumn] = useState<"name" | "incidence">("name");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [filterIncidence, setFilterIncidence] = useState<string>("todos");
+  const [filterDificuldade, setFilterDificuldade] = useState<string>("todos");
+  const [filterImportancia, setFilterImportancia] = useState<string>("todos");
 
   // Estados de diálogos
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -110,6 +112,14 @@ export default function MentorMateriaPage({ materiaKey }: MentorMateriaPageProps
     if (filterIncidence !== "todos") {
       filtered = filtered.filter(topic => topic.incidenceLevel === filterIncidence);
     }
+    
+    if (filterDificuldade !== "todos") {
+      filtered = filtered.filter(topic => topic.dificuldade === filterDificuldade);
+    }
+    
+    if (filterImportancia !== "todos") {
+      filtered = filtered.filter(topic => topic.importancia === filterImportancia);
+    }
 
     // Definir ordem de prioridade para dificuldade e importância
     const dificuldadeOrder: Record<string, number> = {
@@ -149,7 +159,7 @@ export default function MentorMateriaPage({ materiaKey }: MentorMateriaPageProps
     });
     
     return filtered;
-  }, [topics, sortColumn, sortDirection, filterIncidence]);
+  }, [topics, sortColumn, sortDirection, filterIncidence, filterDificuldade, filterImportancia]);
 
   const getIncidenceBadgeColor = (level: string) => {
     switch (level) {
@@ -366,12 +376,48 @@ export default function MentorMateriaPage({ materiaKey }: MentorMateriaPageProps
                   </SelectContent>
                 </Select>
               </div>
+              
+              <div className="flex-1">
+                <Select value={filterDificuldade} onValueChange={setFilterDificuldade}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Dificuldade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todas as dificuldades</SelectItem>
+                    {DIFICULDADE_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="flex-1">
+                <Select value={filterImportancia} onValueChange={setFilterImportancia}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Importância" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todas as importâncias</SelectItem>
+                    {IMPORTANCIA_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-              {filterIncidence !== "todos" && (
+              {(filterIncidence !== "todos" || filterDificuldade !== "todos" || filterImportancia !== "todos") && (
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setFilterIncidence("todos")}
+                  onClick={() => {
+                    setFilterIncidence("todos");
+                    setFilterDificuldade("todos");
+                    setFilterImportancia("todos");
+                  }}
                   className="whitespace-nowrap"
                 >
                   Limpar filtros

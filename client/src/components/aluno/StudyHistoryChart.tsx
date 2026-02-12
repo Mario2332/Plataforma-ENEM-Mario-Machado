@@ -7,6 +7,7 @@ import { BarChart3, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import { parseDataSegura } from "@/pages/aluno/AlunoEstudos";
 import { getMetaMentor, formatarTempo } from "@/services/metasMentor";
 import { useAuth } from "@/hooks/useAuth";
+import { useMentorViewContext } from "@/contexts/MentorViewContext";
 
 interface StudyHistoryChartProps {
   estudos: any[];
@@ -48,21 +49,29 @@ function getSabado(data: Date): Date {
 
 export function StudyHistoryChart({ estudos }: StudyHistoryChartProps) {
   const { user } = useAuth();
+  const { alunoId, isMentorView } = useMentorViewContext();
   const [modo, setModo] = useState<ModoVisualizacao>("semanas");
   const [periodo, setPeriodo] = useState<PeriodoFiltro>("7");
   const [semanaAtual, setSemanaAtual] = useState<Date>(getDomingo(new Date()));
   const [metaMentor, setMetaMentor] = useState<{ horas: number; minutos: number } | null>(null);
 
+  // Determinar o ID efetivo do usuário (aluno ou mentor visualizando)
+  const effectiveUserId = isMentorView && alunoId ? alunoId : user?.uid;
+
   // Carregar meta do mentor
   useEffect(() => {
-    if (user) {
-      getMetaMentor(user.uid).then((meta) => {
+    if (effectiveUserId) {
+      console.log("[StudyHistoryChart] Carregando meta para:", effectiveUserId);
+      getMetaMentor(effectiveUserId).then((meta) => {
         if (meta) {
+          console.log("[StudyHistoryChart] Meta carregada:", meta.tempoMedioDiario);
           setMetaMentor(meta.tempoMedioDiario);
+        } else {
+          console.log("[StudyHistoryChart] Nenhuma meta encontrada");
         }
       });
     }
-  }, [user]);
+  }, [effectiveUserId]);
 
   // Calcular meta em minutos para a linha de referência
   const metaMinutos = useMemo(() => {

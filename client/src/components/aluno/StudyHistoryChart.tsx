@@ -398,7 +398,7 @@ export function StudyHistoryChart({ estudos }: StudyHistoryChartProps) {
         {metaMentor && (
           <div className="mt-4 p-3 bg-orange-50 dark:bg-orange-950/20 rounded-xl border border-orange-200 dark:border-orange-900/30">
             <p className="text-sm font-medium text-orange-800 dark:text-orange-400">
-              🎯 Meta do mentor: {formatarTempo(metaMentor.horas, metaMentor.minutos)}/dia
+              🎯 Meta do mentor: Média Diária de {formatarTempo(metaMentor.horas, metaMentor.minutos)}
             </p>
           </div>
         )}
@@ -437,23 +437,6 @@ export function StudyHistoryChart({ estudos }: StudyHistoryChartProps) {
                 formatter={(value: number) => [formatarTempoCompleto(value), 'Tempo Estudado']}
                 labelStyle={{ fontWeight: 'bold', marginBottom: '4px', color: '#64748b' }}
               />
-              
-              {/* Linha de referência da meta do mentor */}
-              {metaMinutos && (
-                <ReferenceLine 
-                  y={metaMinutos} 
-                  stroke="#f97316" 
-                  strokeWidth={2}
-                  strokeDasharray="5 5"
-                  label={{
-                    value: `Meta: ${formatarTempo(metaMentor!.horas, metaMentor!.minutos)}`,
-                    position: 'insideTopRight',
-                    fill: '#f97316',
-                    fontSize: 12,
-                    fontWeight: 'bold'
-                  }}
-                />
-              )}
               
               <Bar dataKey="minutos" radius={[4, 4, 0, 0]} maxBarSize={50}>
                 {dadosGrafico.map((entry, index) => (

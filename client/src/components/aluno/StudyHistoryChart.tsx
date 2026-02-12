@@ -198,6 +198,57 @@ export function StudyHistoryChart({ estudos }: StudyHistoryChartProps) {
     return Math.round(totalMinutosPeriodo / dadosGrafico.length);
   }, [totalMinutosPeriodo, dadosGrafico]);
 
+  // Calcular domínio do eixo Y (valores em horas exatas)
+  const dominioEixoY = useMemo(() => {
+    // Encontrar o maior tempo de estudos no período (em minutos)
+    const maiorTempoMinutos = Math.max(...dadosGrafico.map(d => d.minutos), 0);
+    
+    // Converter para horas (arredondando para cima)
+    const maiorTempoHoras = Math.ceil(maiorTempoMinutos / 60);
+    
+    // Calcular máximo inicial: maior tempo + 2h
+    let maxHoras = maiorTempoHoras + 2;
+    
+    // Se houver meta definida, verificar se precisa ajustar
+    if (metaMentor) {
+      const metaHoras = metaMentor.horas + (metaMentor.minutos > 0 ? 1 : 0); // Arredondar meta para cima
+      
+      // Se maxHoras for menor que a meta, usar meta + 1h
+      if (maxHoras < metaHoras) {
+        maxHoras = metaHoras + 1;
+      }
+    }
+    
+    // Garantir mínimo de 2h no eixo
+    maxHoras = Math.max(maxHoras, 2);
+    
+    // Retornar domínio em minutos (0 até maxHoras * 60)
+    return [0, maxHoras * 60];
+  }, [dadosGrafico, metaMentor]);
+
+  // Calcular ticks do eixo Y (valores em horas exatas)
+  const ticksEixoY = useMemo(() => {
+    const maxMinutos = dominioEixoY[1];
+    const maxHoras = maxMinutos / 60;
+    
+    // Calcular número ideal de ticks (entre 4 e 6)
+    const numTicks = Math.min(Math.max(Math.ceil(maxHoras / 2), 4), 6);
+    
+    // Calcular intervalo em horas
+    const intervaloHoras = Math.ceil(maxHoras / (numTicks - 1));
+    
+    // Gerar array de ticks
+    const ticks = [];
+    for (let i = 0; i <= numTicks; i++) {
+      const horasTick = i * intervaloHoras;
+      if (horasTick <= maxHoras) {
+        ticks.push(horasTick * 60); // Converter para minutos
+      }
+    }
+    
+    return ticks;
+  }, [dominioEixoY]);
+
   // Navegação de semanas
   const irParaSemanaAnterior = () => {
     const novaSemana = new Date(semanaAtual);
@@ -365,10 +416,15 @@ export function StudyHistoryChart({ estudos }: StudyHistoryChartProps) {
                 minTickGap={modo === "semanas" ? 0 : 30}
               />
               <YAxis 
+                domain={dominioEixoY}
+                ticks={ticksEixoY}
                 tick={{ fontSize: 12 }} 
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={(value) => formatarTempoCompleto(value)}
+                tickFormatter={(value) => {
+                  const horas = Math.round(value / 60);
+                  return `${horas}h`;
+                }}
               />
               <Tooltip 
                 cursor={{ fill: 'rgba(59, 130, 246, 0.1)' }}

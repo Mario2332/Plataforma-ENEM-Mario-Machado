@@ -32,3 +32,4 @@ export * from "./triggers/processarMetasDiarias";
 export * from "./triggers/rankingWeeklyUpdate";
 export * from "./callable/init-ranking";
 export * from "./callable/metricas-plataforma";
+export * from "./callable/mentor-features";

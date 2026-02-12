@@ -409,6 +409,46 @@ service cloud.firestore {
     }
     
     // ============================================
+    // ALERTAS DO MENTOR
+    // ============================================
+    match /alertas_mentor/{mentorId} {
+      // Apenas o próprio mentor pode ler e escrever suas configurações de alertas
+      allow read, write: if hasRole('mentor') && isOwner(mentorId);
+      
+      // Gestor pode ler e escrever alertas de qualquer mentor
+      allow read, write: if hasRole('gestor');
+    }
+    
+    // ============================================
+    // ANOTAÇÕES DO MENTOR SOBRE ALUNOS
+    // ============================================
+    match /anotacoes_mentor/{mentorId} {
+      // Apenas o próprio mentor pode ler e escrever suas anotações
+      allow read, write: if hasRole('mentor') && isOwner(mentorId);
+      
+      // Gestor pode ler e escrever anotações de qualquer mentor
+      allow read, write: if hasRole('gestor');
+      
+      // Subcoleção de anotações por aluno
+      match /alunos/{alunoId} {
+        // Apenas o próprio mentor pode ler e escrever suas anotações
+        allow read, write: if hasRole('mentor') && isOwner(mentorId);
+        
+        // Gestor pode ler e escrever anotações de qualquer mentor
+        allow read, write: if hasRole('gestor');
+        
+        // Subcoleção de anotações individuais
+        match /notas/{notaId} {
+          // Apenas o próprio mentor pode ler e escrever suas anotações
+          allow read, write: if hasRole('mentor') && isOwner(mentorId);
+          
+          // Gestor pode ler e escrever anotações de qualquer mentor
+          allow read, write: if hasRole('gestor');
+        }
+      }
+    }
+    
+    // ============================================
     // CONTEÚDOS CUSTOMIZADOS (tópicos personalizados)
     // ============================================
     match /conteudos_customizados/{materiaKey} {

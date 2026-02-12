@@ -15,6 +15,7 @@ import { Separator } from "@/components/ui/separator";
 import { mentorApi } from "@/lib/api";
 import { Plus, Users, ArrowUpDown, Edit, Trash2, Search, TrendingUp, Eye, FileText, Calendar, Clock, Target, Award, Flame, BookOpen, Trophy, CheckCircle2, XCircle, User, Zap, HelpCircle } from "lucide-react";
 import { DefinirMetasModal } from "@/components/DefinirMetasModal";
+import { AnotacoesAluno } from "@/components/mentor/AnotacoesAluno";
 import { getMetasNaoAtingidas } from "@/services/metasMentor";
 import { toast } from "sonner";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -28,6 +29,7 @@ export default function MentorAlunos() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [resumoDialogOpen, setResumoDialogOpen] = useState(false);
   const [metasDialogOpen, setMetasDialogOpen] = useState(false);
+  const [anotacoesDialogOpen, setAnotacoesDialogOpen] = useState(false);
   const [alunos, setAlunos] = useState<any[]>([]);
   const [metricas, setMetricas] = useState<any[]>([]);
   const [evolucao, setEvolucao] = useState<any[]>([]);
@@ -193,6 +195,11 @@ export default function MentorAlunos() {
   const handleOpenMetasDialog = (aluno: any) => {
     setSelectedAluno(aluno);
     setMetasDialogOpen(true);
+  };
+
+  const handleOpenAnotacoesDialog = (aluno: any) => {
+    setSelectedAluno(aluno);
+    setAnotacoesDialogOpen(true);
   };
 
   const handleMetaSalva = () => {
@@ -622,6 +629,14 @@ export default function MentorAlunos() {
                             title="Ver resumo"
                           >
                             <FileText className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleOpenAnotacoesDialog(aluno)}
+                            title="Anotações privadas"
+                          >
+                            <FileText className="h-4 w-4 text-blue-600" />
                           </Button>
                           <Button
                             variant="ghost"
@@ -1073,6 +1088,13 @@ export default function MentorAlunos() {
         onOpenChange={setMetasDialogOpen}
         aluno={selectedAluno}
         onMetaSalva={handleMetaSalva}
+      />
+
+      {/* Modal de Anotações */}
+      <AnotacoesAluno
+        open={anotacoesDialogOpen}
+        onOpenChange={setAnotacoesDialogOpen}
+        aluno={selectedAluno}
       />
     </div>
   );

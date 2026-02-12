@@ -85,6 +85,19 @@ export const mentorApi = {
   // Métricas e Evolução
   getAlunosMetricas: () => callFunction("mentorFunctions-getAlunosMetricas"),
   getEvolucaoAlunos: () => callFunction("mentorFunctions-getEvolucaoAlunos"),
+
+  // Alertas Inteligentes
+  getConfigAlertas: () => callFunction("getConfigAlertas"),
+  saveConfigAlertas: (data: { alertas: any[] }) => callFunction("saveConfigAlertas", data),
+  getAlertas: () => callFunction("getAlertas"),
+  marcarAlertaLido: (alertaId: string) => callFunction("marcarAlertaLido", { alertaId }),
+  removerAlerta: (alertaId: string) => callFunction("removerAlerta", { alertaId }),
+
+  // Anotações Privadas
+  getAnotacoesAluno: (alunoId: string) => callFunction("getAnotacoesAluno", { alunoId }),
+  criarAnotacaoAluno: (alunoId: string, texto: string) => callFunction("criarAnotacaoAluno", { alunoId, texto }),
+  editarAnotacaoAluno: (anotacaoId: string, texto: string) => callFunction("editarAnotacaoAluno", { anotacaoId, texto }),
+  deletarAnotacaoAluno: (anotacaoId: string) => callFunction("deletarAnotacaoAluno", { anotacaoId }),
   
   // Visualização da área do aluno
   getAlunoAreaCompleta: (alunoId: string) => callFunction("mentorFunctions-getAlunoAreaCompleta", { alunoId }),

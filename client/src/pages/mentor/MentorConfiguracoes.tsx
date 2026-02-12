@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { User, Lock, Building, Palette, Image } from "lucide-react";
+import { AlertasInteligentes } from "@/components/mentor/AlertasInteligentes";
 
 export default function MentorConfiguracoes() {
   const { user, userData, changePassword } = useAuthContext();
@@ -219,15 +220,16 @@ export default function MentorConfiguracoes() {
         </Card>
 
         {/* Alterar Senha */}
+               {/* Alertas Inteligentes */}
+        <AlertasInteligentes />
+
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Lock className="h-5 w-5" />
               Alterar Senha
             </CardTitle>
-            <CardDescription>
-              Atualize sua senha de acesso
-            </CardDescription>
+            <CardDescription>Atualize sua senha de acesso</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleChangePassword} className="space-y-4">

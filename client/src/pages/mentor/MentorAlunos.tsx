@@ -18,8 +18,10 @@ import { DefinirMetasModal } from "@/components/DefinirMetasModal";
 import { getMetasNaoAtingidas } from "@/services/metasMentor";
 import { toast } from "sonner";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { useAuthContext } from "@/contexts/AuthContext";
 
 export default function MentorAlunos() {
+  const { userData } = useAuthContext();
   const [, setLocation] = useLocation();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -338,7 +340,7 @@ export default function MentorAlunos() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Alunos</h1>
+          <h1 className="text-3xl font-bold">Bem-vindo, {userData?.name}!</h1>
           <p className="text-muted-foreground mt-2">Gerencie e acompanhe seus alunos</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

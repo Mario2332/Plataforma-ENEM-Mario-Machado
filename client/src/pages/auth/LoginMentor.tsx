@@ -30,7 +30,7 @@ export default function LoginMentor() {
     try {
       await signIn(loginData.email, loginData.senha);
       toast.success("Login realizado com sucesso!");
-      setLocation("/mentor");
+      setLocation("/mentor/alunos");
     } catch (error: any) {
       console.error("Erro ao fazer login:", error);
       

@@ -94,13 +94,36 @@ export default function GestorHome() {
     const mentorCount: Record<string, number> = {};
     
     alunos.forEach((aluno: any) => {
-      mentorCount[aluno.mentorId] = (mentorCount[aluno.mentorId] || 0) + 1;
+      const mentorId = aluno.mentorId || "sem-mentor";
+      mentorCount[mentorId] = (mentorCount[mentorId] || 0) + 1;
     });
     
-    return mentores.map((mentor: any) => ({
-      nome: mentor.nome,
-      alunos: mentorCount[mentor.id] || 0,
-    })).sort((a: any, b: any) => b.alunos - a.alunos);
+    const resultado = [];
+    
+    // Adicionar mentores regulares
+    mentores.forEach((mentor: any) => {
+      resultado.push({
+        nome: mentor.nome,
+        alunos: mentorCount[mentor.id] || 0,
+      });
+    });
+    
+    // Adicionar tags especiais se houver alunos
+    if (mentorCount["avulso"] > 0) {
+      resultado.push({
+        nome: "📌 Avulso",
+        alunos: mentorCount["avulso"],
+      });
+    }
+    
+    if (mentorCount["todos"] > 0) {
+      resultado.push({
+        nome: "🌐 Compartilhado",
+        alunos: mentorCount["todos"],
+      });
+    }
+    
+    return resultado.sort((a: any, b: any) => b.alunos - a.alunos);
   };
 
   const alunosGrowthData = getAlunosGrowthData();

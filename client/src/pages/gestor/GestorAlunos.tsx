@@ -102,6 +102,8 @@ export default function GestorAlunos() {
   };
 
   const getMentorNome = (mentorId: string) => {
+    if (mentorId === "avulso") return "📌 Avulso";
+    if (mentorId === "todos") return "🌐 Compartilhado";
     const mentor = mentores?.find((m) => m.id === mentorId);
     return mentor?.nome || "Sem mentor";
   };
@@ -150,6 +152,8 @@ export default function GestorAlunos() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os mentores</SelectItem>
+                <SelectItem value="avulso">📌 Avulso (sem mentor)</SelectItem>
+                <SelectItem value="todos">🌐 Compartilhado (todos os mentores)</SelectItem>
                 {mentores?.map((mentor: any) => (
                   <SelectItem key={mentor.id} value={mentor.id}>
                     {mentor.nome} - {mentor.nomePlataforma}
@@ -277,6 +281,8 @@ export default function GestorAlunos() {
                     <SelectValue placeholder="Selecione um mentor" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="avulso">📌 Avulso (sem mentor)</SelectItem>
+                    <SelectItem value="todos">🌐 Compartilhado (todos os mentores)</SelectItem>
                     {mentores?.map((mentor) => (
                       <SelectItem key={mentor.id} value={mentor.id}>
                         {mentor.nome} - {mentor.nomePlataforma}

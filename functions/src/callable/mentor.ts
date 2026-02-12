@@ -31,10 +31,22 @@ const getAlunos = functions
     const auth = await getAuthContext(context);
     requireRole(auth, "mentor");
 
-    // Retornar todos os alunos (sem filtro de mentorId)
-    const alunosSnapshot = await db
-      .collection("alunos")
-      .get();
+    // Filtrar alunos do mentor:
+    // 1. mentorId == auth.uid (alunos específicos do mentor)
+    // 2. mentorId == "todos" (alunos compartilhados com todos os mentores)
+    // 3. mentorId == "avulso" (alunos avulsos - NÃO aparecem para mentores)
+    
+    const [alunosEspecificos, alunosCompartilhados] = await Promise.all([
+      db.collection("alunos").where("mentorId", "==", auth.uid).get(),
+      db.collection("alunos").where("mentorId", "==", "todos").get(),
+    ]);
+    
+    // Combinar os dois resultados
+    const alunosDocs = [...alunosEspecificos.docs, ...alunosCompartilhados.docs];
+    
+    functions.logger.info(`[getAlunos] Mentor ${auth.uid}: ${alunosEspecificos.docs.length} específicos + ${alunosCompartilhados.docs.length} compartilhados = ${alunosDocs.length} total`);
+    
+    const alunosSnapshot = { docs: alunosDocs };
 
     // Calcular dias de inatividade para cada aluno
     const alunosComInatividade = await Promise.all(

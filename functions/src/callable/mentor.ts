@@ -560,7 +560,14 @@ const getAlunosMetricas = functions
     requireRole(auth, "mentor");
 
     try {
-      const alunosSnapshot = await db.collection("alunos").get();
+      // Buscar alunos do mentor (específicos + compartilhados)
+      const [alunosEspecificos, alunosCompartilhados] = await Promise.all([
+        db.collection("alunos").where("mentorId", "==", auth.uid).get(),
+        db.collection("alunos").where("mentorId", "==", "todos").get(),
+      ]);
+      
+      const alunosDocs = [...alunosEspecificos.docs, ...alunosCompartilhados.docs];
+      const alunosSnapshot = { docs: alunosDocs };
       
       const metricas = await Promise.all(
         alunosSnapshot.docs.map(async (alunoDoc) => {
@@ -609,10 +616,22 @@ const getEvolucaoAlunos = functions
     requireRole(auth, "mentor");
 
     try {
-      const alunosSnapshot = await db
-        .collection("alunos")
-        .orderBy("createdAt", "asc")
-        .get();
+      // Buscar alunos do mentor (específicos + compartilhados)
+      const [alunosEspecificos, alunosCompartilhados] = await Promise.all([
+        db.collection("alunos").where("mentorId", "==", auth.uid).get(),
+        db.collection("alunos").where("mentorId", "==", "todos").get(),
+      ]);
+      
+      const alunosDocs = [...alunosEspecificos.docs, ...alunosCompartilhados.docs];
+      
+      // Ordenar por createdAt manualmente
+      alunosDocs.sort((a, b) => {
+        const aTime = a.data().createdAt?.toDate?.() || a.data().createdAt?.seconds * 1000 || 0;
+        const bTime = b.data().createdAt?.toDate?.() || b.data().createdAt?.seconds * 1000 || 0;
+        return aTime - bTime;
+      });
+      
+      const alunosSnapshot = { docs: alunosDocs };
       
       const evolucao: { data: string; total: number }[] = [];
       let contador = 0;

@@ -86,7 +86,7 @@ export default function MentorMateriaPage({ materiaKey }: MentorMateriaPageProps
     loadConteudos();
   }, [materiaKey]);
 
-  const handleSort = (column: "name" | "incidence") => {
+  const handleSort = (column: "name" | "incidence" | "dificuldade" | "importancia") => {
     if (sortColumn === column) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
@@ -111,6 +111,23 @@ export default function MentorMateriaPage({ materiaKey }: MentorMateriaPageProps
       filtered = filtered.filter(topic => topic.incidenceLevel === filterIncidence);
     }
 
+    // Definir ordem de prioridade para dificuldade e importância
+    const dificuldadeOrder: Record<string, number> = {
+      "Muito fácil": 1,
+      "Fácil": 2,
+      "Média": 3,
+      "Difícil": 4,
+      "Muito difícil": 5
+    };
+    
+    const importanciaOrder: Record<string, number> = {
+      "Muito baixa": 1,
+      "Baixa": 2,
+      "Média": 3,
+      "Alta": 4,
+      "Muito alta": 5
+    };
+
     filtered.sort((a, b) => {
       let comparison = 0;
       
@@ -118,6 +135,14 @@ export default function MentorMateriaPage({ materiaKey }: MentorMateriaPageProps
         comparison = a.name.localeCompare(b.name);
       } else if (sortColumn === "incidence") {
         comparison = a.incidenceValue - b.incidenceValue;
+      } else if (sortColumn === "dificuldade") {
+        const aValue = dificuldadeOrder[a.dificuldade || ""] || 0;
+        const bValue = dificuldadeOrder[b.dificuldade || ""] || 0;
+        comparison = aValue - bValue;
+      } else if (sortColumn === "importancia") {
+        const aValue = importanciaOrder[a.importancia || ""] || 0;
+        const bValue = importanciaOrder[b.importancia || ""] || 0;
+        comparison = aValue - bValue;
       }
       
       return sortDirection === "asc" ? comparison : -comparison;
@@ -382,8 +407,28 @@ export default function MentorMateriaPage({ materiaKey }: MentorMateriaPageProps
                       {getSortIcon("incidence")}
                     </Button>
                   </th>
-                  <th className="text-center p-3 font-semibold">Dificuldade</th>
-                  <th className="text-center p-3 font-semibold">Importância</th>
+                  <th className="text-center p-3 font-semibold">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleSort("dificuldade")}
+                      className="flex items-center gap-1 mx-auto hover:bg-muted"
+                    >
+                      Dificuldade
+                      {getSortIcon("dificuldade")}
+                    </Button>
+                  </th>
+                  <th className="text-center p-3 font-semibold">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleSort("importancia")}
+                      className="flex items-center gap-1 mx-auto hover:bg-muted"
+                    >
+                      Importância
+                      {getSortIcon("importancia")}
+                    </Button>
+                  </th>
                   <th className="text-center p-3 font-semibold w-48">Ações</th>
                 </tr>
               </thead>

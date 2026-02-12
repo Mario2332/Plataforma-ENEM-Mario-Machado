@@ -398,7 +398,7 @@ export function StudyHistoryChart({ estudos }: StudyHistoryChartProps) {
         {metaMentor && (
           <div className="mt-4 p-3 bg-orange-50 dark:bg-orange-950/20 rounded-xl border border-orange-200 dark:border-orange-900/30">
             <p className="text-sm font-medium text-orange-800 dark:text-orange-400">
-              🎯 Meta do mentor: Média Diária de {formatarTempo(metaMentor.horas, metaMentor.minutos)}
+              🎯 Previsão do mentor: Média Diária de {formatarTempo(metaMentor.horas, metaMentor.minutos)}
             </p>
           </div>
         )}

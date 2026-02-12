@@ -14,6 +14,8 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { mentorApi } from "@/lib/api";
 import { Plus, Users, ArrowUpDown, Edit, Trash2, Search, TrendingUp, Eye, FileText, Calendar, Clock, Target, Award, Flame, BookOpen, Trophy, CheckCircle2, XCircle, User, Zap, HelpCircle } from "lucide-react";
+import { DefinirMetasModal } from "@/components/DefinirMetasModal";
+import { getMetasNaoAtingidas } from "@/services/metasMentor";
 import { toast } from "sonner";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
@@ -23,6 +25,7 @@ export default function MentorAlunos() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [resumoDialogOpen, setResumoDialogOpen] = useState(false);
+  const [metasDialogOpen, setMetasDialogOpen] = useState(false);
   const [alunos, setAlunos] = useState<any[]>([]);
   const [metricas, setMetricas] = useState<any[]>([]);
   const [evolucao, setEvolucao] = useState<any[]>([]);
@@ -58,7 +61,18 @@ export default function MentorAlunos() {
         mentorApi.getAlunosMetricas(),
         mentorApi.getEvolucaoAlunos(),
       ]);
-      setAlunos(alunosData as any[]);
+      
+      // Carregar metas não atingidas
+      const alunosIds = (alunosData as any[]).map(a => a.id);
+      const metasNaoAtingidas = await getMetasNaoAtingidas(alunosIds);
+      
+      // Adicionar metas não atingidas aos dados dos alunos
+      const alunosComMetas = (alunosData as any[]).map(aluno => ({
+        ...aluno,
+        metasNaoAtingidas: metasNaoAtingidas[aluno.id] ? 1 : 0
+      }));
+      
+      setAlunos(alunosComMetas);
       setMetricas(metricasData as any[]);
       setEvolucao(evolucaoData as any[]);
     } catch (error: any) {
@@ -172,6 +186,16 @@ export default function MentorAlunos() {
     } finally {
       setIsLoadingResumo(false);
     }
+  };
+
+  const handleOpenMetasDialog = (aluno: any) => {
+    setSelectedAluno(aluno);
+    setMetasDialogOpen(true);
+  };
+
+  const handleMetaSalva = () => {
+    // Recarregar dados para atualizar a coluna de metas não atingidas
+    loadData();
   };
 
   // Formatar data de cadastro
@@ -505,14 +529,14 @@ export default function MentorAlunos() {
                       </Button>
                     </TableHead>
                     <TableHead>
-                      <Button variant="ghost" size="sm" onClick={() => handleSort('email')} className="h-8 px-2">
-                        Email
+                      <Button variant="ghost" size="sm" onClick={() => handleSort('createdAt')} className="h-8 px-2">
+                        Cadastro
                         <ArrowUpDown className="ml-2 h-4 w-4" />
                       </Button>
                     </TableHead>
                     <TableHead>
-                      <Button variant="ghost" size="sm" onClick={() => handleSort('createdAt')} className="h-8 px-2">
-                        Cadastro
+                      <Button variant="ghost" size="sm" onClick={() => handleSort('metasNaoAtingidas')} className="h-8 px-2">
+                        Metas não atingidas
                         <ArrowUpDown className="ml-2 h-4 w-4" />
                       </Button>
                     </TableHead>
@@ -548,8 +572,16 @@ export default function MentorAlunos() {
                   {filteredAndSortedAlunos.map((aluno) => (
                     <TableRow key={aluno.id}>
                       <TableCell className="font-medium">{aluno.nome}</TableCell>
-                      <TableCell>{aluno.email}</TableCell>
                       <TableCell>{formatarDataCadastro(aluno)}</TableCell>
+                      <TableCell>
+                        {aluno.metasNaoAtingidas > 0 ? (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800">
+                            {aluno.metasNaoAtingidas}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
                       <TableCell>{aluno.questoesFeitas}</TableCell>
                       <TableCell>
                         <span className={`font-medium ${
@@ -587,6 +619,14 @@ export default function MentorAlunos() {
                             title="Ver resumo"
                           >
                             <FileText className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleOpenMetasDialog(aluno)}
+                            title="Definir metas"
+                          >
+                            <Target className="h-4 w-4 text-orange-600" />
                           </Button>
                           <Button
                             variant="ghost"
@@ -1023,6 +1063,14 @@ export default function MentorAlunos() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Modal de Definir Metas */}
+      <DefinirMetasModal
+        open={metasDialogOpen}
+        onOpenChange={setMetasDialogOpen}
+        aluno={selectedAluno}
+        onMetaSalva={handleMetaSalva}
+      />
     </div>
   );
 }

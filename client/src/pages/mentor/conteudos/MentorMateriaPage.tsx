@@ -15,6 +15,8 @@ interface Topic {
   name: string;
   incidenceValue: number;
   incidenceLevel: string;
+  dificuldade?: string;
+  importancia?: string;
 }
 
 interface MentorMateriaPageProps {
@@ -26,6 +28,22 @@ const INCIDENCE_OPTIONS = [
   { value: "Alta!", label: "Alta!", color: "bg-orange-500" },
   { value: "Média", label: "Média", color: "bg-yellow-500" },
   { value: "Baixa", label: "Baixa", color: "bg-blue-500" },
+  { value: "Muito baixa", label: "Muito baixa", color: "bg-gray-400" },
+];
+
+const DIFICULDADE_OPTIONS = [
+  { value: "Muito fácil", label: "Muito fácil", color: "bg-green-500" },
+  { value: "Fácil", label: "Fácil", color: "bg-lime-500" },
+  { value: "Média", label: "Média", color: "bg-yellow-500" },
+  { value: "Difícil", label: "Difícil", color: "bg-orange-500" },
+  { value: "Muito difícil", label: "Muito difícil", color: "bg-red-500" },
+];
+
+const IMPORTANCIA_OPTIONS = [
+  { value: "Muito alta", label: "Muito alta", color: "bg-purple-500" },
+  { value: "Alta", label: "Alta", color: "bg-indigo-500" },
+  { value: "Média", label: "Média", color: "bg-blue-500" },
+  { value: "Baixa", label: "Baixa", color: "bg-cyan-500" },
   { value: "Muito baixa", label: "Muito baixa", color: "bg-gray-400" },
 ];
 
@@ -48,6 +66,8 @@ export default function MentorMateriaPage({ materiaKey }: MentorMateriaPageProps
   // Estados de formulários
   const [formName, setFormName] = useState("");
   const [formIncidence, setFormIncidence] = useState("");
+  const [formDificuldade, setFormDificuldade] = useState("");
+  const [formImportancia, setFormImportancia] = useState("");
 
   const loadConteudos = async () => {
     try {
@@ -119,7 +139,7 @@ export default function MentorMateriaPage({ materiaKey }: MentorMateriaPageProps
 
   const handleCreateTopic = async () => {
     if (!formName.trim() || !formIncidence) {
-      toast.error("Preencha todos os campos");
+      toast.error("Preencha todos os campos obrigatórios");
       return;
     }
 
@@ -128,11 +148,15 @@ export default function MentorMateriaPage({ materiaKey }: MentorMateriaPageProps
         materiaKey,
         name: formName.trim(),
         incidenceLevel: formIncidence,
+        dificuldade: formDificuldade || undefined,
+        importancia: formImportancia || undefined,
       });
       toast.success("Tópico criado com sucesso!");
       setCreateDialogOpen(false);
       setFormName("");
       setFormIncidence("");
+      setFormDificuldade("");
+      setFormImportancia("");
       await loadConteudos();
     } catch (error: any) {
       toast.error(error.message || "Erro ao criar tópico");
@@ -141,7 +165,7 @@ export default function MentorMateriaPage({ materiaKey }: MentorMateriaPageProps
 
   const handleEditTopic = async () => {
     if (!selectedTopic || !formName.trim() || !formIncidence) {
-      toast.error("Preencha todos os campos");
+      toast.error("Preencha todos os campos obrigatórios");
       return;
     }
 
@@ -151,12 +175,16 @@ export default function MentorMateriaPage({ materiaKey }: MentorMateriaPageProps
         topicoId: selectedTopic.id,
         name: formName.trim(),
         incidenceLevel: formIncidence,
+        dificuldade: formDificuldade || undefined,
+        importancia: formImportancia || undefined,
       });
       toast.success("Tópico atualizado com sucesso!");
       setEditDialogOpen(false);
       setSelectedTopic(null);
       setFormName("");
       setFormIncidence("");
+      setFormDificuldade("");
+      setFormImportancia("");
       await loadConteudos();
     } catch (error: any) {
       toast.error(error.message || "Erro ao atualizar tópico");
@@ -184,6 +212,8 @@ export default function MentorMateriaPage({ materiaKey }: MentorMateriaPageProps
     setSelectedTopic(topic);
     setFormName(topic.name);
     setFormIncidence(topic.incidenceLevel);
+    setFormDificuldade(topic.dificuldade || "");
+    setFormImportancia(topic.importancia || "");
     setEditDialogOpen(true);
   };
 
@@ -232,13 +262,43 @@ export default function MentorMateriaPage({ materiaKey }: MentorMateriaPageProps
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Incidência</label>
+                    <label className="text-sm font-medium">Incidência *</label>
                     <Select value={formIncidence} onValueChange={setFormIncidence}>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione a incidência" />
                       </SelectTrigger>
                       <SelectContent>
                         {INCIDENCE_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Dificuldade (opcional)</label>
+                    <Select value={formDificuldade} onValueChange={setFormDificuldade}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a dificuldade" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DIFICULDADE_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Importância (opcional)</label>
+                    <Select value={formImportancia} onValueChange={setFormImportancia}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a importância" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {IMPORTANCIA_OPTIONS.map((opt) => (
                           <SelectItem key={opt.value} value={opt.value}>
                             {opt.label}
                           </SelectItem>
@@ -322,13 +382,15 @@ export default function MentorMateriaPage({ materiaKey }: MentorMateriaPageProps
                       {getSortIcon("incidence")}
                     </Button>
                   </th>
+                  <th className="text-center p-3 font-semibold">Dificuldade</th>
+                  <th className="text-center p-3 font-semibold">Importância</th>
                   <th className="text-center p-3 font-semibold w-48">Ações</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredAndSortedTopics.length === 0 ? (
                   <tr>
-                    <td colSpan={3} className="p-8 text-center text-muted-foreground">
+                    <td colSpan={5} className="p-8 text-center text-muted-foreground">
                       Nenhum tópico encontrado com os filtros selecionados.
                     </td>
                   </tr>
@@ -340,6 +402,24 @@ export default function MentorMateriaPage({ materiaKey }: MentorMateriaPageProps
                         <Badge className={getIncidenceBadgeColor(topic.incidenceLevel)}>
                           {topic.incidenceLevel}
                         </Badge>
+                      </td>
+                      <td className="p-3 text-center">
+                        {topic.dificuldade ? (
+                          <Badge className={DIFICULDADE_OPTIONS.find(o => o.value === topic.dificuldade)?.color || "bg-gray-400"}>
+                            {topic.dificuldade}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">-</span>
+                        )}
+                      </td>
+                      <td className="p-3 text-center">
+                        {topic.importancia ? (
+                          <Badge className={IMPORTANCIA_OPTIONS.find(o => o.value === topic.importancia)?.color || "bg-gray-400"}>
+                            {topic.importancia}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">-</span>
+                        )}
                       </td>
                       <td className="p-3">
                         <div className="flex items-center justify-center gap-2">
@@ -388,13 +468,43 @@ export default function MentorMateriaPage({ materiaKey }: MentorMateriaPageProps
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Incidência</label>
+              <label className="text-sm font-medium">Incidência *</label>
               <Select value={formIncidence} onValueChange={setFormIncidence}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione a incidência" />
                 </SelectTrigger>
                 <SelectContent>
                   {INCIDENCE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Dificuldade (opcional)</label>
+              <Select value={formDificuldade} onValueChange={setFormDificuldade}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a dificuldade" />
+                </SelectTrigger>
+                <SelectContent>
+                  {DIFICULDADE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Importância (opcional)</label>
+              <Select value={formImportancia} onValueChange={setFormImportancia}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a importância" />
+                </SelectTrigger>
+                <SelectContent>
+                  {IMPORTANCIA_OPTIONS.map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>
                       {opt.label}
                     </SelectItem>

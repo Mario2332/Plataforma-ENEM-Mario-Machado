@@ -89,6 +89,8 @@ export const mentorConteudosApi = {
     materiaKey: string;
     name: string;
     incidenceLevel: string;
+    dificuldade?: string;
+    importancia?: string;
   }) => {
     return callWithRetry("createTopico", data);
   },
@@ -101,6 +103,8 @@ export const mentorConteudosApi = {
     topicoId: string;
     name?: string;
     incidenceLevel?: string;
+    dificuldade?: string;
+    importancia?: string;
   }) => {
     return callWithRetry("updateTopico", data);
   },

@@ -59,7 +59,7 @@ export const createTopico = functions
         );
       }
 
-      const { materiaKey, name, incidenceLevel } = data;
+      const { materiaKey, name, incidenceLevel, dificuldade, importancia } = data;
 
       if (!materiaKey || !name || !incidenceLevel) {
         throw new functions.https.HttpsError(
@@ -82,6 +82,8 @@ export const createTopico = functions
         name,
         incidenceLevel,
         incidenceValue: INCIDENCE_MAP[incidenceLevel],
+        dificuldade: dificuldade || null,
+        importancia: importancia || null,
         isCustom: true,
         isDeleted: false,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -149,7 +151,7 @@ export const updateTopico = functions
         );
       }
 
-      const { materiaKey, topicoId, name, incidenceLevel } = data;
+      const { materiaKey, topicoId, name, incidenceLevel, dificuldade, importancia } = data;
 
       if (!materiaKey || !topicoId) {
         throw new functions.https.HttpsError(
@@ -182,6 +184,8 @@ export const updateTopico = functions
         updates.incidenceLevel = incidenceLevel;
         updates.incidenceValue = INCIDENCE_MAP[incidenceLevel];
       }
+      if (dificuldade !== undefined) updates.dificuldade = dificuldade || null;
+      if (importancia !== undefined) updates.importancia = importancia || null;
 
       if (topicoDoc.exists) {
         await topicoRef.update(updates);

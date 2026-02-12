@@ -45,7 +45,7 @@ export default function MentorAlunos() {
     nome: "",
     email: "",
     celular: "",
-    plano: "",
+    senha: "",
   });
   const [editFormData, setEditFormData] = useState({
     nome: "",
@@ -100,7 +100,7 @@ export default function MentorAlunos() {
         nome: "",
         email: "",
         celular: "",
-        plano: "",
+        senha: "",
       });
       await loadData();
     } catch (error: any) {
@@ -363,12 +363,13 @@ export default function MentorAlunos() {
                   <Input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} required />
                 </div>
                 <div className="space-y-2">
-                  <Label>Celular</Label>
-                  <Input value={formData.celular} onChange={(e) => setFormData({...formData, celular: e.target.value})} />
+                  <Label>Celular (opcional)</Label>
+                  <Input value={formData.celular} onChange={(e) => setFormData({...formData, celular: e.target.value})} placeholder="(00) 00000-0000" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Plano</Label>
-                  <Input value={formData.plano} onChange={(e) => setFormData({...formData, plano: e.target.value})} />
+                  <Label>Senha Provisória</Label>
+                  <Input type="password" value={formData.senha} onChange={(e) => setFormData({...formData, senha: e.target.value})} required minLength={6} placeholder="Mínimo 6 caracteres" />
+                  <p className="text-xs text-muted-foreground">O aluno poderá alterar esta senha após o primeiro acesso</p>
                 </div>
               </div>
               <DialogFooter>

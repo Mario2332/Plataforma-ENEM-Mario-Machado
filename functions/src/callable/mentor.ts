@@ -208,12 +208,19 @@ const createAluno = functions
     const auth = await getAuthContext(context);
     requireRole(auth, "mentor");
 
-    const { email, password, nome, celular, plano } = data;
+    const { email, senha, nome, celular } = data;
 
-    if (!email || !password || !nome) {
+    if (!email || !senha || !nome) {
       throw new functions.https.HttpsError(
         "invalid-argument",
         "Email, senha e nome são obrigatórios"
+      );
+    }
+    
+    if (senha.length < 6) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "A senha deve ter no mínimo 6 caracteres"
       );
     }
 
@@ -221,7 +228,7 @@ const createAluno = functions
       // Criar usuário no Firebase Auth
       const userRecord = await admin.auth().createUser({
         email,
-        password,
+        password: senha,
         displayName: nome,
       });
 
@@ -243,8 +250,17 @@ const createAluno = functions
         nome,
         email,
         celular: celular || null,
-        plano: plano || null,
         ativo: true,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      
+      // Criar documento no ranking (nível 1, 0 pontos)
+      await db.collection("ranking").doc(userRecord.uid).set({
+        userId: userRecord.uid,
+        nome,
+        nivel: 1,
+        pontos: 0,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });

@@ -21,6 +21,7 @@ export default function MentorConfiguracoes() {
   });
 
   const [passwordData, setPasswordData] = useState({
+    senhaAtual: "",
     novaSenha: "",
     confirmarSenha: "",
   });
@@ -67,7 +68,7 @@ export default function MentorConfiguracoes() {
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!passwordData.novaSenha || !passwordData.confirmarSenha) {
+    if (!passwordData.senhaAtual || !passwordData.novaSenha || !passwordData.confirmarSenha) {
       toast.error("Preencha todos os campos de senha");
       return;
     }
@@ -84,9 +85,9 @@ export default function MentorConfiguracoes() {
 
     try {
       setIsSavingPassword(true);
-      await changePassword(passwordData.novaSenha);
+      await changePassword(passwordData.senhaAtual, passwordData.novaSenha);
       toast.success("Senha alterada com sucesso!");
-      setPasswordData({ novaSenha: "", confirmarSenha: "" });
+      setPasswordData({ senhaAtual: "", novaSenha: "", confirmarSenha: "" });
     } catch (error: any) {
       toast.error(error.message || "Erro ao alterar senha");
     } finally {
@@ -230,6 +231,20 @@ export default function MentorConfiguracoes() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleChangePassword} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="senhaAtual">Senha Atual</Label>
+                <Input
+                  id="senhaAtual"
+                  type="password"
+                  value={passwordData.senhaAtual}
+                  onChange={(e) =>
+                    setPasswordData({ ...passwordData, senhaAtual: e.target.value })
+                  }
+                  placeholder="Digite sua senha atual"
+                  required
+                />
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="novaSenha">Nova Senha</Label>
                 <Input

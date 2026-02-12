@@ -8,7 +8,9 @@ import {
   sendPasswordResetEmail,
   updateProfile,
   updateEmail,
-  updatePassword
+  updatePassword,
+  EmailAuthProvider,
+  reauthenticateWithCredential
 } from "firebase/auth";
 import { doc, getDoc, getDocFromServer, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db, warmupFirestoreConnection } from "../lib/firebase";
@@ -373,13 +375,25 @@ export function useAuth() {
     }
   };
 
-  // Função de atualização de senha
-  const changePassword = async (newPassword: string) => {
+  // Função de atualização de senha com reautenticação
+  const changePassword = async (currentPassword: string, newPassword: string) => {
     if (!authState.user) throw new Error("Usuário não autenticado");
+    if (!authState.user.email) throw new Error("Email do usuário não encontrado");
 
     try {
+      // Reautenticar usuário antes de alterar senha
+      const credential = EmailAuthProvider.credential(
+        authState.user.email,
+        currentPassword
+      );
+      await reauthenticateWithCredential(authState.user, credential);
+      
+      // Alterar senha
       await updatePassword(authState.user, newPassword);
     } catch (error: any) {
+      if (error.code === "auth/wrong-password" || error.code === "auth/invalid-credential") {
+        throw new Error("Senha atual incorreta");
+      }
       throw error;
     }
   };

@@ -561,22 +561,22 @@ export default function CronogramaAgenda() {
   };
 
   const handleEditAtividade = (atividade: AtividadeAgenda) => {
-    // Se for atividade sincronizada, NÃO permitir edição
-    if (!atividade.isManual) {
-      toast.error(
-        "Esta atividade está sincronizada com o cronograma semanal e não pode ser editada diretamente. Para editá-la, vá para o cronograma semanal na aba 'Semanal'.",
-        { duration: 6000 }
-      );
-      return; // Bloquear edição
-    }
-    
-    // Apenas atividades manuais podem ser editadas
+    // Permitir edição de qualquer atividade
+    // Se for sincronizada, será convertida em manual ao salvar
     setEditingAtividade(atividade);
     setFormData({
       ...atividade,
       atividadePersonalizada: atividade.atividadePersonalizada || "",
     });
     setIsDialogOpen(true);
+    
+    // Avisar se for atividade sincronizada
+    if (!atividade.isManual) {
+      toast.info(
+        "Esta atividade será desconectada da sincronização ao ser editada. Ela se tornará uma atividade manual.",
+        { duration: 4000 }
+      );
+    }
   };
 
   const handleConfirmEditType = () => {
@@ -664,13 +664,12 @@ export default function CronogramaAgenda() {
   const handleDeleteAtividade = async (id: string) => {
     const atividade = atividades.find(a => a.id === id);
     
+    // Avisar se for atividade sincronizada
     if (atividade && !atividade.isManual) {
-      // Atividade sincronizada - NÃO permitir exclusão
-      toast.error(
-        "Esta atividade está sincronizada com o cronograma semanal e não pode ser excluída diretamente. Para removê-la, edite o cronograma semanal na aba 'Semanal'.",
-        { duration: 6000 }
+      toast.info(
+        "Esta atividade será removida apenas da agenda. Ela poderá reaparecer na próxima sincronização se ainda estiver no cronograma semanal.",
+        { duration: 5000 }
       );
-      return; // Bloquear exclusão
     }
     
     setIsSaving(true);
@@ -679,7 +678,7 @@ export default function CronogramaAgenda() {
       const userId = effectiveUserId || auth.currentUser?.uid;
       if (!userId) throw new Error("Usuário não autenticado");
       
-      // Deletar do Firestore imediatamente (apenas atividades manuais)
+      // Deletar do Firestore (tanto manuais quanto sincronizadas)
       const atividadesCollRef = collection(db, "alunos", userId, "agenda");
       const docRef = doc(atividadesCollRef, id);
       await deleteDoc(docRef);

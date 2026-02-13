@@ -28,7 +28,7 @@ interface Tarefa {
 export function TarefasAluno() {
   const { user } = useAuthContext();
   const [tarefas, setTarefas] = useState<Tarefa[]>([]);
-  const [filtro, setFiltro] = useState("dia");
+  const [filtro, setFiltro] = useState("todas");
   const [loading, setLoading] = useState(true);
   const [tarefaSelecionada, setTarefaSelecionada] = useState<Tarefa | null>(null);
   const [comentario, setComentario] = useState("");
@@ -75,6 +75,7 @@ export function TarefasAluno() {
     } catch (error: any) {
       console.error("Erro ao carregar tarefas:", error);
       toast.error("Erro ao carregar tarefas");
+      setTarefas([]);
     } finally {
       setLoading(false);
     }
@@ -93,26 +94,6 @@ export function TarefasAluno() {
     } catch (error) {
       console.error("Erro ao concluir tarefa:", error);
       toast.error("Erro ao concluir tarefa");
-    }
-  };
-
-  const adicionarComentario = async (tarefaId: string) => {
-    if (!comentario.trim()) {
-      toast.error("Digite um comentário");
-      return;
-    }
-
-    try {
-      await alunoApi.adicionarComentarioTarefa({
-        tarefaId,
-        comentario,
-      });
-      toast.success("Comentário adicionado!");
-      setComentario("");
-      carregarTarefas();
-    } catch (error) {
-      console.error("Erro ao adicionar comentário:", error);
-      toast.error("Erro ao adicionar comentário");
     }
   };
 
@@ -155,34 +136,11 @@ export function TarefasAluno() {
     return null;
   }
 
-  if (loading && tarefas.length === 0) {
-    return (
-      <Card>
-        <CardContent className="p-6">
-          <p className="text-center text-muted-foreground">Carregando tarefas...</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
   const tarefasPendentes = tarefas.filter((t) => t.status === "pendente");
   const tarefasConcluidas = tarefas.filter((t) => t.status === "concluida");
   const tarefasAtrasadas = tarefas.filter((t) => t.status === "atrasada");
 
   const progresso = tarefas.length > 0 ? (tarefasConcluidas.length / tarefas.length) * 100 : 0;
-
-  if (tarefas.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>📝 Minhas Tarefas</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-center text-muted-foreground">Nenhuma tarefa para este período.</p>
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <div className="space-y-4">
@@ -191,44 +149,8 @@ export function TarefasAluno() {
           <CardTitle>📝 Minhas Tarefas</CardTitle>
         </CardHeader>
         <CardContent>
-          {/* Barra de Progresso */}
-          <div className="mb-6">
-            <div className="flex justify-between mb-2">
-              <span className="text-sm font-medium">Progresso</span>
-              <span className="text-sm text-muted-foreground">{Math.round(progresso)}%</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div
-                className="bg-green-600 h-2 rounded-full transition-all"
-                style={{ width: `${progresso}%` }}
-              />
-            </div>
-          </div>
-
-          {/* Estatísticas */}
-          <div className="grid grid-cols-3 gap-4 mb-6">
-            <Card>
-              <CardContent className="p-4 text-center">
-                <p className="text-2xl font-bold text-yellow-600">{tarefasPendentes.length}</p>
-                <p className="text-sm text-muted-foreground">Pendentes</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 text-center">
-                <p className="text-2xl font-bold text-green-600">{tarefasConcluidas.length}</p>
-                <p className="text-sm text-muted-foreground">Concluídas</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 text-center">
-                <p className="text-2xl font-bold text-red-600">{tarefasAtrasadas.length}</p>
-                <p className="text-sm text-muted-foreground">Atrasadas</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Filtros */}
-          <Tabs value={filtro} onValueChange={setFiltro} className="mb-4">
+          {/* Filtros - SEMPRE VISÍVEIS */}
+          <Tabs value={filtro} onValueChange={setFiltro} className="mb-6">
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="dia">Hoje</TabsTrigger>
               <TabsTrigger value="semana">Semana</TabsTrigger>
@@ -237,54 +159,98 @@ export function TarefasAluno() {
             </TabsList>
           </Tabs>
 
-          {/* Lista de Tarefas */}
-          <div className="space-y-3">
-            {tarefas.map((tarefa) => (
-              <Card key={tarefa.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-3 flex-1">
-                      <Checkbox
-                        checked={tarefa.status === "concluida"}
-                        onCheckedChange={() => {
-                          if (tarefa.status !== "concluida") {
-                            setTarefaSelecionada(tarefa);
-                          }
-                        }}
-                        disabled={tarefa.status === "concluida"}
-                      />
-                      <div className="flex-1">
-                        <h4 className="font-medium flex items-center gap-2">
-                          {tarefa.titulo}
-                          {getStatusIcon(tarefa.status)}
-                        </h4>
-                        {tarefa.descricao && (
-                          <p className="text-sm text-muted-foreground mt-1">{tarefa.descricao}</p>
-                        )}
-                        <div className="flex gap-2 mt-2">
-                          <Badge className={getCategoriaColor(tarefa.categoria)}>
-                            {tarefa.categoria}
-                          </Badge>
-                          <Badge className={getPrioridadeColor(tarefa.prioridade)}>
-                            {tarefa.prioridade}
-                          </Badge>
-                          <Badge variant="outline">
-                            {formatarData(tarefa.dataFim)}
-                          </Badge>
-                        </div>
-                        {tarefa.comentarios && tarefa.comentarios.length > 0 && (
-                          <div className="mt-2 flex items-center gap-1 text-sm text-muted-foreground">
-                            <MessageSquare className="h-4 w-4" />
-                            <span>{tarefa.comentarios.length} comentário(s)</span>
+          {loading ? (
+            <p className="text-center text-muted-foreground py-8">Carregando tarefas...</p>
+          ) : tarefas.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">Nenhuma tarefa para este período.</p>
+          ) : (
+            <>
+              {/* Barra de Progresso */}
+              <div className="mb-6">
+                <div className="flex justify-between mb-2">
+                  <span className="text-sm font-medium">Progresso</span>
+                  <span className="text-sm text-muted-foreground">{Math.round(progresso)}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className="bg-green-600 h-2 rounded-full transition-all"
+                    style={{ width: `${progresso}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Estatísticas */}
+              <div className="grid grid-cols-3 gap-4 mb-6">
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <p className="text-2xl font-bold text-yellow-600">{tarefasPendentes.length}</p>
+                    <p className="text-sm text-muted-foreground">Pendentes</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <p className="text-2xl font-bold text-green-600">{tarefasConcluidas.length}</p>
+                    <p className="text-sm text-muted-foreground">Concluídas</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <p className="text-2xl font-bold text-red-600">{tarefasAtrasadas.length}</p>
+                    <p className="text-sm text-muted-foreground">Atrasadas</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Lista de Tarefas */}
+              <div className="space-y-3">
+                {tarefas.map((tarefa) => (
+                  <Card key={tarefa.id} className="hover:shadow-md transition-shadow">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-3 flex-1">
+                          <Checkbox
+                            checked={tarefa.status === "concluida"}
+                            onCheckedChange={() => {
+                              if (tarefa.status !== "concluida") {
+                                setTarefaSelecionada(tarefa);
+                              }
+                            }}
+                            disabled={tarefa.status === "concluida"}
+                          />
+                          <div className="flex-1">
+                            <h4 className="font-medium flex items-center gap-2">
+                              {tarefa.titulo}
+                              {getStatusIcon(tarefa.status)}
+                            </h4>
+                            {tarefa.descricao && (
+                              <p className="text-sm text-muted-foreground mt-1">{tarefa.descricao}</p>
+                            )}
+                            <div className="flex gap-2 mt-2 flex-wrap">
+                              <Badge className={getCategoriaColor(tarefa.categoria)}>
+                                {tarefa.categoria}
+                              </Badge>
+                              <Badge className={getPrioridadeColor(tarefa.prioridade)}>
+                                {tarefa.prioridade}
+                              </Badge>
+                              <Badge variant="outline">
+                                {formatarData(tarefa.dataFim)}
+                              </Badge>
+                            </div>
+                            {tarefa.comentarios && tarefa.comentarios.length > 0 && (
+                              <div className="mt-2 flex items-center gap-1 text-sm text-muted-foreground">
+                                <MessageSquare className="h-4 w-4" />
+                                <span>{tarefa.comentarios.length} comentário(s)</span>
+                              </div>
+                            )}
                           </div>
-                        )}
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 

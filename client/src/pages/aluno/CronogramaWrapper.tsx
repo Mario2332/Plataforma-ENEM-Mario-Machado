@@ -1,9 +1,8 @@
 import React, { useState, lazy, Suspense } from "react";
-import { Calendar, Zap, BarChart2, CalendarDays, RefreshCw, Grid3X3, ListTodo, CalendarRange, Loader2 } from "lucide-react";
+import { Calendar, Zap, BarChart2, CalendarDays, RefreshCw, ListTodo, CalendarRange, Loader2 } from "lucide-react";
 
 // Lazy loading para cada componente de cronograma
 // Isso garante que apenas o componente ativo seja carregado
-const AlunoCronograma = lazy(() => import("./AlunoCronograma"));
 const CronogramaLista = lazy(() => import("./CronogramaLista"));
 const CronogramaAgenda = lazy(() => import("./CronogramaAgenda"));
 const CronogramaAnual = lazy(() => import("./cronograma/CronogramaAnual"));
@@ -21,8 +20,7 @@ const ComponentLoader = () => (
 );
 
 export default function CronogramaWrapper() {
-  const [activeTab, setActiveTab] = useState<"semanal" | "anual-ciclos" | "anual-dinamico">("semanal");
-  const [semanalSubTab, setSemanalSubTab] = useState<"grade" | "lista" | "agenda">("grade");
+  const [activeTab, setActiveTab] = useState<"semanal" | "agenda" | "anual-ciclos" | "anual-dinamico">("semanal");
   const [anualSubTab, setAnualSubTab] = useState<"ciclos" | "estatisticas">("ciclos");
 
   return (
@@ -67,8 +65,22 @@ export default function CronogramaWrapper() {
               }
             `}
           >
-            <Calendar className="w-4 h-4" />
+            <ListTodo className="w-4 h-4" />
             Semanal
+          </button>
+          <button
+            onClick={() => setActiveTab("agenda")}
+            className={`
+              flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all
+              ${
+                activeTab === "agenda"
+                  ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md"
+                  : "text-gray-600 hover:bg-gray-100"
+              }
+            `}
+          >
+            <CalendarRange className="w-4 h-4" />
+            Agenda
           </button>
           <button
             onClick={() => setActiveTab("anual-ciclos")}
@@ -135,61 +147,16 @@ export default function CronogramaWrapper() {
         </div>
       )}
 
-      {/* Sub-tabs para Semanal */}
-      {activeTab === "semanal" && (
-        <div className="bg-gray-50 rounded-lg p-1 inline-flex gap-1">
-          <button
-            onClick={() => setSemanalSubTab("grade")}
-            className={`
-              flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-all
-              ${
-                semanalSubTab === "grade"
-                  ? "bg-white text-indigo-600 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
-              }
-            `}
-          >
-            <Grid3X3 className="w-4 h-4" />
-            Grade
-          </button>
-          <button
-            onClick={() => setSemanalSubTab("lista")}
-            className={`
-              flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-all
-              ${
-                semanalSubTab === "lista"
-                  ? "bg-white text-indigo-600 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
-              }
-            `}
-          >
-            <ListTodo className="w-4 h-4" />
-            Lista
-          </button>
-          <button
-            onClick={() => setSemanalSubTab("agenda")}
-            className={`
-              flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-all
-              ${
-                semanalSubTab === "agenda"
-                  ? "bg-white text-emerald-600 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
-              }
-            `}
-          >
-            <CalendarRange className="w-4 h-4" />
-            Agenda
-          </button>
-        </div>
-      )}
-
       {/* Conteúdo das tabs com Suspense para lazy loading */}
       <div>
         {activeTab === "semanal" && (
           <Suspense fallback={<ComponentLoader />}>
-            {semanalSubTab === "grade" && <AlunoCronograma />}
-            {semanalSubTab === "lista" && <CronogramaLista />}
-            {semanalSubTab === "agenda" && <CronogramaAgenda />}
+            <CronogramaLista />
+          </Suspense>
+        )}
+        {activeTab === "agenda" && (
+          <Suspense fallback={<ComponentLoader />}>
+            <CronogramaAgenda />
           </Suspense>
         )}
         {activeTab === "anual-ciclos" && (

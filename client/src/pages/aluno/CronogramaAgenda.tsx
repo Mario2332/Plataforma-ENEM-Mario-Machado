@@ -76,6 +76,14 @@ interface AgendaConfig {
   atividadesManuaisPreSincronizacao: AtividadeAgenda[];
 }
 
+// Função para gerar ID estável baseado no conteúdo da atividade
+const gerarIdSincronizado = (data: string, atividade: AtividadeSemanal) => {
+  const nomeAtividade = atividade.atividade === "Outra atividade" 
+    ? atividade.atividadePersonalizada || "outra"
+    : atividade.atividade;
+  return `sync_${data}_${atividade.diaSemana}_${atividade.horaInicio.replace(':', '')}_${nomeAtividade.replace(/\s+/g, '_')}`;
+};
+
 export default function CronogramaAgenda() {
   const effectiveUserId = useEffectiveUserId();
   
@@ -288,7 +296,7 @@ export default function CronogramaAgenda() {
     }, 1500);
   }, []);
 
-  // Função para sincronizar a agenda com o cronograma semanal
+  // Função para sincronizar a agenda com o cronograma semanal (INCREMENTAL)
   const sincronizarAgenda = useCallback(async (atividadesSemanaisAtuais: AtividadeSemanal[], configAtual: AgendaConfig) => {
     if (!configAtual.sincronizacaoAtiva || !configAtual.dataFimSincronizacao) {
       return;
@@ -308,9 +316,10 @@ export default function CronogramaAgenda() {
 
       // Separar atividades manuais das sincronizadas
       const atividadesManuais = atividadesAtuais.filter(a => a.isManual);
+      const atividadesSincronizadasAtuais = atividadesAtuais.filter(a => !a.isManual);
 
-      // Gerar novas atividades sincronizadas
-      const novasAtividadesSincronizadas: AtividadeAgenda[] = [];
+      // Gerar mapa de atividades sincronizadas esperadas com ID estável
+      const atividadesSincronizadasEsperadas = new Map<string, AtividadeAgenda>();
       
       const dataFim = new Date(configAtual.dataFimSincronizacao);
       const hoje = new Date();
@@ -325,8 +334,9 @@ export default function CronogramaAgenda() {
         const atividadesDoDia = atividadesSemanaisAtuais.filter(a => a.diaSemana === diaSemana);
         
         atividadesDoDia.forEach(atividadeSemanal => {
-          novasAtividadesSincronizadas.push({
-            id: `sync_${dataStr}_${atividadeSemanal.id}`,
+          const idEstavel = gerarIdSincronizado(dataStr, atividadeSemanal);
+          atividadesSincronizadasEsperadas.set(idEstavel, {
+            id: idEstavel,
             data: dataStr,
             horaInicio: atividadeSemanal.horaInicio,
             horaFim: atividadeSemanal.horaFim,
@@ -340,33 +350,69 @@ export default function CronogramaAgenda() {
         dataAtual.setDate(dataAtual.getDate() + 1);
       }
 
-      // Combinar atividades manuais com as novas sincronizadas
-      const todasAtividades = [...atividadesManuais, ...novasAtividadesSincronizadas];
-
-      // Salvar no Firestore
+      // Sincronização incremental: identificar o que mudou
       const batch = writeBatch(db);
-      
-      // Deletar todas as atividades existentes
-      snapshot.docs.forEach(docSnap => {
-        batch.delete(docSnap.ref);
+      let mudancas = 0;
+
+      // 1. Remover atividades sincronizadas que não existem mais no cronograma semanal
+      const idsEsperados = new Set(atividadesSincronizadasEsperadas.keys());
+      atividadesSincronizadasAtuais.forEach(atividadeAtual => {
+        if (!idsEsperados.has(atividadeAtual.id!)) {
+          // Atividade foi removida do cronograma semanal
+          const docRef = doc(atividadesRef, atividadeAtual.id!);
+          batch.delete(docRef);
+          mudancas++;
+        }
       });
-      
-      // Adicionar novas atividades
-      todasAtividades.forEach(atividade => {
-        const { id, ...atividadeData } = atividade;
-        const newDocRef = doc(atividadesRef);
-        batch.set(newDocRef, {
-          ...atividadeData,
-          createdAt: Timestamp.now()
-        });
+
+      // 2. Adicionar ou atualizar atividades sincronizadas
+      const idsAtuais = new Set(atividadesSincronizadasAtuais.map(a => a.id));
+      atividadesSincronizadasEsperadas.forEach((atividadeEsperada, id) => {
+        if (!idsAtuais.has(id)) {
+          // Nova atividade - adicionar
+          const docRef = doc(atividadesRef, id);
+          const { id: _, ...atividadeData } = atividadeEsperada;
+          batch.set(docRef, {
+            ...atividadeData,
+            createdAt: Timestamp.now()
+          });
+          mudancas++;
+        } else {
+          // Atividade existe - verificar se precisa atualizar
+          const atividadeAtual = atividadesSincronizadasAtuais.find(a => a.id === id);
+          if (atividadeAtual) {
+            const precisaAtualizar = 
+              atividadeAtual.horaInicio !== atividadeEsperada.horaInicio ||
+              atividadeAtual.horaFim !== atividadeEsperada.horaFim ||
+              atividadeAtual.atividade !== atividadeEsperada.atividade ||
+              atividadeAtual.atividadePersonalizada !== atividadeEsperada.atividadePersonalizada ||
+              atividadeAtual.cor !== atividadeEsperada.cor;
+            
+            if (precisaAtualizar) {
+              const docRef = doc(atividadesRef, id);
+              const { id: _, ...atividadeData } = atividadeEsperada;
+              batch.update(docRef, atividadeData);
+              mudancas++;
+            }
+          }
+        }
       });
-      
-      await batch.commit();
-      
-      // Atualizar estado local
-      setAtividades(todasAtividades);
-      
-      console.log('Sincronização automática concluída:', todasAtividades.length, 'atividades');
+
+      // Executar batch apenas se houver mudanças
+      if (mudancas > 0) {
+        await batch.commit();
+        console.log(`Sincronização incremental: ${mudancas} mudanças aplicadas`);
+        
+        // Recarregar atividades após sincronização
+        const snapshotAtualizado = await getDocs(atividadesRef);
+        const atividadesAtualizadas = snapshotAtualizado.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as AtividadeAgenda[];
+        setAtividades(atividadesAtualizadas);
+      } else {
+        console.log('Sincronização: nenhuma mudança necessária');
+      }
     } catch (error) {
       console.error('Erro na sincronização automática:', error);
     }
@@ -561,6 +607,16 @@ export default function CronogramaAgenda() {
   };
 
   const handleDeleteAtividade = (id: string) => {
+    const atividade = atividades.find(a => a.id === id);
+    
+    if (atividade && !atividade.isManual) {
+      // Atividade sincronizada - avisar o usuário
+      toast.warning(
+        "Esta é uma atividade sincronizada do cronograma semanal. Para removê-la permanentemente, edite o cronograma semanal na aba 'Semanal'.",
+        { duration: 5000 }
+      );
+    }
+    
     setAtividades(prev => prev.filter(a => a.id !== id));
     toast.success("Atividade removida!");
     triggerAutoSave();
@@ -617,8 +673,9 @@ export default function CronogramaAgenda() {
         const atividadesDoDia = atividadesSemanais.filter(a => a.diaSemana === diaSemana);
         
         atividadesDoDia.forEach(atividadeSemanal => {
+          const idEstavel = gerarIdSincronizado(dataStr, atividadeSemanal);
           novasAtividades.push({
-            id: `sync_${dataStr}_${atividadeSemanal.id}`,
+            id: idEstavel,
             data: dataStr,
             horaInicio: atividadeSemanal.horaInicio,
             horaFim: atividadeSemanal.horaFim,

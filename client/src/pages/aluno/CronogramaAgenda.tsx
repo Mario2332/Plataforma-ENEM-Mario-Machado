@@ -74,6 +74,7 @@ interface AgendaConfig {
   sincronizacaoAtiva: boolean;
   dataFimSincronizacao: string;
   atividadesManuaisPreSincronizacao: AtividadeAgenda[];
+  atividadesExcluidas: string[]; // IDs de atividades sincronizadas que foram editadas/excluídas manualmente
 }
 
 // Função para gerar ID estável baseado no conteúdo da atividade
@@ -103,6 +104,7 @@ export default function CronogramaAgenda() {
     sincronizacaoAtiva: false,
     dataFimSincronizacao: "",
     atividadesManuaisPreSincronizacao: [],
+    atividadesExcluidas: [],
   });
   
   // Estado para modais
@@ -240,7 +242,12 @@ export default function CronogramaAgenda() {
       const configSnap = await getDoc(configRef);
       
       if (configSnap.exists()) {
-        setConfig(configSnap.data() as AgendaConfig);
+        const configData = configSnap.data() as AgendaConfig;
+        // Garantir que atividadesExcluidas existe (compatibilidade com configs antigos)
+        setConfig({
+          ...configData,
+          atividadesExcluidas: configData.atividadesExcluidas || [],
+        });
       }
     } catch (error: any) {
       console.error("Erro ao carregar configuração:", error);
@@ -368,6 +375,13 @@ export default function CronogramaAgenda() {
         
         atividadesDoDia.forEach(atividadeSemanal => {
           const idEstavel = gerarIdSincronizado(dataStr, atividadeSemanal);
+          
+          // NÃO sincronizar atividades que foram editadas/excluídas manualmente
+          if (configAtual.atividadesExcluidas.includes(idEstavel)) {
+            console.log(`Ignorando atividade excluída: ${idEstavel}`);
+            return; // Pular esta atividade
+          }
+          
           atividadesSincronizadasEsperadas.set(idEstavel, {
             id: idEstavel,
             data: dataStr,
@@ -560,7 +574,7 @@ export default function CronogramaAgenda() {
     setIsDialogOpen(true);
   };
 
-  const handleEditAtividade = (atividade: AtividadeAgenda) => {
+  const handleEditAtividade = async (atividade: AtividadeAgenda) => {
     // Permitir edição de qualquer atividade
     // Se for sincronizada, será convertida em manual ao salvar
     setEditingAtividade(atividade);
@@ -570,8 +584,14 @@ export default function CronogramaAgenda() {
     });
     setIsDialogOpen(true);
     
-    // Avisar se for atividade sincronizada
-    if (!atividade.isManual) {
+    // Se for atividade sincronizada, adicionar à lista de exclusões
+    if (!atividade.isManual && atividade.id) {
+      const novoConfig = {
+        ...config,
+        atividadesExcluidas: [...config.atividadesExcluidas, atividade.id],
+      };
+      await saveConfig(novoConfig);
+      
       toast.info(
         "Esta atividade será desconectada da sincronização ao ser editada. Ela se tornará uma atividade manual.",
         { duration: 4000 }
@@ -664,19 +684,20 @@ export default function CronogramaAgenda() {
   const handleDeleteAtividade = async (id: string) => {
     const atividade = atividades.find(a => a.id === id);
     
-    // Avisar se for atividade sincronizada
-    if (atividade && !atividade.isManual) {
-      toast.info(
-        "Esta atividade será removida apenas da agenda. Ela poderá reaparecer na próxima sincronização se ainda estiver no cronograma semanal.",
-        { duration: 5000 }
-      );
-    }
-    
     setIsSaving(true);
     
     try {
       const userId = effectiveUserId || auth.currentUser?.uid;
       if (!userId) throw new Error("Usuário não autenticado");
+      
+      // Se for atividade sincronizada, adicionar à lista de exclusões
+      if (atividade && !atividade.isManual) {
+        const novoConfig = {
+          ...config,
+          atividadesExcluidas: [...config.atividadesExcluidas, id],
+        };
+        await saveConfig(novoConfig);
+      }
       
       // Deletar do Firestore (tanto manuais quanto sincronizadas)
       const atividadesCollRef = collection(db, "alunos", userId, "agenda");

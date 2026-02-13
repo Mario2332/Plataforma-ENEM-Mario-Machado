@@ -73,13 +73,13 @@ class ErrorBoundary extends Component<Props, State> {
               Tente recarregar a página ou limpar o cache.
             </p>
 
-            {process.env.NODE_ENV === 'development' && (
-              <div className="p-4 w-full rounded bg-muted overflow-auto mb-6">
-                <pre className="text-sm text-muted-foreground whitespace-break-spaces">
-                  {this.state.error?.stack}
-                </pre>
-              </div>
-            )}
+            <div className="p-4 w-full rounded bg-muted overflow-auto mb-6">
+              <p className="text-xs font-semibold mb-2">Detalhes do erro:</p>
+              <pre className="text-xs text-muted-foreground whitespace-break-spaces">
+                {this.state.error?.message}
+                {process.env.NODE_ENV === 'development' && `\n\n${this.state.error?.stack}`}
+              </pre>
+            </div>
 
             <div className="flex gap-3 w-full">
               <button

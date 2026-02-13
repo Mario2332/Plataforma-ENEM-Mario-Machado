@@ -28,14 +28,20 @@ export default function GestorAlunos() {
   const loadData = async () => {
     try {
       setIsLoading(true);
+      console.log("[GestorAlunos] Iniciando carregamento de dados...");
+      
       const [alunosData, mentoresData] = await Promise.all([
         gestorApi.getAllAlunos(),
         gestorApi.getMentores(),
       ]);
+      
+      console.log("[GestorAlunos] Dados carregados:", { alunosData, mentoresData });
       setAlunos(alunosData as any[]);
       setMentores(mentoresData as any[]);
     } catch (error: any) {
+      console.error("[GestorAlunos] Erro ao carregar dados:", error);
       toast.error(error.message || "Erro ao carregar dados");
+      throw error; // Re-throw para o ErrorBoundary capturar
     } finally {
       setIsLoading(false);
     }
@@ -109,8 +115,12 @@ export default function GestorAlunos() {
   };
 
   const filteredAlunos = alunos?.filter((aluno: any) => {
-    const matchesSearch = aluno.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      aluno.email.toLowerCase().includes(searchTerm.toLowerCase());
+    // Verificar se os campos existem antes de usar toLowerCase
+    const nome = aluno.nome || "";
+    const email = aluno.email || "";
+    
+    const matchesSearch = nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesMentor = selectedMentorId === "all" || aluno.mentorId === selectedMentorId;
     return matchesSearch && matchesMentor;
   });
@@ -187,8 +197,8 @@ export default function GestorAlunos() {
                 <TableBody>
                   {filteredAlunos.map((aluno: any) => (
                     <TableRow key={aluno.id}>
-                      <TableCell className="font-medium">{aluno.nome}</TableCell>
-                      <TableCell>{aluno.email}</TableCell>
+                      <TableCell className="font-medium">{aluno.nome || "Sem nome"}</TableCell>
+                      <TableCell>{aluno.email || "Sem email"}</TableCell>
                       <TableCell>{getMentorNome(aluno.mentorId)}</TableCell>
                       <TableCell>
                         {(() => {

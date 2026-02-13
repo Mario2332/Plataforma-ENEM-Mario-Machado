@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Plus, Edit, Trash2, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
+import { mentorApi } from "@/lib/api";
 
 interface Aluno {
   id: string;
@@ -57,13 +58,12 @@ export default function MentorTarefas() {
 
   const carregarAlunos = async () => {
     try {
-      // @ts-ignore
-      const result = await window.firebase.functions().httpsCallable("mentorFunctions-getAlunos")({});
-      const alunosValidos = (result.data || []).filter(
+      const result = await mentorApi.getAlunos();
+      const alunosValidos = (result || []).filter(
         (a: any) => a.mentorId && a.mentorId !== "todos" && a.mentorId !== "avulsa"
       );
       setAlunos(alunosValidos);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao carregar alunos:", error);
       toast.error("Erro ao carregar alunos");
     }
@@ -72,11 +72,8 @@ export default function MentorTarefas() {
   const carregarTarefas = async () => {
     try {
       setLoading(true);
-      // @ts-ignore
-      const result = await window.firebase.functions().httpsCallable("getTarefasMentor")({
-        alunoId: alunoSelecionado,
-      });
-      setTarefas(result.data || []);
+      const result = await mentorApi.getTarefasMentor(alunoSelecionado);
+      setTarefas(result || []);
     } catch (error) {
       console.error("Erro ao carregar tarefas:", error);
       toast.error("Erro ao carregar tarefas");
@@ -125,15 +122,13 @@ export default function MentorTarefas() {
 
     try {
       if (tarefaEditando) {
-        // @ts-ignore
-        await window.firebase.functions().httpsCallable("editarTarefa")({
+        await mentorApi.editarTarefa({
           tarefaId: tarefaEditando.id,
           ...formData,
         });
         toast.success("Tarefa atualizada!");
       } else {
-        // @ts-ignore
-        await window.firebase.functions().httpsCallable("criarTarefa")(formData);
+        await mentorApi.criarTarefa(formData);
         toast.success("Tarefa criada!");
       }
       setModalAberto(false);
@@ -148,8 +143,7 @@ export default function MentorTarefas() {
     if (!confirm("Tem certeza que deseja deletar esta tarefa?")) return;
 
     try {
-      // @ts-ignore
-      await window.firebase.functions().httpsCallable("deletarTarefa")({ tarefaId });
+      await mentorApi.deletarTarefa(tarefaId);
       toast.success("Tarefa deletada!");
       carregarTarefas();
     } catch (error) {

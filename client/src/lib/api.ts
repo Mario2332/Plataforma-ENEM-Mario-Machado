@@ -98,6 +98,31 @@ export const mentorApi = {
   criarAnotacaoAluno: (alunoId: string, texto: string) => callFunction("criarAnotacaoAluno", { alunoId, texto }),
   editarAnotacaoAluno: (anotacaoId: string, texto: string) => callFunction("editarAnotacaoAluno", { anotacaoId, texto }),
   deletarAnotacaoAluno: (anotacaoId: string) => callFunction("deletarAnotacaoAluno", { anotacaoId }),
+
+  // Tarefas
+  getTarefasMentor: (alunoId?: string) => callFunction("getTarefasMentor", { alunoId }),
+  criarTarefa: (data: {
+    titulo: string;
+    descricao?: string;
+    categoria: string;
+    prioridade: string;
+    alunoId: string;
+    dataInicio: string;
+    dataFim: string;
+    recorrencia?: any;
+  }) => callFunction("criarTarefa", data),
+  editarTarefa: (data: {
+    tarefaId: string;
+    titulo?: string;
+    descricao?: string;
+    categoria?: string;
+    prioridade?: string;
+    dataInicio?: string;
+    dataFim?: string;
+    recorrencia?: any;
+  }) => callFunction("editarTarefa", data),
+  deletarTarefa: (tarefaId: string) => callFunction("deletarTarefa", { tarefaId }),
+  getEstatisticasTarefas: (alunoId: string) => callFunction("getEstatisticasTarefas", { alunoId }),
   
   // Visualização da área do aluno
   getAlunoAreaCompleta: (alunoId: string) => callFunction("mentorFunctions-getAlunoAreaCompleta", { alunoId }),
@@ -586,4 +611,11 @@ export const alunoApi = {
   
   updatePreferenciaComparacao: (mostrar: boolean) => 
     callFunction("updatePreferenciaComparacao", { mostrar }),
+
+  // Tarefas
+  getTarefasAluno: (filtro: string) => callFunction("getTarefasAluno", { filtro }),
+  concluirTarefa: (data: { tarefaId: string; comentario?: string }) => 
+    callFunction("concluirTarefa", data),
+  adicionarComentarioTarefa: (data: { tarefaId: string; comentario: string }) => 
+    callFunction("adicionarComentarioTarefa", data),
 };

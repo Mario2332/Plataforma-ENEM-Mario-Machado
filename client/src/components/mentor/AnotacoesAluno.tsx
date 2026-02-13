@@ -47,11 +47,22 @@ export const AnotacoesAluno: React.FC<AnotacoesAlunoProps> = ({
       console.log("[AnotacoesAluno] N\u00famero de anota\u00e7\u00f5es:", data.length);
       
       // Converter timestamps do Firestore para Date
-      const anotacoesConvertidas = data.map((anotacao: any) => ({
-        ...anotacao,
-        createdAt: anotacao.createdAt?.toDate ? anotacao.createdAt.toDate() : new Date(anotacao.createdAt),
-        updatedAt: anotacao.updatedAt?.toDate ? anotacao.updatedAt.toDate() : new Date(anotacao.updatedAt),
-      }));
+      const anotacoesConvertidas = data.map((anotacao: any) => {
+        // Converter timestamp do Firestore (formato {_seconds, _nanoseconds})
+        const convertTimestamp = (ts: any) => {
+          if (!ts) return new Date();
+          if (ts.toDate) return ts.toDate();
+          if (ts._seconds) return new Date(ts._seconds * 1000);
+          if (typeof ts === 'string' || typeof ts === 'number') return new Date(ts);
+          return new Date();
+        };
+        
+        return {
+          ...anotacao,
+          createdAt: convertTimestamp(anotacao.createdAt),
+          updatedAt: convertTimestamp(anotacao.updatedAt),
+        };
+      });
       
       console.log("[AnotacoesAluno] Anota\u00e7\u00f5es convertidas:", anotacoesConvertidas);
       setAnotacoes(anotacoesConvertidas);

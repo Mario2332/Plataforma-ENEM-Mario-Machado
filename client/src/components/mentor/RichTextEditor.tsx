@@ -60,7 +60,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     editorProps: {
       attributes: {
         class:
-          "prose prose-sm max-w-none focus:outline-none min-h-[300px] p-4 border rounded-md bg-white",
+          "prose prose-sm max-w-none focus:outline-none min-h-[300px] p-4 border rounded-md bg-white [&_ul]:list-disc [&_ul]:ml-6 [&_ol]:list-decimal [&_ol]:ml-6 [&_li]:my-1",
       },
     },
   });

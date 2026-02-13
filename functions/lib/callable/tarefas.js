@@ -61,11 +61,15 @@ exports.getTarefasAluno = (0, https_1.onCall)({ region: "southamerica-east1" }, 
     const auth = await (0, auth_1.getAuthContextV2)(request);
     (0, auth_1.requireRole)(auth, "aluno");
     const { filtro } = request.data;
+    console.log("[getTarefasAluno] UID do aluno:", auth.uid);
+    console.log("[getTarefasAluno] Filtro:", filtro);
     const alunoDoc = await db.collection("alunos").doc(auth.uid).get();
     if (!alunoDoc.exists) {
+        console.log("[getTarefasAluno] Aluno não encontrado no Firestore");
         throw new https_1.HttpsError("not-found", "Aluno não encontrado");
     }
     const alunoData = alunoDoc.data();
+    console.log("[getTarefasAluno] mentorId do aluno:", alunoData?.mentorId);
     if (!alunoData?.mentorId ||
         alunoData.mentorId === "todos" ||
         alunoData.mentorId === "avulsa") {
@@ -75,10 +79,12 @@ exports.getTarefasAluno = (0, https_1.onCall)({ region: "southamerica-east1" }, 
         .collection("tarefas")
         .where("alunoId", "==", auth.uid)
         .get();
+    console.log("[getTarefasAluno] Total de tarefas encontradas:", tarefasSnapshot.size);
     let tarefas = tarefasSnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
     }));
+    console.log("[getTarefasAluno] Tarefas antes do filtro:", tarefas.length);
     const now = new Date();
     if (filtro === "dia") {
         const inicioDia = new Date(now.setHours(0, 0, 0, 0));

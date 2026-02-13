@@ -122,12 +122,17 @@ export const getTarefasAluno = onCall(
 
     const { filtro } = request.data;
 
+    console.log("[getTarefasAluno] UID do aluno:", auth.uid);
+    console.log("[getTarefasAluno] Filtro:", filtro);
+
     const alunoDoc = await db.collection("alunos").doc(auth.uid).get();
     if (!alunoDoc.exists) {
+      console.log("[getTarefasAluno] Aluno não encontrado no Firestore");
       throw new HttpsError("not-found", "Aluno não encontrado");
     }
 
     const alunoData = alunoDoc.data();
+    console.log("[getTarefasAluno] mentorId do aluno:", alunoData?.mentorId);
     
     if (
       !alunoData?.mentorId ||
@@ -142,10 +147,14 @@ export const getTarefasAluno = onCall(
       .where("alunoId", "==", auth.uid)
       .get();
 
+    console.log("[getTarefasAluno] Total de tarefas encontradas:", tarefasSnapshot.size);
+
     let tarefas = tarefasSnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
     })) as any[];
+
+    console.log("[getTarefasAluno] Tarefas antes do filtro:", tarefas.length);
 
     const now = new Date();
     if (filtro === "dia") {

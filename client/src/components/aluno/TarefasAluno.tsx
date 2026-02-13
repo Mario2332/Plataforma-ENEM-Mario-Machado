@@ -9,6 +9,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { CheckCircle2, Clock, AlertCircle, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 import { alunoApi } from "@/lib/api";
+import { useAuthContext } from "@/contexts/AuthContext";
+import { db } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
 
 interface Tarefa {
   id: string;
@@ -23,20 +26,51 @@ interface Tarefa {
 }
 
 export function TarefasAluno() {
+  const { user } = useAuthContext();
   const [tarefas, setTarefas] = useState<Tarefa[]>([]);
   const [filtro, setFiltro] = useState("dia");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [tarefaSelecionada, setTarefaSelecionada] = useState<Tarefa | null>(null);
   const [comentario, setComentario] = useState("");
+  const [temMentorEspecifico, setTemMentorEspecifico] = useState(false);
 
   useEffect(() => {
-    carregarTarefas();
-  }, [filtro]);
+    verificarMentor();
+  }, [user]);
+
+  useEffect(() => {
+    if (temMentorEspecifico) {
+      carregarTarefas();
+    }
+  }, [filtro, temMentorEspecifico]);
+
+  const verificarMentor = async () => {
+    if (!user) return;
+
+    try {
+      const alunoDoc = await getDoc(doc(db, "alunos", user.uid));
+      if (alunoDoc.exists()) {
+        const mentorId = alunoDoc.data().mentorId;
+        console.log("[TarefasAluno] mentorId:", mentorId);
+        
+        // Verificar se tem mentor específico (não é "todos" nem "avulsa")
+        const temMentor = mentorId && mentorId !== "todos" && mentorId !== "avulsa";
+        console.log("[TarefasAluno] temMentorEspecifico:", temMentor);
+        setTemMentorEspecifico(temMentor);
+      }
+    } catch (error) {
+      console.error("Erro ao verificar mentor:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const carregarTarefas = async () => {
     try {
       setLoading(true);
+      console.log("[TarefasAluno] Carregando tarefas com filtro:", filtro);
       const result = await alunoApi.getTarefasAluno(filtro);
+      console.log("[TarefasAluno] Tarefas recebidas:", result);
       setTarefas(result || []);
     } catch (error: any) {
       console.error("Erro ao carregar tarefas:", error);
@@ -84,7 +118,7 @@ export function TarefasAluno() {
 
   const formatarData = (data: any) => {
     if (!data) return "";
-    const d = data.toDate ? data.toDate() : new Date(data);
+    const d = data.toDate ? data.toDate() : new Date(data._seconds * 1000);
     return d.toLocaleDateString("pt-BR");
   };
 
@@ -92,6 +126,7 @@ export function TarefasAluno() {
     const colors: any = {
       questoes: "bg-blue-100 text-blue-800",
       "video-aula": "bg-purple-100 text-purple-800",
+      videoaula: "bg-purple-100 text-purple-800",
       revisao: "bg-green-100 text-green-800",
       redacao: "bg-orange-100 text-orange-800",
       leitura: "bg-yellow-100 text-yellow-800",
@@ -115,11 +150,10 @@ export function TarefasAluno() {
     return <Clock className="h-5 w-5 text-yellow-600" />;
   };
 
-  const tarefasPendentes = tarefas.filter((t) => t.status === "pendente");
-  const tarefasConcluidas = tarefas.filter((t) => t.status === "concluida");
-  const tarefasAtrasadas = tarefas.filter((t) => t.status === "atrasada");
-
-  const progresso = tarefas.length > 0 ? (tarefasConcluidas.length / tarefas.length) * 100 : 0;
+  // Não renderizar nada se não tem mentor específico
+  if (!temMentorEspecifico) {
+    return null;
+  }
 
   if (loading && tarefas.length === 0) {
     return (
@@ -130,6 +164,12 @@ export function TarefasAluno() {
       </Card>
     );
   }
+
+  const tarefasPendentes = tarefas.filter((t) => t.status === "pendente");
+  const tarefasConcluidas = tarefas.filter((t) => t.status === "concluida");
+  const tarefasAtrasadas = tarefas.filter((t) => t.status === "atrasada");
+
+  const progresso = tarefas.length > 0 ? (tarefasConcluidas.length / tarefas.length) * 100 : 0;
 
   if (tarefas.length === 0) {
     return (

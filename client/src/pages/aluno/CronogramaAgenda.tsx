@@ -134,6 +134,9 @@ export default function CronogramaAgenda() {
   const hasUnsavedChanges = useRef(false);
   const atividadesRef = useRef<AtividadeAgenda[]>([]);
   const userIdRef = useRef<string | null>(null);
+  
+  // Ref para prevenir sincronizações concorrentes
+  const isSyncingRef = useRef(false);
 
   // Atualizar refs
   useEffect(() => {
@@ -144,7 +147,30 @@ export default function CronogramaAgenda() {
     userIdRef.current = effectiveUserId;
   }, [effectiveUserId]);
 
-  // Carregar dados
+  // Listener em tempo real para atividades da agenda (FONTE ÚNICA DA VERDADE)
+  useEffect(() => {
+    if (!effectiveUserId) return;
+    
+    const agendaRef = collection(db, "alunos", effectiveUserId, "agenda");
+    
+    const unsubscribe = onSnapshot(agendaRef, (snapshot) => {
+      const atividadesAtualizadas = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as AtividadeAgenda[];
+      
+      setAtividades(atividadesAtualizadas);
+      console.log('Agenda atualizada via listener:', atividadesAtualizadas.length, 'atividades');
+    }, (error) => {
+      console.error('Erro no listener da agenda:', error);
+    });
+    
+    return () => {
+      unsubscribe();
+    };
+  }, [effectiveUserId]);
+  
+  // Carregar dados iniciais
   useEffect(() => {
     if (!effectiveUserId) return;
     
@@ -153,7 +179,6 @@ export default function CronogramaAgenda() {
       hasUnsavedChanges.current = false;
       try {
         await Promise.all([
-          loadAtividades(),
           loadAtividadesSemanais(),
           loadConfig(),
         ]);
@@ -301,6 +326,14 @@ export default function CronogramaAgenda() {
     if (!configAtual.sincronizacaoAtiva || !configAtual.dataFimSincronizacao) {
       return;
     }
+    
+    // Prevenir sincronizações concorrentes
+    if (isSyncingRef.current) {
+      console.log('Sincronização já em progresso, ignorando...');
+      return;
+    }
+    
+    isSyncingRef.current = true;
 
     try {
       const userId = effectiveUserId || auth.currentUser?.uid;
@@ -402,16 +435,15 @@ export default function CronogramaAgenda() {
       if (mudancas > 0) {
         await batch.commit();
         console.log(`Sincronização incremental: ${mudancas} mudanças aplicadas`);
-        
-        // Atualizar estado local com as atividades esperadas (sem recarregar do Firestore)
-        // Isso evita duplicação temporária causada por race conditions
-        const todasAtividades = [...atividadesManuais, ...Array.from(atividadesSincronizadasEsperadas.values())];
-        setAtividades(todasAtividades);
+        // NÃO atualizar estado local aqui - o listener onSnapshot fará isso automaticamente
+        // Isso elimina COMPLETAMENTE a duplicação temporária
       } else {
         console.log('Sincronização: nenhuma mudança necessária');
       }
     } catch (error) {
       console.error('Erro na sincronização automática:', error);
+    } finally {
+      isSyncingRef.current = false;
     }
   }, [effectiveUserId]);
 
@@ -529,18 +561,22 @@ export default function CronogramaAgenda() {
   };
 
   const handleEditAtividade = (atividade: AtividadeAgenda) => {
-    // Se for atividade sincronizada, perguntar se quer editar só esta ou todas
+    // Se for atividade sincronizada, NÃO permitir edição
     if (!atividade.isManual) {
-      setEditingAtividade(atividade);
-      setIsEditSingleDialogOpen(true);
-    } else {
-      setEditingAtividade(atividade);
-      setFormData({
-        ...atividade,
-        atividadePersonalizada: atividade.atividadePersonalizada || "",
-      });
-      setIsDialogOpen(true);
+      toast.error(
+        "Esta atividade está sincronizada com o cronograma semanal e não pode ser editada diretamente. Para editá-la, vá para o cronograma semanal na aba 'Semanal'.",
+        { duration: 6000 }
+      );
+      return; // Bloquear edição
     }
+    
+    // Apenas atividades manuais podem ser editadas
+    setEditingAtividade(atividade);
+    setFormData({
+      ...atividade,
+      atividadePersonalizada: atividade.atividadePersonalizada || "",
+    });
+    setIsDialogOpen(true);
   };
 
   const handleConfirmEditType = () => {
@@ -603,9 +639,7 @@ export default function CronogramaAgenda() {
         const { id, ...atividadeData } = novaAtividade;
         await setDoc(docRef, atividadeData, { merge: true });
         
-        setAtividades(prev => prev.map(a => 
-          a.id === editingAtividade.id ? { ...novaAtividade, id: a.id } : a
-        ));
+        // Estado local será atualizado automaticamente pelo listener onSnapshot
         toast.success("Atividade atualizada!");
       } else {
         // Adicionar nova atividade
@@ -616,7 +650,7 @@ export default function CronogramaAgenda() {
           createdAt: Timestamp.now()
         });
         
-        setAtividades(prev => [...prev, { ...novaAtividade, id: newDocRef.id }]);
+        // Estado local será atualizado automaticamente pelo listener onSnapshot
         toast.success("Atividade adicionada!");
       }
     } catch (error: any) {
@@ -631,11 +665,12 @@ export default function CronogramaAgenda() {
     const atividade = atividades.find(a => a.id === id);
     
     if (atividade && !atividade.isManual) {
-      // Atividade sincronizada - avisar o usuário
-      toast.warning(
-        "Esta é uma atividade sincronizada do cronograma semanal. Para removê-la permanentemente, edite o cronograma semanal na aba 'Semanal'.",
-        { duration: 5000 }
+      // Atividade sincronizada - NÃO permitir exclusão
+      toast.error(
+        "Esta atividade está sincronizada com o cronograma semanal e não pode ser excluída diretamente. Para removê-la, edite o cronograma semanal na aba 'Semanal'.",
+        { duration: 6000 }
       );
+      return; // Bloquear exclusão
     }
     
     setIsSaving(true);
@@ -644,13 +679,12 @@ export default function CronogramaAgenda() {
       const userId = effectiveUserId || auth.currentUser?.uid;
       if (!userId) throw new Error("Usuário não autenticado");
       
-      // Deletar do Firestore imediatamente
+      // Deletar do Firestore imediatamente (apenas atividades manuais)
       const atividadesCollRef = collection(db, "alunos", userId, "agenda");
       const docRef = doc(atividadesCollRef, id);
       await deleteDoc(docRef);
       
-      // Atualizar estado local
-      setAtividades(prev => prev.filter(a => a.id !== id));
+      // Estado local será atualizado automaticamente pelo listener onSnapshot
       toast.success("Atividade removida!");
     } catch (error: any) {
       console.error("Erro ao deletar atividade:", error);

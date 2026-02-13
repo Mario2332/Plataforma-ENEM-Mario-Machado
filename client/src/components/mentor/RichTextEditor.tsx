@@ -37,12 +37,20 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         heading: {
           levels: [1, 2, 3],
         },
+        bulletList: {
+          keepMarks: true,
+          keepAttributes: false,
+        },
+        orderedList: {
+          keepMarks: true,
+          keepAttributes: false,
+        },
       }),
       TextStyle,
       Color,
       Underline,
       TextAlign.configure({
-        types: ["heading", "paragraph"],
+        types: ["heading", "paragraph", "listItem"],
       }),
     ],
     content,

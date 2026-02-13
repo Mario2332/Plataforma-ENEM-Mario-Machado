@@ -42,7 +42,15 @@ export const AnotacoesAluno: React.FC<AnotacoesAlunoProps> = ({
     try {
       setLoading(true);
       const data = await mentorApi.getAnotacoesAluno(alunoId);
-      setAnotacoes(data);
+      
+      // Converter timestamps do Firestore para Date
+      const anotacoesConvertidas = data.map((anotacao: any) => ({
+        ...anotacao,
+        createdAt: anotacao.createdAt?.toDate ? anotacao.createdAt.toDate() : new Date(anotacao.createdAt),
+        updatedAt: anotacao.updatedAt?.toDate ? anotacao.updatedAt.toDate() : new Date(anotacao.updatedAt),
+      }));
+      
+      setAnotacoes(anotacoesConvertidas);
     } catch (error) {
       console.error("Erro ao carregar anotações:", error);
     } finally {

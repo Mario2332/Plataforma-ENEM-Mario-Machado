@@ -449,6 +449,20 @@ service cloud.firestore {
     }
     
     // ============================================
+    // ANOTAÇÕES DE ALUNOS (coleção plana)
+    // ============================================
+    match /anotacoes_alunos/{anotacaoId} {
+      // Apenas o mentor que criou pode ler e escrever
+      allow read, write: if hasRole('mentor') && resource.data.mentorId == request.auth.uid;
+      
+      // Permitir criação se o mentor está criando sua própria anotação
+      allow create: if hasRole('mentor') && request.resource.data.mentorId == request.auth.uid;
+      
+      // Gestor pode ler e escrever todas as anotações
+      allow read, write: if hasRole('gestor');
+    }
+    
+    // ============================================
     // CONTEÚDOS CUSTOMIZADOS (tópicos personalizados)
     // ============================================
     match /conteudos_customizados/{materiaKey} {

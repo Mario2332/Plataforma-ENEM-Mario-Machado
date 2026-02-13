@@ -58,7 +58,7 @@ export default function MentorTarefas() {
   const carregarAlunos = async () => {
     try {
       // @ts-ignore
-      const result = await window.firebase.functions().httpsCallable("mentorFunctions-getAllAlunos")({});
+      const result = await window.firebase.functions().httpsCallable("mentorFunctions-getAlunos")({});
       const alunosValidos = (result.data || []).filter(
         (a: any) => a.mentorId && a.mentorId !== "todos" && a.mentorId !== "avulsa"
       );

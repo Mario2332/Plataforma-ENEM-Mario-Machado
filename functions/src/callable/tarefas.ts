@@ -112,13 +112,15 @@ export const criarTarefa = onCall(
 
 // ==================== LISTAR TAREFAS DO ALUNO ====================
 
+// ==================== LISTAR TAREFAS DO ALUNO ====================
+
 export const getTarefasAluno = onCall(
   { region: "southamerica-east1" },
   async (request) => {
     const auth = await getAuthContextV2(request);
     requireRole(auth, "aluno");
 
-    const { filtro } = request.data; // "dia", "semana", "mes", "todas"
+    const { filtro } = request.data;
 
     const alunoDoc = await db.collection("alunos").doc(auth.uid).get();
     if (!alunoDoc.exists) {
@@ -127,63 +129,56 @@ export const getTarefasAluno = onCall(
 
     const alunoData = alunoDoc.data();
     
-    // Verificar se o aluno tem mentor específico
     if (
       !alunoData?.mentorId ||
       alunoData.mentorId === "todos" ||
       alunoData.mentorId === "avulsa"
     ) {
-      return []; // Retorna vazio para alunos sem mentor específico
+      return [];
     }
 
-    let query = db.collection("tarefas").where("alunoId", "==", auth.uid);
+    const tarefasSnapshot = await db
+      .collection("tarefas")
+      .where("alunoId", "==", auth.uid)
+      .get();
 
-    // Aplicar filtro de data
-    const now = new Date();
-    if (filtro === "dia") {
-      const inicioDia = new Date(now.setHours(0, 0, 0, 0));
-      const fimDia = new Date(now.setHours(23, 59, 59, 999));
-      query = query
-        .where("dataFim", ">=", Timestamp.fromDate(inicioDia))
-        .where("dataFim", "<=", Timestamp.fromDate(fimDia));
-    } else if (filtro === "semana") {
-      const inicioSemana = new Date(now);
-      inicioSemana.setDate(now.getDate() - now.getDay());
-      inicioSemana.setHours(0, 0, 0, 0);
-      
-      const fimSemana = new Date(inicioSemana);
-      fimSemana.setDate(inicioSemana.getDate() + 6);
-      fimSemana.setHours(23, 59, 59, 999);
-      
-      query = query
-        .where("dataFim", ">=", Timestamp.fromDate(inicioSemana))
-        .where("dataFim", "<=", Timestamp.fromDate(fimSemana));
-    } else if (filtro === "mes") {
-      const inicioMes = new Date(now.getFullYear(), now.getMonth(), 1);
-      const fimMes = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-      
-      query = query
-        .where("dataFim", ">=", Timestamp.fromDate(inicioMes))
-        .where("dataFim", "<=", Timestamp.fromDate(fimMes));
-    }
-
-    const tarefasSnapshot = await query.get();
-
-    const tarefas = tarefasSnapshot.docs.map((doc) => ({
+    let tarefas = tarefasSnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
     })) as any[];
 
-    // Atualizar status de tarefas atrasadas
+    const now = new Date();
+    if (filtro === "dia") {
+      const inicioDia = new Date(now.setHours(0, 0, 0, 0));
+      const fimDia = new Date(now.setHours(23, 59, 59, 999));
+      tarefas = tarefas.filter((t) => {
+        const dataFim = t.dataFim.toDate();
+        return dataFim >= inicioDia && dataFim <= fimDia;
+      });
+    } else if (filtro === "semana") {
+      const inicioSemana = new Date(now);
+      inicioSemana.setDate(now.getDate() - now.getDay());
+      inicioSemana.setHours(0, 0, 0, 0);
+      const fimSemana = new Date(inicioSemana);
+      fimSemana.setDate(inicioSemana.getDate() + 6);
+      fimSemana.setHours(23, 59, 59, 999);
+      tarefas = tarefas.filter((t) => {
+        const dataFim = t.dataFim.toDate();
+        return dataFim >= inicioSemana && dataFim <= fimSemana;
+      });
+    } else if (filtro === "mes") {
+      const inicioMes = new Date(now.getFullYear(), now.getMonth(), 1);
+      const fimMes = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+      tarefas = tarefas.filter((t) => {
+        const dataFim = t.dataFim.toDate();
+        return dataFim >= inicioMes && dataFim <= fimMes;
+      });
+    }
+
     const agora = Timestamp.now();
     for (const tarefa of tarefas) {
-      if (
-        tarefa.status === "pendente" &&
-        tarefa.dataFim.toMillis() < agora.toMillis()
-      ) {
-        await db.collection("tarefas").doc(tarefa.id).update({
-          status: "atrasada",
-        });
+      if (tarefa.status === "pendente" && tarefa.dataFim.toMillis() < agora.toMillis()) {
+        await db.collection("tarefas").doc(tarefa.id).update({ status: "atrasada" });
         tarefa.status = "atrasada";
       }
     }

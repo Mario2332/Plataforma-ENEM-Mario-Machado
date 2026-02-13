@@ -1,15 +1,15 @@
-import * as functions from "firebase-functions/v2";
+import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
-import { getAuthContext, requireRole } from "../utils/auth";
+import { getAuthContextV2, requireRole } from "../utils/auth";
 
 const db = getFirestore();
 
 // ==================== ALERTAS ====================
 
-export const getConfigAlertas = functions
-  .region("southamerica-east1")
-  .https.onCall(async (request) => {
-    const auth = await getAuthContext(request);
+export const getConfigAlertas = onCall(
+  { region: "southamerica-east1" },
+  async (request) => {
+    const auth = await getAuthContextV2(request);
     requireRole(auth, "mentor");
 
     const configDoc = await db
@@ -32,16 +32,16 @@ export const getConfigAlertas = functions
     return configDoc.data();
   });
 
-export const saveConfigAlertas = functions
-  .region("southamerica-east1")
-  .https.onCall(async (request) => {
-    const auth = await getAuthContext(request);
+export const saveConfigAlertas = onCall(
+  { region: "southamerica-east1" },
+  async (request) => {
+    const auth = await getAuthContextV2(request);
     requireRole(auth, "mentor");
 
     const { alertas } = request.data;
 
     if (!alertas || !Array.isArray(alertas)) {
-      throw new functions.https.HttpsError("invalid-argument", "Alertas inválidos");
+      throw new HttpsError("invalid-argument", "Alertas inválidos");
     }
 
     await db
@@ -58,10 +58,10 @@ export const saveConfigAlertas = functions
     return { success: true };
   });
 
-export const getAlertas = functions
-  .region("southamerica-east1")
-  .https.onCall(async (request) => {
-    const auth = await getAuthContext(request);
+export const getAlertas = onCall(
+  { region: "southamerica-east1" },
+  async (request) => {
+    const auth = await getAuthContextV2(request);
     requireRole(auth, "mentor");
 
     const alertasSnapshot = await db
@@ -78,28 +78,28 @@ export const getAlertas = functions
     }));
   });
 
-export const marcarAlertaLido = functions
-  .region("southamerica-east1")
-  .https.onCall(async (request) => {
-    const auth = await getAuthContext(request);
+export const marcarAlertaLido = onCall(
+  { region: "southamerica-east1" },
+  async (request) => {
+    const auth = await getAuthContextV2(request);
     requireRole(auth, "mentor");
 
     const { alertaId } = request.data;
 
     if (!alertaId) {
-      throw new functions.https.HttpsError("invalid-argument", "alertaId é obrigatório");
+      throw new HttpsError("invalid-argument", "alertaId é obrigatório");
     }
 
     const alertaRef = db.collection("alertas").doc(alertaId);
     const alertaDoc = await alertaRef.get();
 
     if (!alertaDoc.exists) {
-      throw new functions.https.HttpsError("not-found", "Alerta não encontrado");
+      throw new HttpsError("not-found", "Alerta não encontrado");
     }
 
     const alertaData = alertaDoc.data();
     if (alertaData?.mentorId !== auth.uid) {
-      throw new functions.https.HttpsError("permission-denied", "Sem permissão");
+      throw new HttpsError("permission-denied", "Sem permissão");
     }
 
     await alertaRef.update({
@@ -110,28 +110,28 @@ export const marcarAlertaLido = functions
     return { success: true };
   });
 
-export const removerAlerta = functions
-  .region("southamerica-east1")
-  .https.onCall(async (request) => {
-    const auth = await getAuthContext(request);
+export const removerAlerta = onCall(
+  { region: "southamerica-east1" },
+  async (request) => {
+    const auth = await getAuthContextV2(request);
     requireRole(auth, "mentor");
 
     const { alertaId } = request.data;
 
     if (!alertaId) {
-      throw new functions.https.HttpsError("invalid-argument", "alertaId é obrigatório");
+      throw new HttpsError("invalid-argument", "alertaId é obrigatório");
     }
 
     const alertaRef = db.collection("alertas").doc(alertaId);
     const alertaDoc = await alertaRef.get();
 
     if (!alertaDoc.exists) {
-      throw new functions.https.HttpsError("not-found", "Alerta não encontrado");
+      throw new HttpsError("not-found", "Alerta não encontrado");
     }
 
     const alertaData = alertaDoc.data();
     if (alertaData?.mentorId !== auth.uid) {
-      throw new functions.https.HttpsError("permission-denied", "Sem permissão");
+      throw new HttpsError("permission-denied", "Sem permissão");
     }
 
     await alertaRef.delete();
@@ -141,27 +141,27 @@ export const removerAlerta = functions
 
 // ==================== ANOTAÇÕES ====================
 
-export const getAnotacoesAluno = functions
-  .region("southamerica-east1")
-  .https.onCall(async (request) => {
-    const auth = await getAuthContext(request);
+export const getAnotacoesAluno = onCall(
+  { region: "southamerica-east1" },
+  async (request) => {
+    const auth = await getAuthContextV2(request);
     requireRole(auth, "mentor");
 
     const { alunoId } = request.data;
 
     if (!alunoId) {
-      throw new functions.https.HttpsError("invalid-argument", "alunoId é obrigatório");
+      throw new HttpsError("invalid-argument", "alunoId é obrigatório");
     }
 
     // Verificar se o aluno pertence ao mentor
     const alunoDoc = await db.collection("alunos").doc(alunoId).get();
     if (!alunoDoc.exists) {
-      throw new functions.https.HttpsError("not-found", "Aluno não encontrado");
+      throw new HttpsError("not-found", "Aluno não encontrado");
     }
 
     const alunoData = alunoDoc.data();
     if (alunoData?.mentorId !== auth.uid && alunoData?.mentorId !== "todos") {
-      throw new functions.https.HttpsError("permission-denied", "Sem permissão");
+      throw new HttpsError("permission-denied", "Sem permissão");
     }
 
     const anotacoesSnapshot = await db
@@ -177,27 +177,27 @@ export const getAnotacoesAluno = functions
     }));
   });
 
-export const criarAnotacaoAluno = functions
-  .region("southamerica-east1")
-  .https.onCall(async (request) => {
-    const auth = await getAuthContext(request);
+export const criarAnotacaoAluno = onCall(
+  { region: "southamerica-east1" },
+  async (request) => {
+    const auth = await getAuthContextV2(request);
     requireRole(auth, "mentor");
 
     const { alunoId, texto } = request.data;
 
     if (!alunoId || !texto) {
-      throw new functions.https.HttpsError("invalid-argument", "alunoId e texto são obrigatórios");
+      throw new HttpsError("invalid-argument", "alunoId e texto são obrigatórios");
     }
 
     // Verificar se o aluno pertence ao mentor
     const alunoDoc = await db.collection("alunos").doc(alunoId).get();
     if (!alunoDoc.exists) {
-      throw new functions.https.HttpsError("not-found", "Aluno não encontrado");
+      throw new HttpsError("not-found", "Aluno não encontrado");
     }
 
     const alunoData = alunoDoc.data();
     if (alunoData?.mentorId !== auth.uid && alunoData?.mentorId !== "todos") {
-      throw new functions.https.HttpsError("permission-denied", "Sem permissão");
+      throw new HttpsError("permission-denied", "Sem permissão");
     }
 
     const anotacaoRef = await db.collection("anotacoes_alunos").add({
@@ -211,28 +211,28 @@ export const criarAnotacaoAluno = functions
     return { id: anotacaoRef.id, success: true };
   });
 
-export const editarAnotacaoAluno = functions
-  .region("southamerica-east1")
-  .https.onCall(async (request) => {
-    const auth = await getAuthContext(request);
+export const editarAnotacaoAluno = onCall(
+  { region: "southamerica-east1" },
+  async (request) => {
+    const auth = await getAuthContextV2(request);
     requireRole(auth, "mentor");
 
     const { anotacaoId, texto } = request.data;
 
     if (!anotacaoId || !texto) {
-      throw new functions.https.HttpsError("invalid-argument", "anotacaoId e texto são obrigatórios");
+      throw new HttpsError("invalid-argument", "anotacaoId e texto são obrigatórios");
     }
 
     const anotacaoRef = db.collection("anotacoes_alunos").doc(anotacaoId);
     const anotacaoDoc = await anotacaoRef.get();
 
     if (!anotacaoDoc.exists) {
-      throw new functions.https.HttpsError("not-found", "Anotação não encontrada");
+      throw new HttpsError("not-found", "Anotação não encontrada");
     }
 
     const anotacaoData = anotacaoDoc.data();
     if (anotacaoData?.mentorId !== auth.uid) {
-      throw new functions.https.HttpsError("permission-denied", "Sem permissão");
+      throw new HttpsError("permission-denied", "Sem permissão");
     }
 
     await anotacaoRef.update({
@@ -243,28 +243,28 @@ export const editarAnotacaoAluno = functions
     return { success: true };
   });
 
-export const deletarAnotacaoAluno = functions
-  .region("southamerica-east1")
-  .https.onCall(async (request) => {
-    const auth = await getAuthContext(request);
+export const deletarAnotacaoAluno = onCall(
+  { region: "southamerica-east1" },
+  async (request) => {
+    const auth = await getAuthContextV2(request);
     requireRole(auth, "mentor");
 
     const { anotacaoId } = request.data;
 
     if (!anotacaoId) {
-      throw new functions.https.HttpsError("invalid-argument", "anotacaoId é obrigatório");
+      throw new HttpsError("invalid-argument", "anotacaoId é obrigatório");
     }
 
     const anotacaoRef = db.collection("anotacoes_alunos").doc(anotacaoId);
     const anotacaoDoc = await anotacaoRef.get();
 
     if (!anotacaoDoc.exists) {
-      throw new functions.https.HttpsError("not-found", "Anotação não encontrada");
+      throw new HttpsError("not-found", "Anotação não encontrada");
     }
 
     const anotacaoData = anotacaoDoc.data();
     if (anotacaoData?.mentorId !== auth.uid) {
-      throw new functions.https.HttpsError("permission-denied", "Sem permissão");
+      throw new HttpsError("permission-denied", "Sem permissão");
     }
 
     await anotacaoRef.delete();

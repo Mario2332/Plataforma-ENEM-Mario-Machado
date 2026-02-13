@@ -176,7 +176,17 @@ export default function MentorTarefas() {
 
   const formatarData = (timestamp: any) => {
     if (!timestamp) return "";
-    const date = timestamp._seconds ? new Date(timestamp._seconds * 1000) : new Date(timestamp);
+    let date: Date;
+    if (timestamp._seconds) {
+      date = new Date(timestamp._seconds * 1000);
+    } else if (timestamp.toDate) {
+      date = timestamp.toDate();
+    } else {
+      date = new Date(timestamp);
+    }
+    // Adicionar offset de timezone para garantir que a data seja exibida corretamente
+    const offset = date.getTimezoneOffset();
+    date = new Date(date.getTime() + offset * 60 * 1000);
     return date.toLocaleDateString("pt-BR");
   };
 

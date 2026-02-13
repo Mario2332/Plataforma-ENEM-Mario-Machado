@@ -34,8 +34,8 @@ exports.criarTarefa = (0, https_1.onCall)({ region: "southamerica-east1" }, asyn
         prioridade,
         mentorId: auth.uid,
         alunoId,
-        dataInicio: firestore_1.Timestamp.fromDate(new Date(dataInicio)),
-        dataFim: firestore_1.Timestamp.fromDate(new Date(dataFim)),
+        dataInicio: firestore_1.Timestamp.fromDate(new Date(dataInicio + 'T12:00:00.000Z')),
+        dataFim: firestore_1.Timestamp.fromDate(new Date(dataFim + 'T12:00:00.000Z')),
         recorrencia: recorrencia || { ativa: false, tipo: "diaria" },
         status: "pendente",
         comentarios: [],
@@ -90,8 +90,10 @@ exports.getTarefasAluno = (0, https_1.onCall)({ region: "southamerica-east1" }, 
         const inicioDia = new Date(now.setHours(0, 0, 0, 0));
         const fimDia = new Date(now.setHours(23, 59, 59, 999));
         tarefas = tarefas.filter((t) => {
+            const dataInicio = t.dataInicio.toDate();
             const dataFim = t.dataFim.toDate();
-            return dataFim >= inicioDia && dataFim <= fimDia;
+            // Mostrar tarefa se o dia de hoje está dentro do período da tarefa
+            return dataInicio <= fimDia && dataFim >= inicioDia;
         });
     }
     else if (filtro === "semana") {
@@ -102,16 +104,20 @@ exports.getTarefasAluno = (0, https_1.onCall)({ region: "southamerica-east1" }, 
         fimSemana.setDate(inicioSemana.getDate() + 6);
         fimSemana.setHours(23, 59, 59, 999);
         tarefas = tarefas.filter((t) => {
+            const dataInicio = t.dataInicio.toDate();
             const dataFim = t.dataFim.toDate();
-            return dataFim >= inicioSemana && dataFim <= fimSemana;
+            // Mostrar tarefa se há sobreposição entre o período da tarefa e a semana
+            return dataInicio <= fimSemana && dataFim >= inicioSemana;
         });
     }
     else if (filtro === "mes") {
         const inicioMes = new Date(now.getFullYear(), now.getMonth(), 1);
         const fimMes = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
         tarefas = tarefas.filter((t) => {
+            const dataInicio = t.dataInicio.toDate();
             const dataFim = t.dataFim.toDate();
-            return dataFim >= inicioMes && dataFim <= fimMes;
+            // Mostrar tarefa se há sobreposição entre o período da tarefa e o mês
+            return dataInicio <= fimMes && dataFim >= inicioMes;
         });
     }
     const agora = firestore_1.Timestamp.now();
@@ -244,10 +250,10 @@ exports.editarTarefa = (0, https_1.onCall)({ region: "southamerica-east1" }, asy
     }
     // Converter datas se fornecidas
     if (updates.dataInicio) {
-        updates.dataInicio = firestore_1.Timestamp.fromDate(new Date(updates.dataInicio));
+        updates.dataInicio = firestore_1.Timestamp.fromDate(new Date(updates.dataInicio + 'T12:00:00.000Z'));
     }
     if (updates.dataFim) {
-        updates.dataFim = firestore_1.Timestamp.fromDate(new Date(updates.dataFim));
+        updates.dataFim = firestore_1.Timestamp.fromDate(new Date(updates.dataFim + 'T12:00:00.000Z'));
     }
     updates.atualizadaEm = firestore_1.FieldValue.serverTimestamp();
     await tarefaRef.update(updates);

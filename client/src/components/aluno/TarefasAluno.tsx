@@ -99,7 +99,17 @@ export function TarefasAluno() {
 
   const formatarData = (data: any) => {
     if (!data) return "";
-    const d = data.toDate ? data.toDate() : new Date(data._seconds * 1000);
+    let d: Date;
+    if (data.toDate) {
+      d = data.toDate();
+    } else if (data._seconds) {
+      d = new Date(data._seconds * 1000);
+    } else {
+      d = new Date(data);
+    }
+    // Adicionar offset de timezone para garantir que a data seja exibida corretamente
+    const offset = d.getTimezoneOffset();
+    d = new Date(d.getTime() + offset * 60 * 1000);
     return d.toLocaleDateString("pt-BR");
   };
 

@@ -1,10 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { mentorApi } from "@/lib/api";
-import { Trash2, Edit2, Plus, FileText } from "lucide-react";
+import { Trash2, Edit2, X } from "lucide-react";
 import { RichTextEditor } from "./RichTextEditor";
 
 interface Anotacao {
@@ -17,22 +15,28 @@ interface Anotacao {
 interface AnotacoesAlunoProps {
   alunoId: string;
   alunoNome: string;
+  open: boolean;
+  onClose: () => void;
 }
 
 export const AnotacoesAluno: React.FC<AnotacoesAlunoProps> = ({
   alunoId,
   alunoNome,
+  open,
+  onClose,
 }) => {
   const [anotacoes, setAnotacoes] = useState<Anotacao[]>([]);
   const [loading, setLoading] = useState(true);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [modoEdicao, setModoEdicao] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [conteudoEditor, setConteudoEditor] = useState("");
   const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
-    loadAnotacoes();
-  }, [alunoId]);
+    if (open) {
+      loadAnotacoes();
+    }
+  }, [alunoId, open]);
 
   const loadAnotacoes = async () => {
     try {
@@ -46,20 +50,20 @@ export const AnotacoesAluno: React.FC<AnotacoesAlunoProps> = ({
     }
   };
 
-  const abrirModalNova = () => {
+  const abrirModoNova = () => {
     setEditandoId(null);
     setConteudoEditor("");
-    setModalOpen(true);
+    setModoEdicao(true);
   };
 
-  const abrirModalEditar = (anotacao: Anotacao) => {
+  const abrirModoEditar = (anotacao: Anotacao) => {
     setEditandoId(anotacao.id);
     setConteudoEditor(anotacao.texto);
-    setModalOpen(true);
+    setModoEdicao(true);
   };
 
-  const fecharModal = () => {
-    setModalOpen(false);
+  const voltarParaLista = () => {
+    setModoEdicao(false);
     setEditandoId(null);
     setConteudoEditor("");
   };
@@ -83,7 +87,7 @@ export const AnotacoesAluno: React.FC<AnotacoesAlunoProps> = ({
         toast.success("Anotação criada!");
       }
       
-      fecharModal();
+      voltarParaLista();
       await loadAnotacoes();
     } catch (error: any) {
       toast.error(error.message || "Erro ao salvar anotação");
@@ -104,116 +108,146 @@ export const AnotacoesAluno: React.FC<AnotacoesAlunoProps> = ({
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-32">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
+  if (!open) return null;
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
+      {/* Overlay */}
+      <div 
+        className="fixed inset-0 bg-black/50 z-50"
+        onClick={onClose}
+      />
+
+      {/* Modal */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div 
+          className="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between p-6 border-b">
             <div>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Anotações Privadas - {alunoNome}
-              </CardTitle>
+              <h2 className="text-2xl font-bold">
+                📝 Anotações Privadas
+              </h2>
               <p className="text-sm text-muted-foreground mt-1">
-                Apenas você pode ver estas anotações
+                Aluno: <span className="font-semibold text-foreground">{alunoNome}</span>
               </p>
             </div>
-            <Button onClick={abrirModalNova} size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              Nova Anotação
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              className="h-8 w-8 p-0"
+            >
+              <X className="h-5 w-5" />
             </Button>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {anotacoes.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p>Nenhuma anotação ainda.</p>
-              <p className="text-sm">Clique em "Nova Anotação" para começar!</p>
-            </div>
-          ) : (
-            anotacoes.map((anotacao) => (
-              <div
-                key={anotacao.id}
-                className="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
-              >
-                <div
-                  className="prose prose-sm max-w-none"
-                  dangerouslySetInnerHTML={{ __html: anotacao.texto }}
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto p-6">
+            {loading ? (
+              <div className="flex items-center justify-center h-32">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              </div>
+            ) : modoEdicao ? (
+              // Modo de Edição
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">
+                    {editandoId ? "Editar Anotação" : "Nova Anotação"}
+                  </h3>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={voltarParaLista}
+                    disabled={salvando}
+                  >
+                    Voltar
+                  </Button>
+                </div>
+
+                <RichTextEditor
+                  content={conteudoEditor}
+                  onChange={setConteudoEditor}
+                  placeholder="Escreva suas anotações aqui..."
                 />
-                <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200">
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(anotacao.updatedAt).toLocaleString("pt-BR")}
-                  </p>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => abrirModalEditar(anotacao)}
-                    >
-                      <Edit2 className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDeletar(anotacao.id)}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={voltarParaLista}
+                    disabled={salvando}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={handleSalvar}
+                    disabled={salvando || !conteudoEditor.trim()}
+                  >
+                    {salvando ? "Salvando..." : "Salvar Anotação"}
+                  </Button>
                 </div>
               </div>
-            ))
-          )}
-        </CardContent>
-      </Card>
+            ) : (
+              // Lista de Anotações
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">
+                    Anotações ({anotacoes.length})
+                  </h3>
+                  <Button onClick={abrirModoNova} size="sm">
+                    + Nova Anotação
+                  </Button>
+                </div>
 
-      {/* Modal de Edição */}
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {editandoId ? "Editar Anotação" : "Nova Anotação"}
-            </DialogTitle>
-            <DialogDescription>
-              Use as ferramentas de formatação para criar anotações ricas sobre {alunoNome}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="py-4">
-            <RichTextEditor
-              content={conteudoEditor}
-              onChange={setConteudoEditor}
-              placeholder="Escreva suas anotações aqui..."
-            />
+                {anotacoes.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <p className="text-lg mb-2">Nenhuma anotação ainda.</p>
+                    <p className="text-sm">Clique em "Nova Anotação" para começar!</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {anotacoes.map((anotacao) => (
+                      <div
+                        key={anotacao.id}
+                        className="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
+                      >
+                        <div
+                          className="prose prose-sm max-w-none"
+                          dangerouslySetInnerHTML={{ __html: anotacao.texto }}
+                        />
+                        <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200">
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(anotacao.updatedAt).toLocaleString("pt-BR")}
+                          </p>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => abrirModoEditar(anotacao)}
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeletar(anotacao.id)}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={fecharModal}
-              disabled={salvando}
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleSalvar}
-              disabled={salvando || !conteudoEditor.trim()}
-            >
-              {salvando ? "Salvando..." : "Salvar Anotação"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
+      </div>
     </>
   );
 };

@@ -1091,11 +1091,14 @@ export default function MentorAlunos() {
       />
 
       {/* Modal de Anotações */}
-      <AnotacoesAluno
-        open={anotacoesDialogOpen}
-        onOpenChange={setAnotacoesDialogOpen}
-        aluno={selectedAluno}
-      />
+      {selectedAluno && (
+        <AnotacoesAluno
+          alunoId={selectedAluno.userId}
+          alunoNome={selectedAluno.nome}
+          open={anotacoesDialogOpen}
+          onClose={() => setAnotacoesDialogOpen(false)}
+        />
+      )}
     </div>
   );
 }

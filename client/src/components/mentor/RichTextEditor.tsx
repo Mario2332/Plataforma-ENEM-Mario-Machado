@@ -17,6 +17,7 @@ import {
   AlignRight,
   Undo,
   Redo,
+  Type,
 } from "lucide-react";
 
 interface RichTextEditorProps {
@@ -32,7 +33,11 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
 }) => {
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        heading: {
+          levels: [1, 2, 3],
+        },
+      }),
       TextStyle,
       Color,
       Underline,
@@ -47,7 +52,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     editorProps: {
       attributes: {
         class:
-          "prose prose-sm max-w-none focus:outline-none min-h-[120px] p-3 border rounded-md",
+          "prose prose-sm max-w-none focus:outline-none min-h-[300px] p-4 border rounded-md bg-white",
       },
     },
   });
@@ -61,11 +66,13 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     isActive = false,
     children,
     title,
+    disabled = false,
   }: {
     onClick: () => void;
     isActive?: boolean;
     children: React.ReactNode;
     title: string;
+    disabled?: boolean;
   }) => (
     <Button
       type="button"
@@ -73,151 +80,185 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       size="sm"
       onClick={onClick}
       title={title}
-      className="h-8 w-8 p-0"
+      disabled={disabled}
+      className="h-9 w-9 p-0"
     >
       {children}
     </Button>
   );
 
   return (
-    <div className="border rounded-lg overflow-hidden">
+    <div className="border rounded-lg overflow-hidden bg-white">
       {/* Toolbar */}
-      <div className="flex flex-wrap gap-1 p-2 bg-gray-50 border-b">
+      <div className="flex flex-wrap gap-1 p-2 bg-gray-50 border-b items-center">
         {/* Formatação de texto */}
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleBold().run()}
-          isActive={editor.isActive("bold")}
-          title="Negrito"
-        >
-          <Bold className="h-4 w-4" />
-        </ToolbarButton>
+        <div className="flex gap-1">
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleBold().run()}
+            isActive={editor.isActive("bold")}
+            title="Negrito (Ctrl+B)"
+          >
+            <Bold className="h-4 w-4" />
+          </ToolbarButton>
 
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleItalic().run()}
-          isActive={editor.isActive("italic")}
-          title="Itálico"
-        >
-          <Italic className="h-4 w-4" />
-        </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleItalic().run()}
+            isActive={editor.isActive("italic")}
+            title="Itálico (Ctrl+I)"
+          >
+            <Italic className="h-4 w-4" />
+          </ToolbarButton>
 
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleUnderline().run()}
-          isActive={editor.isActive("underline")}
-          title="Sublinhado"
-        >
-          <UnderlineIcon className="h-4 w-4" />
-        </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleUnderline().run()}
+            isActive={editor.isActive("underline")}
+            title="Sublinhado (Ctrl+U)"
+          >
+            <UnderlineIcon className="h-4 w-4" />
+          </ToolbarButton>
+        </div>
 
         <div className="w-px h-8 bg-gray-300 mx-1" />
 
         {/* Tamanhos de fonte */}
-        <select
-          className="h-8 px-2 text-sm border rounded"
-          onChange={(e) => {
-            const size = e.target.value;
-            if (size === "normal") {
-              editor.chain().focus().setParagraph().run();
-            } else {
-              editor
-                .chain()
-                .focus()
-                .toggleHeading({ level: parseInt(size) as any })
-                .run();
+        <div className="flex items-center gap-2">
+          <Type className="h-4 w-4 text-gray-500" />
+          <select
+            className="h-9 px-3 text-sm border rounded bg-white hover:bg-gray-50 cursor-pointer"
+            onChange={(e) => {
+              const level = e.target.value;
+              if (level === "paragraph") {
+                editor.chain().focus().setParagraph().run();
+              } else {
+                editor
+                  .chain()
+                  .focus()
+                  .toggleHeading({ level: parseInt(level) as 1 | 2 | 3 })
+                  .run();
+              }
+            }}
+            value={
+              editor.isActive("heading", { level: 1 })
+                ? "1"
+                : editor.isActive("heading", { level: 2 })
+                ? "2"
+                : editor.isActive("heading", { level: 3 })
+                ? "3"
+                : "paragraph"
             }
-          }}
-          value={
-            editor.isActive("heading", { level: 1 })
-              ? "1"
-              : editor.isActive("heading", { level: 2 })
-              ? "2"
-              : editor.isActive("heading", { level: 3 })
-              ? "3"
-              : "normal"
-          }
-        >
-          <option value="normal">Normal</option>
-          <option value="1">Grande</option>
-          <option value="2">Médio</option>
-          <option value="3">Pequeno</option>
-        </select>
+          >
+            <option value="paragraph">Normal</option>
+            <option value="1">Grande</option>
+            <option value="2">Médio</option>
+            <option value="3">Pequeno</option>
+          </select>
+        </div>
+
+        <div className="w-px h-8 bg-gray-300 mx-1" />
 
         {/* Cores */}
-        <input
-          type="color"
-          className="h-8 w-12 border rounded cursor-pointer"
-          onChange={(e) =>
-            editor.chain().focus().setColor(e.target.value).run()
-          }
-          value={editor.getAttributes("textStyle").color || "#000000"}
-          title="Cor do texto"
-        />
+        <div className="flex items-center gap-2">
+          <label
+            htmlFor="text-color"
+            className="h-9 px-3 border rounded bg-white hover:bg-gray-50 cursor-pointer flex items-center gap-2"
+            title="Cor do texto"
+          >
+            <div
+              className="w-5 h-5 rounded border"
+              style={{
+                backgroundColor:
+                  editor.getAttributes("textStyle").color || "#000000",
+              }}
+            />
+            <span className="text-sm">Cor</span>
+          </label>
+          <input
+            id="text-color"
+            type="color"
+            className="sr-only"
+            onChange={(e) =>
+              editor.chain().focus().setColor(e.target.value).run()
+            }
+            value={editor.getAttributes("textStyle").color || "#000000"}
+          />
+        </div>
 
         <div className="w-px h-8 bg-gray-300 mx-1" />
 
         {/* Listas */}
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
-          isActive={editor.isActive("bulletList")}
-          title="Lista com marcadores"
-        >
-          <List className="h-4 w-4" />
-        </ToolbarButton>
+        <div className="flex gap-1">
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleBulletList().run()}
+            isActive={editor.isActive("bulletList")}
+            title="Lista com marcadores"
+          >
+            <List className="h-4 w-4" />
+          </ToolbarButton>
 
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          isActive={editor.isActive("orderedList")}
-          title="Lista numerada"
-        >
-          <ListOrdered className="h-4 w-4" />
-        </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleOrderedList().run()}
+            isActive={editor.isActive("orderedList")}
+            title="Lista numerada"
+          >
+            <ListOrdered className="h-4 w-4" />
+          </ToolbarButton>
+        </div>
 
         <div className="w-px h-8 bg-gray-300 mx-1" />
 
         {/* Alinhamento */}
-        <ToolbarButton
-          onClick={() => editor.chain().focus().setTextAlign("left").run()}
-          isActive={editor.isActive({ textAlign: "left" })}
-          title="Alinhar à esquerda"
-        >
-          <AlignLeft className="h-4 w-4" />
-        </ToolbarButton>
+        <div className="flex gap-1">
+          <ToolbarButton
+            onClick={() => editor.chain().focus().setTextAlign("left").run()}
+            isActive={editor.isActive({ textAlign: "left" })}
+            title="Alinhar à esquerda"
+          >
+            <AlignLeft className="h-4 w-4" />
+          </ToolbarButton>
 
-        <ToolbarButton
-          onClick={() => editor.chain().focus().setTextAlign("center").run()}
-          isActive={editor.isActive({ textAlign: "center" })}
-          title="Centralizar"
-        >
-          <AlignCenter className="h-4 w-4" />
-        </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().setTextAlign("center").run()}
+            isActive={editor.isActive({ textAlign: "center" })}
+            title="Centralizar"
+          >
+            <AlignCenter className="h-4 w-4" />
+          </ToolbarButton>
 
-        <ToolbarButton
-          onClick={() => editor.chain().focus().setTextAlign("right").run()}
-          isActive={editor.isActive({ textAlign: "right" })}
-          title="Alinhar à direita"
-        >
-          <AlignRight className="h-4 w-4" />
-        </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().setTextAlign("right").run()}
+            isActive={editor.isActive({ textAlign: "right" })}
+            title="Alinhar à direita"
+          >
+            <AlignRight className="h-4 w-4" />
+          </ToolbarButton>
+        </div>
 
         <div className="w-px h-8 bg-gray-300 mx-1" />
 
         {/* Desfazer/Refazer */}
-        <ToolbarButton
-          onClick={() => editor.chain().focus().undo().run()}
-          title="Desfazer"
-        >
-          <Undo className="h-4 w-4" />
-        </ToolbarButton>
+        <div className="flex gap-1">
+          <ToolbarButton
+            onClick={() => editor.chain().focus().undo().run()}
+            disabled={!editor.can().undo()}
+            title="Desfazer (Ctrl+Z)"
+          >
+            <Undo className="h-4 w-4" />
+          </ToolbarButton>
 
-        <ToolbarButton
-          onClick={() => editor.chain().focus().redo().run()}
-          title="Refazer"
-        >
-          <Redo className="h-4 w-4" />
-        </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().redo().run()}
+            disabled={!editor.can().redo()}
+            title="Refazer (Ctrl+Y)"
+          >
+            <Redo className="h-4 w-4" />
+          </ToolbarButton>
+        </div>
       </div>
 
       {/* Editor */}
-      <EditorContent editor={editor} />
+      <div className="bg-white">
+        <EditorContent editor={editor} />
+      </div>
     </div>
   );
 };

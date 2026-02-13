@@ -34,4 +34,3 @@ export * from "./callable/init-ranking";
 export * from "./callable/metricas-plataforma";
 export * from "./callable/mentor-features";
 export * from "./callable/fix-user-role";
-export * from "./callable/tarefas";

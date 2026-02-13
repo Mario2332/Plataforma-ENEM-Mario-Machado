@@ -15,11 +15,7 @@ export type TipoNotificacao =
   | 'progresso_25'
   | 'progresso_50'
   | 'progresso_75'
-  | 'sequencia_mantida'
-  | 'nova_tarefa'
-  | 'tarefa_concluida'
-  | 'tarefa_proxima_prazo'
-  | 'tarefas_atrasadas';
+  | 'sequencia_mantida';
 
 /**
  * Interface da Notificação

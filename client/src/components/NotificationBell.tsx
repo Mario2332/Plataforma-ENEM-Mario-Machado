@@ -21,7 +21,6 @@ interface Notificacao {
   mensagem: string;
   lida: boolean;
   criadaEm: any;
-  tarefaId?: string;
   alunoId?: string;
 }
 
@@ -108,14 +107,6 @@ export function NotificationBell() {
 
   const getIconeNotificacao = (tipo: string) => {
     switch (tipo) {
-      case "nova_tarefa":
-        return "📝";
-      case "tarefa_concluida":
-        return "✅";
-      case "tarefa_proxima_prazo":
-        return "⏰";
-      case "tarefas_atrasadas":
-        return "⚠️";
       case "meta_concluida":
         return "🎯";
       case "meta_criada":

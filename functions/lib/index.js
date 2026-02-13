@@ -75,5 +75,4 @@ __exportStar(require("./callable/init-ranking"), exports);
 __exportStar(require("./callable/metricas-plataforma"), exports);
 __exportStar(require("./callable/mentor-features"), exports);
 __exportStar(require("./callable/fix-user-role"), exports);
-__exportStar(require("./callable/tarefas"), exports);
 //# sourceMappingURL=index.js.map

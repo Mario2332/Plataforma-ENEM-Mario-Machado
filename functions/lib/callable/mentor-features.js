@@ -119,12 +119,19 @@ exports.getAnotacoesAluno = (0, https_1.onCall)({ region: "southamerica-east1" }
         .collection("anotacoes_alunos")
         .where("mentorId", "==", auth.uid)
         .where("alunoId", "==", alunoId)
-        .orderBy("createdAt", "desc")
         .get();
-    return anotacoesSnapshot.docs.map((doc) => ({
+    // Ordenar no backend antes de retornar
+    const anotacoes = anotacoesSnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
     }));
+    // Ordenar por createdAt descendente (mais recente primeiro)
+    anotacoes.sort((a, b) => {
+        const dateA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+        const dateB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+        return dateB - dateA;
+    });
+    return anotacoes;
 });
 exports.criarAnotacaoAluno = (0, https_1.onCall)({ region: "southamerica-east1" }, async (request) => {
     const auth = await (0, auth_1.getAuthContextV2)(request);

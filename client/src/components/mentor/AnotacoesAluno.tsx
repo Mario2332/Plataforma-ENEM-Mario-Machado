@@ -41,7 +41,10 @@ export const AnotacoesAluno: React.FC<AnotacoesAlunoProps> = ({
   const loadAnotacoes = async () => {
     try {
       setLoading(true);
+      console.log("[AnotacoesAluno] Carregando anota\u00e7\u00f5es para alunoId:", alunoId);
       const data = await mentorApi.getAnotacoesAluno(alunoId);
+      console.log("[AnotacoesAluno] Dados recebidos:", data);
+      console.log("[AnotacoesAluno] N\u00famero de anota\u00e7\u00f5es:", data.length);
       
       // Converter timestamps do Firestore para Date
       const anotacoesConvertidas = data.map((anotacao: any) => ({
@@ -50,9 +53,10 @@ export const AnotacoesAluno: React.FC<AnotacoesAlunoProps> = ({
         updatedAt: anotacao.updatedAt?.toDate ? anotacao.updatedAt.toDate() : new Date(anotacao.updatedAt),
       }));
       
+      console.log("[AnotacoesAluno] Anota\u00e7\u00f5es convertidas:", anotacoesConvertidas);
       setAnotacoes(anotacoesConvertidas);
     } catch (error) {
-      console.error("Erro ao carregar anotações:", error);
+      console.error("[AnotacoesAluno] Erro ao carregar anota\u00e7\u00f5es:", error);
     } finally {
       setLoading(false);
     }
@@ -77,8 +81,13 @@ export const AnotacoesAluno: React.FC<AnotacoesAlunoProps> = ({
   };
 
   const handleSalvar = async () => {
+    console.log("[AnotacoesAluno] handleSalvar iniciado");
+    console.log("[AnotacoesAluno] alunoId:", alunoId);
+    console.log("[AnotacoesAluno] conteudoEditor:", conteudoEditor);
+    console.log("[AnotacoesAluno] editandoId:", editandoId);
+    
     if (!conteudoEditor.trim() || conteudoEditor === "<p></p>") {
-      toast.error("Digite uma anotação");
+      toast.error("Digite uma anota\u00e7\u00e3o");
       return;
     }
 
@@ -87,18 +96,25 @@ export const AnotacoesAluno: React.FC<AnotacoesAlunoProps> = ({
       
       if (editandoId) {
         // Editar existente
-        await mentorApi.editarAnotacaoAluno(editandoId, conteudoEditor);
-        toast.success("Anotação atualizada!");
+        console.log("[AnotacoesAluno] Editando anota\u00e7\u00e3o:", editandoId);
+        const result = await mentorApi.editarAnotacaoAluno(editandoId, conteudoEditor);
+        console.log("[AnotacoesAluno] Resultado da edi\u00e7\u00e3o:", result);
+        toast.success("Anota\u00e7\u00e3o atualizada!");
       } else {
         // Criar nova
-        await mentorApi.criarAnotacaoAluno(alunoId, conteudoEditor);
-        toast.success("Anotação criada!");
+        console.log("[AnotacoesAluno] Criando nova anota\u00e7\u00e3o");
+        const result = await mentorApi.criarAnotacaoAluno(alunoId, conteudoEditor);
+        console.log("[AnotacoesAluno] Resultado da cria\u00e7\u00e3o:", result);
+        toast.success("Anota\u00e7\u00e3o criada!");
       }
       
       voltarParaLista();
+      console.log("[AnotacoesAluno] Recarregando anota\u00e7\u00f5es...");
       await loadAnotacoes();
+      console.log("[AnotacoesAluno] Anota\u00e7\u00f5es recarregadas");
     } catch (error: any) {
-      toast.error(error.message || "Erro ao salvar anotação");
+      console.error("[AnotacoesAluno] Erro ao salvar:", error);
+      toast.error(error.message || "Erro ao salvar anota\u00e7\u00e3o");
     } finally {
       setSalvando(false);
     }

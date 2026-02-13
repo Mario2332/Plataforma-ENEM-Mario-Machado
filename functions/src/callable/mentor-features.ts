@@ -168,13 +168,22 @@ export const getAnotacoesAluno = onCall(
       .collection("anotacoes_alunos")
       .where("mentorId", "==", auth.uid)
       .where("alunoId", "==", alunoId)
-      .orderBy("createdAt", "desc")
       .get();
 
-    return anotacoesSnapshot.docs.map((doc) => ({
+    // Ordenar no backend antes de retornar
+    const anotacoes = anotacoesSnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
     }));
+
+    // Ordenar por createdAt descendente (mais recente primeiro)
+    anotacoes.sort((a: any, b: any) => {
+      const dateA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+      const dateB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+      return dateB - dateA;
+    });
+
+    return anotacoes;
   });
 
 export const criarAnotacaoAluno = onCall(

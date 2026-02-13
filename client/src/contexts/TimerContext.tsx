@@ -54,7 +54,11 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         setTempoMeta(estado.tempoMeta);
         setModoFoco(estado.modoFoco);
         setMinimizado(estado.minimizado);
-        setVisivel(estado.visivel);
+        
+        // Só torna visível se não estiver em rotas públicas
+        const rotasPublicas = ['/', '/login', '/cadastro'];
+        const estaEmRotaPublica = rotasPublicas.some(rota => window.location.pathname.startsWith(rota));
+        setVisivel(estaEmRotaPublica ? false : estado.visivel);
         
         tempoInicioRef.current = estado.tempoInicio;
         tempoAcumuladoRef.current = estado.tempoAcumulado;
@@ -124,10 +128,11 @@ export function TimerProvider({ children }: { children: ReactNode }) {
 
   // Atualizar Título da Aba
   useEffect(() => {
-    if (ativo) {
+    // Só atualiza o título se o timer estiver visível (usuário autenticado e usando)
+    if (visivel && ativo && tempoDecorrido > 0) {
       const tempoFormatado = formatarTempo(tempoDecorrido);
       document.title = `▶ ${tempoFormatado} - Focando...`;
-    } else if (tempoDecorrido > 0) {
+    } else if (visivel && !ativo && tempoDecorrido > 0) {
       const tempoFormatado = formatarTempo(tempoDecorrido);
       document.title = `⏸ ${tempoFormatado} - Pausado`;
     } else {
@@ -138,7 +143,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       // Ao desmontar, volta ao original (opcional, mas bom pra limpeza)
       // document.title = "Plataforma Mentoria Mário Machado";
     };
-  }, [ativo, tempoDecorrido]);
+  }, [ativo, tempoDecorrido, visivel]);
 
   const iniciar = () => {
     if (!ativo) {
@@ -165,6 +170,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     tempoAcumuladoRef.current = 0;
     setVisivel(false); // Esconde o timer flutuante ao finalizar
     document.title = "Plataforma Mentoria Mário Machado";
+    // Limpar localStorage imediatamente para evitar restauração do estado
+    localStorage.removeItem(CRONOMETRO_STORAGE_KEY);
   };
 
   const definirMeta = (segundos: number | null) => {

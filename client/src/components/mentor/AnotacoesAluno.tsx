@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { mentorApi } from "@/lib/api";
-import { Trash2, Edit2, Save, X } from "lucide-react";
+import { Trash2, Edit2, Plus, FileText } from "lucide-react";
+import { RichTextEditor } from "./RichTextEditor";
 
 interface Anotacao {
   id: string;
@@ -24,9 +25,9 @@ export const AnotacoesAluno: React.FC<AnotacoesAlunoProps> = ({
 }) => {
   const [anotacoes, setAnotacoes] = useState<Anotacao[]>([]);
   const [loading, setLoading] = useState(true);
-  const [novaAnotacao, setNovaAnotacao] = useState("");
-  const [editando, setEditando] = useState<string | null>(null);
-  const [textoEditando, setTextoEditando] = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [conteudoEditor, setConteudoEditor] = useState("");
   const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
@@ -45,46 +46,53 @@ export const AnotacoesAluno: React.FC<AnotacoesAlunoProps> = ({
     }
   };
 
-  const handleCriarAnotacao = async () => {
-    if (!novaAnotacao.trim()) {
+  const abrirModalNova = () => {
+    setEditandoId(null);
+    setConteudoEditor("");
+    setModalOpen(true);
+  };
+
+  const abrirModalEditar = (anotacao: Anotacao) => {
+    setEditandoId(anotacao.id);
+    setConteudoEditor(anotacao.texto);
+    setModalOpen(true);
+  };
+
+  const fecharModal = () => {
+    setModalOpen(false);
+    setEditandoId(null);
+    setConteudoEditor("");
+  };
+
+  const handleSalvar = async () => {
+    if (!conteudoEditor.trim() || conteudoEditor === "<p></p>") {
       toast.error("Digite uma anotação");
       return;
     }
 
     try {
       setSalvando(true);
-      await mentorApi.criarAnotacaoAluno(alunoId, novaAnotacao);
-      setNovaAnotacao("");
+      
+      if (editandoId) {
+        // Editar existente
+        await mentorApi.editarAnotacaoAluno(editandoId, conteudoEditor);
+        toast.success("Anotação atualizada!");
+      } else {
+        // Criar nova
+        await mentorApi.criarAnotacaoAluno(alunoId, conteudoEditor);
+        toast.success("Anotação criada!");
+      }
+      
+      fecharModal();
       await loadAnotacoes();
-      toast.success("Anotação criada!");
     } catch (error: any) {
-      toast.error(error.message || "Erro ao criar anotação");
+      toast.error(error.message || "Erro ao salvar anotação");
     } finally {
       setSalvando(false);
     }
   };
 
-  const handleEditarAnotacao = async (anotacaoId: string) => {
-    if (!textoEditando.trim()) {
-      toast.error("Digite uma anotação");
-      return;
-    }
-
-    try {
-      setSalvando(true);
-      await mentorApi.editarAnotacaoAluno(anotacaoId, textoEditando);
-      setEditando(null);
-      setTextoEditando("");
-      await loadAnotacoes();
-      toast.success("Anotação atualizada!");
-    } catch (error: any) {
-      toast.error(error.message || "Erro ao editar anotação");
-    } finally {
-      setSalvando(false);
-    }
-  };
-
-  const handleDeletarAnotacao = async (anotacaoId: string) => {
+  const handleDeletar = async (anotacaoId: string) => {
     if (!confirm("Deseja realmente deletar esta anotação?")) return;
 
     try {
@@ -96,16 +104,6 @@ export const AnotacoesAluno: React.FC<AnotacoesAlunoProps> = ({
     }
   };
 
-  const iniciarEdicao = (anotacao: Anotacao) => {
-    setEditando(anotacao.id);
-    setTextoEditando(anotacao.texto);
-  };
-
-  const cancelarEdicao = () => {
-    setEditando(null);
-    setTextoEditando("");
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-32">
@@ -115,112 +113,107 @@ export const AnotacoesAluno: React.FC<AnotacoesAlunoProps> = ({
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">
-          📝 Anotações Privadas - {alunoNome}
-        </CardTitle>
-        <p className="text-sm text-gray-600">
-          Apenas você pode ver estas anotações
-        </p>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Nova Anotação */}
-        <div className="space-y-2">
-          <Textarea
-            placeholder="Escreva uma nova anotação sobre este aluno..."
-            value={novaAnotacao}
-            onChange={(e) => setNovaAnotacao(e.target.value)}
-            rows={3}
-            className="resize-none"
-          />
-          <div className="flex justify-end">
-            <Button
-              onClick={handleCriarAnotacao}
-              disabled={salvando || !novaAnotacao.trim()}
-              size="sm"
-            >
-              {salvando ? "Salvando..." : "Adicionar Anotação"}
+    <>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Anotações Privadas - {alunoNome}
+              </CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Apenas você pode ver estas anotações
+              </p>
+            </div>
+            <Button onClick={abrirModalNova} size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Nova Anotação
             </Button>
           </div>
-        </div>
-
-        {/* Lista de Anotações */}
-        <div className="space-y-3 mt-6">
+        </CardHeader>
+        <CardContent className="space-y-3">
           {anotacoes.length === 0 ? (
-            <p className="text-sm text-gray-500 text-center py-4">
-              Nenhuma anotação ainda. Adicione a primeira!
-            </p>
+            <div className="text-center py-8 text-muted-foreground">
+              <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
+              <p>Nenhuma anotação ainda.</p>
+              <p className="text-sm">Clique em "Nova Anotação" para começar!</p>
+            </div>
           ) : (
             anotacoes.map((anotacao) => (
               <div
                 key={anotacao.id}
-                className="p-4 bg-gray-50 rounded-lg border border-gray-200"
+                className="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
               >
-                {editando === anotacao.id ? (
-                  // Modo de Edição
-                  <div className="space-y-2">
-                    <Textarea
-                      value={textoEditando}
-                      onChange={(e) => setTextoEditando(e.target.value)}
-                      rows={3}
-                      className="resize-none"
-                    />
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={cancelarEdicao}
-                        disabled={salvando}
-                      >
-                        <X className="h-4 w-4 mr-1" />
-                        Cancelar
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => handleEditarAnotacao(anotacao.id)}
-                        disabled={salvando || !textoEditando.trim()}
-                      >
-                        <Save className="h-4 w-4 mr-1" />
-                        {salvando ? "Salvando..." : "Salvar"}
-                      </Button>
-                    </div>
+                <div
+                  className="prose prose-sm max-w-none"
+                  dangerouslySetInnerHTML={{ __html: anotacao.texto }}
+                />
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200">
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(anotacao.updatedAt).toLocaleString("pt-BR")}
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => abrirModalEditar(anotacao)}
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeletar(anotacao.id)}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
-                ) : (
-                  // Modo de Visualização
-                  <>
-                    <p className="text-sm text-gray-900 whitespace-pre-wrap">
-                      {anotacao.texto}
-                    </p>
-                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200">
-                      <p className="text-xs text-gray-500">
-                        {new Date(anotacao.updatedAt).toLocaleString("pt-BR")}
-                      </p>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => iniciarEdicao(anotacao)}
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeletarAnotacao(anotacao.id)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </>
-                )}
+                </div>
               </div>
             ))
           )}
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+
+      {/* Modal de Edição */}
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {editandoId ? "Editar Anotação" : "Nova Anotação"}
+            </DialogTitle>
+            <DialogDescription>
+              Use as ferramentas de formatação para criar anotações ricas sobre {alunoNome}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            <RichTextEditor
+              content={conteudoEditor}
+              onChange={setConteudoEditor}
+              placeholder="Escreva suas anotações aqui..."
+            />
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={fecharModal}
+              disabled={salvando}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSalvar}
+              disabled={salvando || !conteudoEditor.trim()}
+            >
+              {salvando ? "Salvando..." : "Salvar Anotação"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };

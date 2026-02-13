@@ -60,10 +60,18 @@ const getAlunos = functions
     .https.onCall(async (data, context) => {
     const auth = await (0, auth_1.getAuthContext)(context);
     (0, auth_1.requireRole)(auth, "mentor");
-    // Retornar todos os alunos (sem filtro de mentorId)
-    const alunosSnapshot = await db
-        .collection("alunos")
-        .get();
+    // Filtrar alunos do mentor:
+    // 1. mentorId == auth.uid (alunos específicos do mentor)
+    // 2. mentorId == "todos" (alunos compartilhados com todos os mentores)
+    // 3. mentorId == "avulso" (alunos avulsos - NÃO aparecem para mentores)
+    const [alunosEspecificos, alunosCompartilhados] = await Promise.all([
+        db.collection("alunos").where("mentorId", "==", auth.uid).get(),
+        db.collection("alunos").where("mentorId", "==", "todos").get(),
+    ]);
+    // Combinar os dois resultados
+    const alunosDocs = [...alunosEspecificos.docs, ...alunosCompartilhados.docs];
+    functions.logger.info(`[getAlunos] Mentor ${auth.uid}: ${alunosEspecificos.docs.length} específicos + ${alunosCompartilhados.docs.length} compartilhados = ${alunosDocs.length} total`);
+    const alunosSnapshot = { docs: alunosDocs };
     // Calcular dias de inatividade para cada aluno
     const alunosComInatividade = await Promise.all(alunosSnapshot.docs.map(async (doc) => {
         const alunoData = doc.data();
@@ -212,15 +220,18 @@ const createAluno = functions
     .https.onCall(async (data, context) => {
     const auth = await (0, auth_1.getAuthContext)(context);
     (0, auth_1.requireRole)(auth, "mentor");
-    const { email, password, nome, celular, plano } = data;
-    if (!email || !password || !nome) {
+    const { email, senha, nome, celular } = data;
+    if (!email || !senha || !nome) {
         throw new functions.https.HttpsError("invalid-argument", "Email, senha e nome são obrigatórios");
+    }
+    if (senha.length < 6) {
+        throw new functions.https.HttpsError("invalid-argument", "A senha deve ter no mínimo 6 caracteres");
     }
     try {
         // Criar usuário no Firebase Auth
         const userRecord = await admin.auth().createUser({
             email,
-            password,
+            password: senha,
             displayName: nome,
         });
         // Criar documento do usuário
@@ -240,8 +251,16 @@ const createAluno = functions
             nome,
             email,
             celular: celular || null,
-            plano: plano || null,
             ativo: true,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        // Criar documento no ranking (nível 1, 0 pontos)
+        await db.collection("ranking").doc(userRecord.uid).set({
+            userId: userRecord.uid,
+            nome,
+            nivel: 1,
+            pontos: 0,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
@@ -515,7 +534,13 @@ const getAlunosMetricas = functions
     const auth = await (0, auth_1.getAuthContext)(context);
     (0, auth_1.requireRole)(auth, "mentor");
     try {
-        const alunosSnapshot = await db.collection("alunos").get();
+        // Buscar alunos do mentor (específicos + compartilhados)
+        const [alunosEspecificos, alunosCompartilhados] = await Promise.all([
+            db.collection("alunos").where("mentorId", "==", auth.uid).get(),
+            db.collection("alunos").where("mentorId", "==", "todos").get(),
+        ]);
+        const alunosDocs = [...alunosEspecificos.docs, ...alunosCompartilhados.docs];
+        const alunosSnapshot = { docs: alunosDocs };
         const metricas = await Promise.all(alunosSnapshot.docs.map(async (alunoDoc) => {
             const alunoId = alunoDoc.id;
             // Buscar estudos
@@ -555,10 +580,19 @@ const getEvolucaoAlunos = functions
     const auth = await (0, auth_1.getAuthContext)(context);
     (0, auth_1.requireRole)(auth, "mentor");
     try {
-        const alunosSnapshot = await db
-            .collection("alunos")
-            .orderBy("createdAt", "asc")
-            .get();
+        // Buscar alunos do mentor (específicos + compartilhados)
+        const [alunosEspecificos, alunosCompartilhados] = await Promise.all([
+            db.collection("alunos").where("mentorId", "==", auth.uid).get(),
+            db.collection("alunos").where("mentorId", "==", "todos").get(),
+        ]);
+        const alunosDocs = [...alunosEspecificos.docs, ...alunosCompartilhados.docs];
+        // Ordenar por createdAt manualmente
+        alunosDocs.sort((a, b) => {
+            const aTime = a.data().createdAt?.toDate?.() || a.data().createdAt?.seconds * 1000 || 0;
+            const bTime = b.data().createdAt?.toDate?.() || b.data().createdAt?.seconds * 1000 || 0;
+            return aTime - bTime;
+        });
+        const alunosSnapshot = { docs: alunosDocs };
         const evolucao = [];
         let contador = 0;
         alunosSnapshot.docs.forEach((doc) => {

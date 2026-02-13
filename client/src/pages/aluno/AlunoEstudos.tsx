@@ -172,7 +172,14 @@ export default function AlunoEstudos() {
         questoesAcertadas: 0,
         flashcardsRevisados: 0,
       });
-      await loadEstudos();
+      // Resetar o cronômetro após salvar a sessão
+      resetarCronometroGlobal();
+      // Recarregar estudos
+      try {
+        await loadEstudos();
+      } catch (error) {
+        console.error('Erro ao carregar estudos:', error);
+      }
     } catch (error: any) {
       toast.error(error.message || "Erro ao salvar estudo");
     } finally {

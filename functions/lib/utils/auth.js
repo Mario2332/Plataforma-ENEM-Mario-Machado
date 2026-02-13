@@ -34,6 +34,7 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getAuthContext = getAuthContext;
+exports.getAuthContextV2 = getAuthContextV2;
 exports.requireRole = requireRole;
 exports.requireAnyRole = requireAnyRole;
 const functions = __importStar(require("firebase-functions"));
@@ -53,6 +54,25 @@ async function getAuthContext(context) {
     const userData = userDoc.data();
     return {
         uid: context.auth.uid,
+        email: userData.email,
+        role: userData.role,
+    };
+}
+/**
+ * Verifica se o usuário está autenticado e retorna seus dados (v2)
+ */
+async function getAuthContextV2(request) {
+    if (!request.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "Usuário não autenticado");
+    }
+    const db = admin.firestore();
+    const userDoc = await db.collection("users").doc(request.auth.uid).get();
+    if (!userDoc.exists) {
+        throw new functions.https.HttpsError("not-found", "Dados do usuário não encontrados");
+    }
+    const userData = userDoc.data();
+    return {
+        uid: request.auth.uid,
         email: userData.email,
         role: userData.role,
     };

@@ -119,6 +119,8 @@ async function mergeTopicsWithCustomizations(materiaKey, baseTopics) {
                 name: custom.name !== undefined ? custom.name : topic.name,
                 incidenceLevel: custom.incidenceLevel !== undefined ? custom.incidenceLevel : topic.incidenceLevel,
                 incidenceValue: custom.incidenceValue !== undefined ? custom.incidenceValue : topic.incidenceValue,
+                dificuldade: custom.dificuldade !== undefined ? custom.dificuldade : topic.dificuldade,
+                importancia: custom.importancia !== undefined ? custom.importancia : topic.importancia,
             };
         }
         return topic;

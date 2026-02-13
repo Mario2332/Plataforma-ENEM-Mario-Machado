@@ -73,4 +73,6 @@ __exportStar(require("./triggers/processarMetasDiarias"), exports);
 __exportStar(require("./triggers/rankingWeeklyUpdate"), exports);
 __exportStar(require("./callable/init-ranking"), exports);
 __exportStar(require("./callable/metricas-plataforma"), exports);
+__exportStar(require("./callable/mentor-features"), exports);
+__exportStar(require("./callable/fix-user-role"), exports);
 //# sourceMappingURL=index.js.map

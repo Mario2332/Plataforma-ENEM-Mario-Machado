@@ -34,11 +34,14 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthProvider } from "./contexts/AuthContext";
+import { TimerProvider } from "./contexts/TimerContext";
 import Home from "./pages/Home";
+import FloatingTimer from "./components/FloatingTimer";
 import DashboardLayout from "./components/DashboardLayout";
 
-// Lazy load da Landing Page
+// Lazy load da Landing Page / Página de Vendas
 const LandingPage = lazy(() => import("./pages/LandingPage"));
+const SalesPage = lazy(() => import("./pages/SalesPage"));
 
 // Lazy load de páginas de autenticação
 const LoginAluno = lazy(() => import("./pages/auth/LoginAluno"));
@@ -69,6 +72,7 @@ const Sociologia = lazy(() => import("./pages/aluno/conteudos/Sociologia"));
 // Lazy load de páginas do Mentor
 const MentorHome = lazy(() => import("./pages/mentor/MentorHome"));
 const MentorAlunos = lazy(() => import("./pages/mentor/MentorAlunos"));
+const MentorMetricas = lazy(() => import("./pages/mentor/MentorMetricas"));
 const MentorConfiguracoes = lazy(() => import("./pages/mentor/MentorConfiguracoes"));
 const MentorViewAluno = lazy(() => import("./pages/mentor/MentorViewAluno"));
 const MentorPainelGeral = lazy(() => import("./pages/mentor/conteudos/MentorPainelGeral"));
@@ -99,7 +103,7 @@ const PageLoader = () => (
 function Router() {
   return (
     <Switch>
-      <Route path={"/"} component={LandingPage} />
+      <Route path={"/"} component={SalesPage} />
       <Route path={"/home"} component={Home} />
       
       {/* Rotas de Login */}
@@ -285,6 +289,13 @@ function Router() {
           </DashboardLayout>
         )}
       </Route>
+      <Route path="/mentor/metricas">
+        <DashboardLayout>
+          <Suspense fallback={<PageLoader />}>
+            <MentorMetricas />
+          </Suspense>
+        </DashboardLayout>
+      </Route>
       <Route path="/mentor/configuracoes">
         <DashboardLayout>
           <Suspense fallback={<PageLoader />}>
@@ -413,10 +424,13 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider>
         <AuthProvider>
-          <TooltipProvider>
-            <Router />
-            <Toaster />
-          </TooltipProvider>
+          <TimerProvider>
+            <TooltipProvider>
+              <Router />
+              <FloatingTimer />
+              <Toaster />
+            </TooltipProvider>
+          </TimerProvider>
         </AuthProvider>
       </ThemeProvider>
     </ErrorBoundary>

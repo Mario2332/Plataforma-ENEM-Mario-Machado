@@ -83,7 +83,7 @@ exports.createTopico = functions
         if (!isMentor) {
             throw new functions.https.HttpsError("permission-denied", "Apenas mentores podem criar topicos");
         }
-        const { materiaKey, name, incidenceLevel } = data;
+        const { materiaKey, name, incidenceLevel, dificuldade, importancia } = data;
         if (!materiaKey || !name || !incidenceLevel) {
             throw new functions.https.HttpsError("invalid-argument", "Materia, nome e nivel de incidencia sao obrigatorios");
         }
@@ -96,6 +96,8 @@ exports.createTopico = functions
             name,
             incidenceLevel,
             incidenceValue: INCIDENCE_MAP[incidenceLevel],
+            dificuldade: dificuldade || null,
+            importancia: importancia || null,
             isCustom: true,
             isDeleted: false,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -146,7 +148,7 @@ exports.updateTopico = functions
         if (!isMentor) {
             throw new functions.https.HttpsError("permission-denied", "Apenas mentores podem editar topicos");
         }
-        const { materiaKey, topicoId, name, incidenceLevel } = data;
+        const { materiaKey, topicoId, name, incidenceLevel, dificuldade, importancia } = data;
         if (!materiaKey || !topicoId) {
             throw new functions.https.HttpsError("invalid-argument", "Materia e ID do topico sao obrigatorios");
         }
@@ -168,6 +170,10 @@ exports.updateTopico = functions
             updates.incidenceLevel = incidenceLevel;
             updates.incidenceValue = INCIDENCE_MAP[incidenceLevel];
         }
+        if (dificuldade !== undefined)
+            updates.dificuldade = dificuldade || null;
+        if (importancia !== undefined)
+            updates.importancia = importancia || null;
         if (topicoDoc.exists) {
             await topicoRef.update(updates);
         }

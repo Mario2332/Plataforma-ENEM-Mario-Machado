@@ -65,6 +65,7 @@ const getMenuItems = (role?: string) => {
     case "mentor":
       return [
         { icon: Users, label: "Alunos", path: "/mentor/alunos" },
+        { icon: BarChart3, label: "Métricas", path: "/mentor/metricas" },
         { icon: Brain, label: "Diagnóstico de Perfil", path: "/mentor/diagnostico-perfil" },
         { 
           icon: BookOpen, 

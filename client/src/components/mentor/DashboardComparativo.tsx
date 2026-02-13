@@ -41,12 +41,12 @@ export const DashboardComparativo: React.FC<DashboardComparativoProps> = ({
       const metricas = await mentorApi.getAlunosMetricas();
 
       const dadosProcessados: AlunoData[] = alunos.map((aluno: any) => {
-        const metrica = metricas.find((m: any) => m.userId === aluno.userId);
+        const metrica = metricas.find((m: any) => m.alunoId === aluno.userId);
         return {
           id: aluno.userId,
           nome: aluno.nome,
-          tempoEstudo: metrica?.totalHoras || 0,
-          desempenho: metrica?.mediaDesempenho || 0,
+          tempoEstudo: metrica?.horasEstudo || 0,
+          desempenho: metrica?.desempenho || 0,
         };
       });
 

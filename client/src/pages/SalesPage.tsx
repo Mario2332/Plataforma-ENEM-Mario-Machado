@@ -1,8 +1,9 @@
-import { Countdown } from "@/components/landing/Countdown";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Check, Star, Zap, Target, BookOpen, Trophy, ArrowRight, Compass, Home, TrendingUp, Stethoscope, ShieldCheck, Lock, BarChart3, Brain, Calendar, LayoutDashboard } from "lucide-react";
+import { Check, Star, Zap, Target, BookOpen, Trophy, ArrowRight, Compass, Home, TrendingUp, Stethoscope, ShieldCheck, Lock, BarChart3, Brain, Calendar, LayoutDashboard, X } from "lucide-react";
 import { FeatureCarousel } from "@/components/landing/FeatureCarousel";
+import TestimonialCarousel from "@/components/landing/TestimonialCarousel";
+import StickyHeader from "@/components/landing/StickyHeader";
 
 export default function SalesPage() {
   const scrollToOffer = () => {
@@ -12,6 +13,8 @@ export default function SalesPage() {
 
   return (
     <div className="min-h-screen bg-[#0a1628] text-white overflow-x-hidden font-sans selection:bg-[#9aff00] selection:text-[#0a1628]">
+      {/* Sticky Header */}
+      <StickyHeader />
       {/* Background Elements */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
         <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-[#9aff00]/10 rounded-full blur-[120px] animate-pulse-slow" />
@@ -27,22 +30,20 @@ export default function SalesPage() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#9aff00] opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-[#9aff00]"></span>
             </span>
-            Abertura das Vendas: 04/02 às 19h!
+            Oferta de Lançamento por Tempo Limitado!
           </div>
           
           <h1 className="text-4xl md:text-6xl font-display font-bold tracking-tight mb-6 leading-[1.1] animate-slide-up">
-            Estude como um profissional e conquiste sua <span className="text-[#9aff00]">aprovação em Medicina</span> por um preço absurdamente barato!
+            A ferramenta que transforma sua preparação e te coloca mais perto da sua <span className="text-[#9aff00]">aprovação em Medicina</span>
           </h1>
           
           <p className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto mb-10 animate-slide-up" style={{ animationDelay: "0.1s" }}>
-            Pare de <span className="text-red-500 font-bold">estudar errado</span>. Utilize a plataforma mais completa de planejamento, metrificação e análise de estudos para o ENEM, <span className="text-[#9aff00] font-bold">vire um estudante profissional e conquiste sua aprovação</span>!
+            Chega de estudar no escuro sem saber se está evoluindo. Planeje, metrifique e analise cada detalhe da sua preparação com a plataforma mais completa para o ENEM — e <span className="text-[#9aff00] font-bold">estude como um profissional até conquistar sua vaga</span>.
             <br/>
-            <span className="text-sm md:text-base text-gray-500 mt-2 block">(Idealizada por um mentor 829 de média que orienta estudantes até a aprovação em medicina há mais de 3 anos!)</span>
+            <span className="text-sm md:text-base text-gray-500 mt-2 block">(Idealizada por um mentor com média 829 que orienta estudantes até a aprovação em Medicina há mais de 3 anos!)</span>
           </p>
 
           <div className="flex flex-col items-center gap-8 animate-slide-up" style={{ animationDelay: "0.2s" }}>
-            <Countdown />
-            
             <Button 
               onClick={scrollToOffer}
               className="h-16 px-12 text-lg font-bold bg-[#9aff00] text-[#0a1628] hover:bg-[#88e600] hover:scale-105 transition-all duration-300 shadow-[0_0_40px_rgba(154,255,0,0.4)] rounded-full group border-2 border-transparent hover:border-[#ccff66]"
@@ -71,6 +72,17 @@ export default function SalesPage() {
           </div>
           
           <FeatureCarousel />
+          
+          {/* CTA Intermediário */}
+          <div className="flex justify-center mt-16 animate-fade-in">
+            <Button 
+              onClick={scrollToOffer}
+              className="h-14 px-10 text-lg font-bold bg-[#9aff00] text-[#0a1628] hover:bg-[#88e600] hover:scale-105 transition-all duration-300 shadow-[0_0_30px_rgba(154,255,0,0.4)] rounded-full group border-2 border-transparent hover:border-[#ccff66]"
+            >
+              QUERO GARANTIR MINHA VAGA
+              <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </Button>
+          </div>
         </div>
       </section>
 
@@ -130,6 +142,97 @@ export default function SalesPage() {
         </div>
       </section>
 
+      {/* Antes vs Depois */}
+      <section className="relative z-10 py-32 bg-[#0a1628]">
+        <div className="container mx-auto max-w-6xl px-4">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-display font-bold mb-6">
+              Sua preparação <span className="text-red-500">ANTES</span> e <span className="text-[#9aff00]">DEPOIS</span> da Plataforma
+            </h2>
+            <p className="text-gray-400 max-w-2xl mx-auto text-lg">
+              Veja a diferença entre estudar no escuro e estudar com estratégia profissional.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8">
+            {/* Coluna ANTES (Negativo) */}
+            <div className="bg-gradient-to-br from-red-950/20 to-red-900/10 border-2 border-red-500/30 rounded-3xl p-8 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-40 h-40 bg-red-500/10 rounded-full blur-[80px]" />
+              <div className="relative z-10">
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/20 border border-red-500/40 text-red-400 font-bold text-sm mb-6 uppercase">
+                  <X className="w-4 h-4" />
+                  Sem a Plataforma
+                </div>
+                <div className="space-y-4">
+                  {[
+                    "Estudar sem saber se está evoluindo",
+                    "Matéria acumulada e desorganizada",
+                    "Não sabe onde está errando",
+                    "Tempo desperdiçado em revisões ineficientes",
+                    "Simulados sem análise profunda",
+                    "Desmotivação por falta de resultados visíveis"
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-red-950/30 border border-red-500/20">
+                      <div className="flex-shrink-0 w-6 h-6 rounded-full bg-red-500/20 flex items-center justify-center mt-0.5">
+                        <X className="w-4 h-4 text-red-400" />
+                      </div>
+                      <span className="text-gray-300 text-sm leading-relaxed">{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Coluna DEPOIS (Positivo) */}
+            <div className="bg-gradient-to-br from-[#9aff00]/10 to-[#9aff00]/5 border-2 border-[#9aff00]/40 rounded-3xl p-8 relative overflow-hidden shadow-[0_0_60px_rgba(154,255,0,0.15)]">
+              <div className="absolute top-0 right-0 w-40 h-40 bg-[#9aff00]/20 rounded-full blur-[80px]" />
+              <div className="relative z-10">
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#9aff00]/20 border border-[#9aff00]/40 text-[#9aff00] font-bold text-sm mb-6 uppercase">
+                  <Check className="w-4 h-4" />
+                  Com a Plataforma
+                </div>
+                <div className="space-y-4">
+                  {[
+                    "Métricas claras de progresso em tempo real",
+                    "Cronograma adaptativo inteligente",
+                    "Análise detalhada por disciplina e habilidade",
+                    "Plano de ação personalizado para cada erro",
+                    "Autodiagnóstico completo de cada simulado",
+                    "Gamificação, ranking e motivação constante"
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-[#9aff00]/10 border border-[#9aff00]/30 hover:bg-[#9aff00]/15 transition-colors">
+                      <div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#9aff00]/30 flex items-center justify-center mt-0.5">
+                        <Check className="w-4 h-4 text-[#9aff00]" />
+                      </div>
+                      <span className="text-gray-200 text-sm leading-relaxed font-medium">{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Depoimentos */}
+      <TestimonialCarousel />
+      
+      {/* CTA Intermediário 2 */}
+      <section className="relative z-10 py-16 bg-[#0a1628]">
+        <div className="container mx-auto max-w-4xl px-4 text-center">
+          <p className="text-xl md:text-2xl text-gray-300 mb-8 font-medium">
+            Pronto para transformar sua preparação e <span className="text-[#9aff00] font-bold">conquistar sua vaga</span>?
+          </p>
+          <Button 
+            onClick={scrollToOffer}
+            className="h-16 px-12 text-lg font-bold bg-[#9aff00] text-[#0a1628] hover:bg-[#88e600] hover:scale-105 transition-all duration-300 shadow-[0_0_40px_rgba(154,255,0,0.5)] rounded-full group border-2 border-transparent hover:border-[#ccff66]"
+          >
+            QUERO COMEÇAR AGORA
+            <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+          </Button>
+        </div>
+      </section>
+
       {/* Idealizador */}
       <section className="relative z-10 py-24 bg-black overflow-hidden">
         <div className="absolute inset-0 bg-[url('/grid-pattern.svg')] opacity-10" />
@@ -139,8 +242,12 @@ export default function SalesPage() {
               <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent z-10" />
               <div className="relative z-0 rounded-2xl overflow-hidden border border-white/10 shadow-2xl shadow-[#9aff00]/10">
                 <img 
-                  src="/images/mario-machado.png" 
+                  src="/images/mario-machado.webp" 
                   alt="Mário Machado" 
+                  width={641}
+                  height={960}
+                  loading="lazy"
+                  decoding="async"
                   className="w-full h-auto object-cover transition-all duration-500"
                 />
               </div>
@@ -186,15 +293,85 @@ export default function SalesPage() {
         </div>
       </section>
 
+      {/* Ancoragem de Preço */}
+      <section className="relative z-10 py-24 bg-gradient-to-b from-[#0d1b2e] to-[#0a1628] border-t border-white/5">
+        <div className="container mx-auto max-w-6xl px-4">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-5xl font-display font-bold mb-6">
+              Quanto vale <span className="text-[#9aff00]">organizar 1 ano</span> de estudos?
+            </h2>
+            <p className="text-gray-400 max-w-2xl mx-auto text-lg">
+              Compare o investimento na plataforma com outras opções do mercado.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            {[
+              { label: "Cursinho Presencial", value: "R$ 15.000", period: "/ano" },
+              { label: "Mentor Particular", value: "R$ 5.000", period: "/ano" },
+              { label: "Apps + Planilhas", value: "R$ 500", period: "/ano" },
+              { label: "Mais 1 Ano Perdido", value: "Incalculável", period: "" }
+            ].map((item, i) => (
+              <div key={i} className="bg-[#112240]/50 border border-red-500/30 rounded-2xl p-6 text-center relative overflow-hidden group hover:border-red-500/50 transition-colors">
+                <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="relative z-10">
+                  <p className="text-gray-400 text-sm mb-3 font-medium">{item.label}</p>
+                  <div className="relative inline-block">
+                    <p className="text-3xl font-bold text-white line-through decoration-red-500/70 decoration-2">
+                      {item.value}
+                    </p>
+                    {item.period && (
+                      <span className="text-sm text-gray-500 ml-1">{item.period}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="bg-gradient-to-br from-[#9aff00]/10 to-[#9aff00]/5 border-2 border-[#9aff00]/40 rounded-3xl p-8 md:p-12 text-center relative overflow-hidden shadow-[0_0_60px_rgba(154,255,0,0.2)]">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-[#9aff00]/10 via-transparent to-transparent" />
+            <div className="relative z-10">
+              <p className="text-xl md:text-2xl text-gray-300 mb-4">
+                Você paga <span className="text-[#9aff00] font-bold text-3xl">menos que 1%</span> do valor de um cursinho
+              </p>
+              <p className="text-gray-400 text-lg">
+                E tem acesso a uma ferramenta profissional de gestão que cursinho nenhum oferece.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Oferta */}
       <section id="oferta" className="relative z-10 py-32 px-4 overflow-hidden">
         <div className="absolute inset-0 bg-[#0a1628]" />
         <div className="absolute bottom-0 left-0 w-full h-[600px] bg-gradient-to-t from-[#9aff00]/10 to-transparent blur-[120px] pointer-events-none" />
         
         <div className="container mx-auto max-w-7xl relative">
+          {/* Banner de Bônus acima dos cards */}
+          <div className="mb-10 bg-gradient-to-r from-[#9aff00]/10 via-[#9aff00]/20 to-[#9aff00]/10 border-2 border-[#9aff00]/40 rounded-2xl p-6 md:p-8 text-center relative overflow-hidden shadow-[0_0_40px_rgba(154,255,0,0.15)]">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-[#9aff00]/10 via-transparent to-transparent" />
+            <div className="relative z-10">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#9aff00] text-[#0a1628] font-bold text-sm mb-4 uppercase tracking-wider shadow-[0_0_20px_rgba(154,255,0,0.5)] animate-pulse">
+                <Trophy className="w-4 h-4" />
+                Bônus Exclusivo
+              </div>
+              <h3 className="text-xl md:text-2xl font-display font-bold text-white mb-3">
+                Assine qualquer plano até <span className="text-[#9aff00]">11/02</span> e ganhe:
+              </h3>
+              <p className="text-base md:text-lg text-gray-300 max-w-3xl mx-auto mb-3">
+                <strong className="text-white">Mentoria gravada de +2h</strong> com tudo sobre provas — estratégias de prova, correção, preenchimento de lacunas e muito mais!
+              </p>
+              <p className="text-sm text-gray-400">
+                Válido para a <strong className="text-[#9aff00]">Plataforma</strong> e para o <strong className="text-[#9aff00]">Combo Plataforma + Padrões do ENEM</strong>
+              </p>
+            </div>
+          </div>
+
           <div className="grid lg:grid-cols-2 gap-8">
             {/* Box 1: Plataforma (Original) */}
-            <div className="bg-[#0d1b2e] border border-[#9aff00]/30 rounded-[2.5rem] p-8 text-center relative overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.6)] flex flex-col">
+            <div className="bg-[#0d1b2e] border border-[#9aff00]/30 rounded-[2.5rem] p-8 text-center relative overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.6)] flex flex-col offer-card-hover">
               {/* Glow effect */}
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-40 bg-[#9aff00]/10 blur-[80px]" />
               
@@ -212,7 +389,7 @@ export default function SalesPage() {
                   <div className="text-2xl text-gray-500 line-through decoration-red-500/50 font-light">
                     R$ 397,00
                   </div>
-                  <div className="text-6xl font-bold text-white font-display tracking-tighter drop-shadow-2xl">
+                  <div className="text-6xl font-bold text-white font-display tracking-tighter drop-shadow-2xl hover:animate-shake cursor-default">
                     R$ 97<span className="text-2xl text-[#9aff00] font-normal">,00</span>
                   </div>
                 </div>
@@ -236,18 +413,6 @@ export default function SalesPage() {
                   ))}
                 </div>
 
-                {/* Bônus Simplificado para caber no card */}
-                <div className="bg-[#9aff00]/5 border border-[#9aff00]/20 rounded-xl p-4 mb-8 text-left">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Trophy className="w-4 h-4 text-[#9aff00]" />
-                    <h3 className="text-sm font-bold text-white">BÔNUS INCLUÍDOS:</h3>
-                  </div>
-                  <ul className="text-xs text-gray-400 space-y-2 list-disc pl-4">
-                    <li>Acesso a dois simulados completos da Evolucional com análise TRI (3 primeiros)</li>
-                    <li>Mentoria gravada de +2h com tudo sobre provas - estratégias de prova, correção, preenchimento de lacunas e muito mais! (50 primeiros)</li>
-                  </ul>
-                </div>
-
                 <div className="mt-auto space-y-4">
                   <Button 
                     className="w-full h-auto py-4 text-lg md:text-xl font-bold bg-[#9aff00] text-[#0a1628] hover:bg-[#88e600] hover:scale-105 transition-all duration-300 shadow-[0_0_30px_rgba(154,255,0,0.3)] rounded-xl group border-2 border-transparent hover:border-white/50 whitespace-normal leading-tight"
@@ -266,7 +431,7 @@ export default function SalesPage() {
             </div>
 
             {/* Box 2: Combo (Novo) */}
-            <div className="bg-[#0d1b2e] border-2 border-[#9aff00] rounded-[2.5rem] p-8 text-center relative overflow-hidden shadow-[0_0_100px_rgba(154,255,0,0.2)] flex flex-col transform lg:scale-105 z-10">
+            <div className="bg-[#0d1b2e] border-2 border-[#9aff00] rounded-[2.5rem] p-8 text-center relative overflow-hidden shadow-[0_0_100px_rgba(154,255,0,0.2)] flex flex-col transform lg:scale-105 z-10 offer-card-hover">
               {/* Glow effect mais forte */}
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-60 bg-[#9aff00]/20 blur-[100px]" />
               
@@ -284,7 +449,7 @@ export default function SalesPage() {
                   <div className="flex items-center gap-2 text-xl text-gray-500 line-through decoration-red-500/50 font-light">
                     <span>R$ 397</span> + <span>R$ 397</span>
                   </div>
-                  <div className="text-7xl font-bold text-white font-display tracking-tighter drop-shadow-2xl">
+                  <div className="text-7xl font-bold text-white font-display tracking-tighter drop-shadow-2xl hover:animate-shake cursor-default">
                     R$ 197<span className="text-3xl text-[#9aff00] font-normal">,00</span>
                   </div>
                 </div>
@@ -313,17 +478,7 @@ export default function SalesPage() {
                     </div>
                   </div>
 
-                  {/* Bônus também no Combo */}
-                  <div className="bg-[#9aff00]/5 border border-[#9aff00]/20 rounded-xl p-4 text-left">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Trophy className="w-4 h-4 text-[#9aff00]" />
-                      <h3 className="text-sm font-bold text-white">BÔNUS INCLUÍDOS:</h3>
-                    </div>
-                    <ul className="text-xs text-gray-400 space-y-2 list-disc pl-4">
-                      <li>Acesso a dois simulados completos da Evolucional com análise TRI (3 primeiros)</li>
-                      <li>Mentoria gravada de +2h com tudo sobre provas - estratégias de prova, correção, preenchimento de lacunas e muito mais! (50 primeiros)</li>
-                    </ul>
-                  </div>
+
                 </div>
 
                 <div className="mt-auto space-y-4">
@@ -389,28 +544,36 @@ export default function SalesPage() {
           <div className="space-y-4">
             {[
               {
-                question: "A plataforma inclui acompanhamento?",
-                answer: "Não. Ao assinar a plataforma, você garante a ferramenta para planejar, metrificar e analisar sua preparação para o ENEM, sem acompanhamento do mentor. A ferramenta foi idealizada pelo Mário Machado, mentor que alcançou 829 de média. As informações da plataforma que incluem sugestões para a sua preparação (como o cronograma inteligente e o plano de ação) seguem as mesmas lógicas usadas na Mentoria."
+                question: "O que exatamente é a Plataforma Mentoria Mário Machado?",
+                answer: "É uma ferramenta completa de GESTÃO e ESTRATÉGIA de estudos para o ENEM. Ela não é um cursinho com aulas de matérias. Nosso foco é fornecer o sistema mais completo para você planejar, metrificar e analisar cada detalhe da sua preparação — cronograma inteligente, controle de simulados, autodiagnóstico com plano de ação, gestão de redações e muito mais. Tudo para você estudar de forma profissional e evoluir muito mais rápido."
               },
               {
-                question: "Por quanto tempo terei acesso à plataforma?",
-                answer: "Você terá acesso completo à plataforma por 1 ano. Durante todo esse período, você poderá utilizar todas as funcionalidades sem restrições."
+                question: "A plataforma inclui acompanhamento com o mentor?",
+                answer: "A plataforma é uma ferramenta de autogestão. Você não terá sessões individuais com o mentor, porém toda a lógica por trás do cronograma inteligente, do autodiagnóstico e do plano de ação segue exatamente as mesmas estratégias utilizadas na Mentoria do Mário Machado. Ou seja, você recebe a inteligência da mentoria dentro da ferramenta, funcionando para você 24h por dia."
               },
               {
-                question: "A plataforma serve para quem quer outros cursos além de Medicina?",
-                answer: "Com certeza! A metodologia de organização e metrificação serve para qualquer curso de alta concorrência. O foco em Medicina é devido ao nível de exigência, mas a ferramenta funciona perfeitamente para Engenharia, Direito, etc."
+                question: "Por quanto tempo terei acesso?",
+                answer: "Você terá acesso completo por 1 ano — tempo mais que suficiente para cobrir todo o seu ciclo de preparação para o ENEM. Durante esse período, todas as funcionalidades estarão liberadas sem nenhuma restrição, incluindo atualizações que forem lançadas."
               },
               {
-                question: "Como funciona a garantia de 7 dias?",
-                answer: "É simples: você compra, acessa e testa. Se dentro de 7 dias você decidir que não é para você, basta entrar em contato e devolvemos 100% do seu investimento. O risco é todo nosso."
+                question: "Serve para quem quer outros cursos além de Medicina?",
+                answer: "Com certeza! A metodologia de organização e metrificação funciona para qualquer curso de alta concorrência — Engenharia, Direito, Odontologia, etc. O foco em Medicina é porque a concorrência exige o nível máximo de organização, mas a ferramenta se adapta a qualquer meta de nota no ENEM."
+              },
+              {
+                question: "E se eu não gostar? Como funciona a garantia?",
+                answer: "Você tem 7 dias para testar tudo. Entre, organize seus estudos, explore cada funcionalidade. Se por qualquer motivo sentir que não valeu a pena, basta enviar uma mensagem e devolvemos 100% do seu investimento. Sem perguntas, sem burocracia. O risco é inteiramente nosso."
               },
               {
                 question: "Quais são as formas de pagamento?",
-                answer: "Você pode pagar via PIX (com liberação imediata) ou cartão de crédito. O sistema é 100% seguro e seus dados são protegidos."
+                answer: "Você pode pagar via PIX (com liberação imediata do acesso) ou cartão de crédito (com opção de parcelamento). Todo o processo é 100% seguro e seus dados são protegidos por criptografia."
               },
               {
-                question: "A plataforma tem aulas gravadas?",
-                answer: "A Plataforma Mentoria Mário Machado é uma ferramenta de GESTÃO e ESTRATÉGIA de estudos. Não somos um cursinho com aulas de matérias (História, Geografia, etc). Nosso foco é fornecer para você a ferramenta mais completa para você planejar e analisar sua preparação de forma profissional e, assim, evoluir muito mais rápido e conquistar sua aprovação em Medicina!"
+                question: "Eu já faço cursinho. A plataforma vai me ajudar mesmo assim?",
+                answer: "Sim, e muito! O cursinho te dá o conteúdo, mas a plataforma te dá a ESTRATÉGIA. A maioria dos alunos que estagnam na nota não têm problema de conhecimento — têm problema de gestão. Com a plataforma, você vai identificar exatamente onde está errando, quanto tempo está dedicando a cada área e o que precisa ajustar para romper a barreira da aprovação."
+              },
+              {
+                question: "Consigo usar pelo celular?",
+                answer: "Sim! A plataforma é 100% responsiva e funciona perfeitamente no navegador do celular, tablet ou computador. Você pode acessar e atualizar seus dados de qualquer lugar, a qualquer momento."
               }
             ].map((item, i) => (
               <div key={i} className="bg-[#112240]/50 border border-white/5 rounded-2xl overflow-hidden hover:border-[#9aff00]/30 transition-colors">

@@ -73,6 +73,7 @@ const Sociologia = lazy(() => import("./pages/aluno/conteudos/Sociologia"));
 const MentorHome = lazy(() => import("./pages/mentor/MentorHome"));
 const MentorAlunos = lazy(() => import("./pages/mentor/MentorAlunos"));
 const MentorMetricas = lazy(() => import("./pages/mentor/MentorMetricas"));
+const MentorTarefas = lazy(() => import("./pages/mentor/MentorTarefas"));
 const MentorConfiguracoes = lazy(() => import("./pages/mentor/MentorConfiguracoes"));
 const MentorViewAluno = lazy(() => import("./pages/mentor/MentorViewAluno"));
 const MentorPainelGeral = lazy(() => import("./pages/mentor/conteudos/MentorPainelGeral"));
@@ -293,6 +294,13 @@ function Router() {
         <DashboardLayout>
           <Suspense fallback={<PageLoader />}>
             <MentorMetricas />
+          </Suspense>
+        </DashboardLayout>
+      </Route>
+      <Route path="/mentor/tarefas">
+        <DashboardLayout>
+          <Suspense fallback={<PageLoader />}>
+            <MentorTarefas />
           </Suspense>
         </DashboardLayout>
       </Route>

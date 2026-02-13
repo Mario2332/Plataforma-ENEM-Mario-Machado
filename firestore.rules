@@ -481,5 +481,36 @@ service cloud.firestore {
         allow write: if isMentorOrGestor();
       }
     }
+
+    // ============================================
+    // TAREFAS
+    // ============================================
+    match /tarefas/{tarefaId} {
+      // Aluno pode ler suas próprias tarefas
+      allow read: if hasRole('aluno') && resource.data.alunoId == request.auth.uid;
+      
+      // Mentor pode ler e escrever tarefas dos seus alunos
+      allow read, write: if hasRole('mentor') && resource.data.mentorId == request.auth.uid;
+      
+      // Mentor pode criar tarefas
+      allow create: if hasRole('mentor') && request.resource.data.mentorId == request.auth.uid;
+      
+      // Aluno pode atualizar status e comentários das suas tarefas
+      allow update: if hasRole('aluno') && resource.data.alunoId == request.auth.uid;
+      
+      // Gestor pode ler e escrever todas as tarefas
+      allow read, write: if hasRole('gestor');
+    }
+
+    // ============================================
+    // NOTIFICAÇÕES
+    // ============================================
+    match /notificacoes/{notificacaoId} {
+      // Usuário pode ler, atualizar e deletar suas próprias notificações
+      allow read, update, delete: if request.auth.uid == resource.data.destinatarioId;
+      
+      // Sistema pode criar notificações (via Cloud Functions)
+      allow create: if request.auth != null;
+    }
   }
 }

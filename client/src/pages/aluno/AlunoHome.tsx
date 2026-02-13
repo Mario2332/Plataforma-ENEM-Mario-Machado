@@ -28,6 +28,7 @@ import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { RankingModal, RankingResumo } from "@/components/RankingModal";
 import { DiagnosticoPerfil, PerfilResumo, PERFIS_PADRAO } from "@/components/DiagnosticoPerfil";
+import { TarefasAluno } from "@/components/aluno/TarefasAluno";
 import { db, auth } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { useMentorViewContext } from "@/contexts/MentorViewContext";
@@ -413,6 +414,9 @@ export default function AlunoHome() {
           </div>
         </div>
       </div>
+
+      {/* Tarefas do Aluno */}
+      <TarefasAluno />
 
       {/* Cards de Métricas com Progresso Circular */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">

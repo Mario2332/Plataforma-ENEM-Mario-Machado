@@ -403,13 +403,10 @@ export default function CronogramaAgenda() {
         await batch.commit();
         console.log(`Sincronização incremental: ${mudancas} mudanças aplicadas`);
         
-        // Recarregar atividades após sincronização
-        const snapshotAtualizado = await getDocs(atividadesRef);
-        const atividadesAtualizadas = snapshotAtualizado.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as AtividadeAgenda[];
-        setAtividades(atividadesAtualizadas);
+        // Atualizar estado local com as atividades esperadas (sem recarregar do Firestore)
+        // Isso evita duplicação temporária causada por race conditions
+        const todasAtividades = [...atividadesManuais, ...Array.from(atividadesSincronizadasEsperadas.values())];
+        setAtividades(todasAtividades);
       } else {
         console.log('Sincronização: nenhuma mudança necessária');
       }
@@ -565,7 +562,7 @@ export default function CronogramaAgenda() {
     }
   };
 
-  const handleSaveAtividade = () => {
+  const handleSaveAtividade = async () => {
     if (!formData.atividade) {
       toast.error("Selecione uma atividade");
       return;
@@ -591,22 +588,46 @@ export default function CronogramaAgenda() {
       isManual: true,
     };
     
-    if (editingAtividade) {
-      setAtividades(prev => prev.map(a => 
-        a.id === editingAtividade.id ? { ...novaAtividade, id: a.id } : a
-      ));
-      toast.success("Atividade atualizada!");
-    } else {
-      const tempId = `temp_${Date.now()}`;
-      setAtividades(prev => [...prev, { ...novaAtividade, id: tempId }]);
-      toast.success("Atividade adicionada!");
-    }
-    
     setIsDialogOpen(false);
-    triggerAutoSave();
+    setIsSaving(true);
+    
+    try {
+      const userId = effectiveUserId || auth.currentUser?.uid;
+      if (!userId) throw new Error("Usuário não autenticado");
+      
+      const atividadesCollRef = collection(db, "alunos", userId, "agenda");
+      
+      if (editingAtividade) {
+        // Atualizar atividade existente
+        const docRef = doc(atividadesCollRef, editingAtividade.id!);
+        const { id, ...atividadeData } = novaAtividade;
+        await setDoc(docRef, atividadeData, { merge: true });
+        
+        setAtividades(prev => prev.map(a => 
+          a.id === editingAtividade.id ? { ...novaAtividade, id: a.id } : a
+        ));
+        toast.success("Atividade atualizada!");
+      } else {
+        // Adicionar nova atividade
+        const newDocRef = doc(atividadesCollRef);
+        const { id, ...atividadeData } = novaAtividade;
+        await setDoc(newDocRef, {
+          ...atividadeData,
+          createdAt: Timestamp.now()
+        });
+        
+        setAtividades(prev => [...prev, { ...novaAtividade, id: newDocRef.id }]);
+        toast.success("Atividade adicionada!");
+      }
+    } catch (error: any) {
+      console.error("Erro ao salvar atividade:", error);
+      toast.error("Erro ao salvar atividade. Tente novamente.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleDeleteAtividade = (id: string) => {
+  const handleDeleteAtividade = async (id: string) => {
     const atividade = atividades.find(a => a.id === id);
     
     if (atividade && !atividade.isManual) {
@@ -617,9 +638,26 @@ export default function CronogramaAgenda() {
       );
     }
     
-    setAtividades(prev => prev.filter(a => a.id !== id));
-    toast.success("Atividade removida!");
-    triggerAutoSave();
+    setIsSaving(true);
+    
+    try {
+      const userId = effectiveUserId || auth.currentUser?.uid;
+      if (!userId) throw new Error("Usuário não autenticado");
+      
+      // Deletar do Firestore imediatamente
+      const atividadesCollRef = collection(db, "alunos", userId, "agenda");
+      const docRef = doc(atividadesCollRef, id);
+      await deleteDoc(docRef);
+      
+      // Atualizar estado local
+      setAtividades(prev => prev.filter(a => a.id !== id));
+      toast.success("Atividade removida!");
+    } catch (error: any) {
+      console.error("Erro ao deletar atividade:", error);
+      toast.error("Erro ao remover atividade. Tente novamente.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Funções de sincronização

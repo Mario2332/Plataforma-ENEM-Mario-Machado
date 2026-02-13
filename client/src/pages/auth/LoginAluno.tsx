@@ -2,7 +2,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BookOpen, GraduationCap, Target, TrendingUp, Sparkles, Zap } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -11,23 +10,13 @@ import { useLocation } from "wouter";
 
 export default function LoginAluno() {
   const [, setLocation] = useLocation();
-  const { signIn, signUp } = useAuthContext();
+  const { signIn } = useAuthContext();
   const [loading, setLoading] = useState(false);
 
   // Estado para Login
   const [loginData, setLoginData] = useState({
     email: "",
     senha: "",
-  });
-
-  // Estado para Cadastro
-  const [cadastroData, setCadastroData] = useState({
-    nome: "",
-    email: "",
-    celular: "",
-    senha: "",
-    confirmarSenha: "",
-    mentorId: "",
   });
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -60,48 +49,6 @@ export default function LoginAluno() {
         toast.error("Muitas tentativas. Tente novamente mais tarde");
       } else {
         toast.error("Erro ao fazer login. Tente novamente");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCadastro = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (cadastroData.senha !== cadastroData.confirmarSenha) {
-      toast.error("As senhas não coincidem!");
-      return;
-    }
-
-    if (cadastroData.senha.length < 6) {
-      toast.error("A senha deve ter pelo menos 6 caracteres!");
-      return;
-    }
-
-    if (!cadastroData.nome || !cadastroData.email || !cadastroData.senha) {
-      toast.error("Preencha todos os campos obrigatórios");
-      return;
-    }
-
-    const mentorId = cadastroData.mentorId || null;
-    setLoading(true);
-
-    try {
-      await signUp(cadastroData.email, cadastroData.senha, cadastroData.nome, mentorId);
-      toast.success("Cadastro realizado com sucesso!");
-      setLocation("/aluno");
-    } catch (error: any) {
-      console.error("Erro ao criar conta:", error);
-      
-      if (error.code === "auth/email-already-in-use") {
-        toast.error("Este email já está cadastrado");
-      } else if (error.code === "auth/invalid-email") {
-        toast.error("Email inválido");
-      } else if (error.code === "auth/weak-password") {
-        toast.error("Senha muito fraca");
-      } else {
-        toast.error("Erro ao criar conta. Tente novamente");
       }
     } finally {
       setLoading(false);
@@ -184,7 +131,7 @@ export default function LoginAluno() {
           </div>
         </div>
 
-        {/* Lado Direito - Formulário Premium */}
+        {/* Lado Direito - Formulário de Login */}
         <Card className="w-full shadow-2xl border-2 border-blue-200 bg-white/95 backdrop-blur-sm animate-slide-up">
           <CardHeader className="bg-gradient-to-r from-blue-50 to-cyan-50 border-b-2 border-blue-200">
             <CardTitle className="text-3xl font-black bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent flex items-center gap-2">
@@ -192,163 +139,54 @@ export default function LoginAluno() {
               Área do Aluno
             </CardTitle>
             <CardDescription className="text-base font-semibold text-gray-600">
-              Entre ou crie sua conta para começar
+              Entre com suas credenciais
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
-            <Tabs defaultValue="login" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 bg-gradient-to-r from-blue-100 to-cyan-100 p-1 h-12">
-                <TabsTrigger 
-                  value="login" 
-                  className="font-bold data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-lg"
-                >
-                  Entrar
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="cadastro"
-                  className="font-bold data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-lg"
-                >
-                  Criar Conta
-                </TabsTrigger>
-              </TabsList>
+            <form onSubmit={handleLogin} className="space-y-5">
+              <div className="space-y-2">
+                <Label htmlFor="login-email" className="font-bold text-base">Email</Label>
+                <Input
+                  id="login-email"
+                  type="email"
+                  placeholder="seu@email.com"
+                  value={loginData.email}
+                  onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
+                  disabled={loading}
+                  required
+                  className="border-2 h-12 font-semibold"
+                />
+              </div>
 
-              {/* Tab de Login */}
-              <TabsContent value="login">
-                <form onSubmit={handleLogin} className="space-y-5">
-                  <div className="space-y-2">
-                    <Label htmlFor="login-email" className="font-bold text-base">Email</Label>
-                    <Input
-                      id="login-email"
-                      type="email"
-                      placeholder="seu@email.com"
-                      value={loginData.email}
-                      onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
-                      disabled={loading}
-                      required
-                      className="border-2 h-12 font-semibold"
-                    />
+              <div className="space-y-2">
+                <Label htmlFor="login-senha" className="font-bold text-base">Senha</Label>
+                <Input
+                  id="login-senha"
+                  type="password"
+                  placeholder="••••••••"
+                  value={loginData.senha}
+                  onChange={(e) => setLoginData({ ...loginData, senha: e.target.value })}
+                  disabled={loading}
+                  required
+                  className="border-2 h-12 font-semibold"
+                />
+              </div>
+
+              <Button 
+                type="submit" 
+                className="w-full h-12 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 font-bold text-lg shadow-lg hover:shadow-xl transition-all" 
+                disabled={loading}
+              >
+                {loading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    Entrando...
                   </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="login-senha" className="font-bold text-base">Senha</Label>
-                    <Input
-                      id="login-senha"
-                      type="password"
-                      placeholder="••••••••"
-                      value={loginData.senha}
-                      onChange={(e) => setLoginData({ ...loginData, senha: e.target.value })}
-                      disabled={loading}
-                      required
-                      className="border-2 h-12 font-semibold"
-                    />
-                  </div>
-
-                  <Button 
-                    type="submit" 
-                    className="w-full h-12 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 font-bold text-lg shadow-lg hover:shadow-xl transition-all" 
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <div className="flex items-center gap-2">
-                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        Entrando...
-                      </div>
-                    ) : (
-                      "Entrar"
-                    )}
-                  </Button>
-                </form>
-              </TabsContent>
-
-              {/* Tab de Cadastro */}
-              <TabsContent value="cadastro">
-                <form onSubmit={handleCadastro} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="cadastro-nome" className="font-bold text-base">Nome Completo *</Label>
-                    <Input
-                      id="cadastro-nome"
-                      type="text"
-                      placeholder="Seu nome completo"
-                      value={cadastroData.nome}
-                      onChange={(e) => setCadastroData({ ...cadastroData, nome: e.target.value })}
-                      disabled={loading}
-                      required
-                      className="border-2 h-12 font-semibold"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="cadastro-email" className="font-bold text-base">Email *</Label>
-                    <Input
-                      id="cadastro-email"
-                      type="email"
-                      placeholder="seu@email.com"
-                      value={cadastroData.email}
-                      onChange={(e) => setCadastroData({ ...cadastroData, email: e.target.value })}
-                      disabled={loading}
-                      required
-                      className="border-2 h-12 font-semibold"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="cadastro-celular" className="font-bold text-base">Celular (opcional)</Label>
-                    <Input
-                      id="cadastro-celular"
-                      type="tel"
-                      placeholder="(00) 00000-0000"
-                      value={cadastroData.celular}
-                      onChange={(e) => setCadastroData({ ...cadastroData, celular: e.target.value })}
-                      disabled={loading}
-                      className="border-2 h-12 font-semibold"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="cadastro-senha" className="font-bold text-base">Senha *</Label>
-                    <Input
-                      id="cadastro-senha"
-                      type="password"
-                      placeholder="Mínimo 6 caracteres"
-                      value={cadastroData.senha}
-                      onChange={(e) => setCadastroData({ ...cadastroData, senha: e.target.value })}
-                      disabled={loading}
-                      required
-                      className="border-2 h-12 font-semibold"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="cadastro-confirmar" className="font-bold text-base">Confirmar Senha *</Label>
-                    <Input
-                      id="cadastro-confirmar"
-                      type="password"
-                      placeholder="Confirme sua senha"
-                      value={cadastroData.confirmarSenha}
-                      onChange={(e) => setCadastroData({ ...cadastroData, confirmarSenha: e.target.value })}
-                      disabled={loading}
-                      required
-                      className="border-2 h-12 font-semibold"
-                    />
-                  </div>
-
-                  <Button 
-                    type="submit" 
-                    className="w-full h-12 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 font-bold text-lg shadow-lg hover:shadow-xl transition-all" 
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <div className="flex items-center gap-2">
-                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        Criando conta...
-                      </div>
-                    ) : (
-                      "Criar Conta"
-                    )}
-                  </Button>
-                </form>
-              </TabsContent>
-            </Tabs>
+                ) : (
+                  "Entrar"
+                )}
+              </Button>
+            </form>
           </CardContent>
         </Card>
       </div>

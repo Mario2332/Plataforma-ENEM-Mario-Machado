@@ -1955,7 +1955,7 @@ const getAlunoResumo = functions
         }
         // ===== METAS DETALHADAS COM PROGRESSO =====
         const metasDetalhadas = metas
-            .filter((m) => m.status === "ativa" && !m.metaPaiId)
+            .filter((m) => m.status === "ativa" && !m.metaPaiId && (m.valor || 0) > 0)
             .map((meta) => {
             // Usar progressoAtual da meta (já calculado pelo sistema de metas)
             const valorAtual = meta.progressoAtual || 0;

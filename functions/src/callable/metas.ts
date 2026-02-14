@@ -64,6 +64,19 @@ function isDateInRangeBrasilia(date: Date, inicio: Date, fim: Date): boolean {
 }
 
 /**
+ * Helper para converter campo de data do Firestore para Date de forma segura
+ */
+function toDateSafe(data: any): Date | null {
+  if (!data) return null;
+  if (data instanceof Date) return data;
+  if (typeof data.toDate === 'function') return data.toDate();
+  if (data._seconds !== undefined) {
+    return new Date(data._seconds * 1000);
+  }
+  return null;
+}
+
+/**
  * Tipos de metas disponíveis
  */
 export type TipoMeta = 'horas' | 'questoes' | 'simulados' | 'topicos' | 'sequencia' | 'desempenho';
@@ -223,8 +236,8 @@ const createMeta = functions
             // Somar horas de estudos no período
             valorAtual = estudos
               .filter((e: any) => {
-                const dataEstudo = e.data.toDate();
-                return isDateInRangeBrasilia(dataEstudo, dataInicioDate, dataFimDate);
+                const dataEstudo = toDateSafe(e.data);
+                return dataEstudo && isDateInRangeBrasilia(dataEstudo, dataInicioDate, dataFimDate);
               })
               .reduce((acc: number, e: any) => acc + (e.tempoMinutos || 0), 0) / 60;
             valorAtual = Math.round(valorAtual * 10) / 10;
@@ -235,7 +248,8 @@ const createMeta = functions
             // Somar questões no período
             valorAtual = estudos
               .filter((e: any) => {
-                const dataEstudo = e.data.toDate();
+                const dataEstudo = toDateSafe(e.data);
+                if (!dataEstudo) return false;
                 const matchPeriodo = isDateInRangeBrasilia(dataEstudo, dataInicioDate, dataFimDate);
                 const matchMateria = !materia || e.materia === materia;
                 return matchPeriodo && matchMateria;
@@ -247,8 +261,8 @@ const createMeta = functions
           case 'simulados': {
             // Contar simulados no período
             valorAtual = simulados.filter((s: any) => {
-              const dataSimulado = s.data.toDate();
-              return isDateInRangeBrasilia(dataSimulado, dataInicioDate, dataFimDate);
+              const dataSimulado = toDateSafe(s.data);
+              return dataSimulado && isDateInRangeBrasilia(dataSimulado, dataInicioDate, dataFimDate);
             }).length;
             break;
           }
@@ -257,7 +271,8 @@ const createMeta = functions
             // Somar acertos em simulados no período
             valorAtual = simulados
               .filter((s: any) => {
-                const dataSimulado = s.data.toDate();
+                const dataSimulado = toDateSafe(s.data);
+                if (!dataSimulado) return false;
                 const matchPeriodo = isDateInRangeBrasilia(dataSimulado, dataInicioDate, dataFimDate);
                 const matchMateria = !materia || s.questoes?.some((q: any) => q.materia === materia);
                 return matchPeriodo && matchMateria;
@@ -283,7 +298,7 @@ const createMeta = functions
             valorAtual = progressoSnapshot.docs.filter((doc) => {
               const progresso = doc.data();
               // Usar dataConclusao se existir, senão usar updatedAt ou createdAt
-              const dataConclusao = progresso.dataConclusao?.toDate() || progresso.updatedAt?.toDate() || progresso.createdAt?.toDate();
+              const dataConclusao = toDateSafe(progresso.dataConclusao) || toDateSafe(progresso.updatedAt) || toDateSafe(progresso.createdAt);
               
               if (!dataConclusao) return false;
               
@@ -301,9 +316,9 @@ const createMeta = functions
             // Calcular streak (dias consecutivos de estudo)
             // Usar fuso horário de Brasília para extrair datas
             const datasEstudo = [...new Set(estudos.map((e: any) => {
-              const data = e.data.toDate();
-              return data.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
-            }))].sort().reverse();
+              const data = toDateSafe(e.data);
+              return data ? data.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }) : null;
+            }).filter((d): d is string => d !== null))].sort().reverse();
 
             let streak = 0;
             const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
@@ -497,8 +512,8 @@ const updateMeta = functions
         
         // Criar a primeira instância diária para hoje
         const hoje = getHojeBrasilia();
-        const dataInicioMeta = dataInicio ? parseDateWithBrasiliaTimezone(dataInicio) : metaAtual.dataInicio.toDate();
-        const dataFimMeta = dataFim ? parseDateWithBrasiliaTimezone(dataFim) : metaAtual.dataFim.toDate();
+        const dataInicioMeta = dataInicio ? parseDateWithBrasiliaTimezone(dataInicio) : (toDateSafe(metaAtual.dataInicio) || new Date());
+        const dataFimMeta = dataFim ? parseDateWithBrasiliaTimezone(dataFim) : (toDateSafe(metaAtual.dataFim) || new Date());
         
         // Só criar instância se hoje estiver dentro do período da meta
         if (isDateInRangeBrasilia(hoje, dataInicioMeta, dataFimMeta)) {
@@ -574,7 +589,7 @@ const updateMeta = functions
         const simulados = simuladosSnapshot.docs.map((doc) => doc.data());
         
         const dataInicioDate = new Date(dataInicio);
-        const dataFimDate = dataFim ? new Date(dataFim) : metaAtual.dataFim.toDate();
+        const dataFimDate = dataFim ? new Date(dataFim) : (toDateSafe(metaAtual.dataFim) || new Date());
         
         let valorAtual = 0;
         
@@ -582,8 +597,8 @@ const updateMeta = functions
           case 'horas':
             valorAtual = estudos
               .filter((e: any) => {
-                const dataEstudo = e.data.toDate();
-                return dataEstudo >= dataInicioDate && dataEstudo <= dataFimDate;
+                const dataEstudo = toDateSafe(e.data);
+                return dataEstudo && dataEstudo >= dataInicioDate && dataEstudo <= dataFimDate;
               })
               .reduce((acc: number, e: any) => acc + (e.tempoMinutos || 0), 0) / 60;
             valorAtual = Math.round(valorAtual * 10) / 10;
@@ -592,7 +607,8 @@ const updateMeta = functions
           case 'questoes':
             valorAtual = estudos
               .filter((e: any) => {
-                const dataEstudo = e.data.toDate();
+                const dataEstudo = toDateSafe(e.data);
+                if (!dataEstudo) return false;
                 const matchPeriodo = dataEstudo >= dataInicioDate && dataEstudo <= dataFimDate;
                 const matchMateria = !metaAtual.materia || e.materia === metaAtual.materia;
                 return matchPeriodo && matchMateria;
@@ -602,15 +618,16 @@ const updateMeta = functions
           
           case 'simulados':
             valorAtual = simulados.filter((s: any) => {
-              const dataSimulado = s.data.toDate();
-              return dataSimulado >= dataInicioDate && dataSimulado <= dataFimDate;
+              const dataSimulado = toDateSafe(s.data);
+              return dataSimulado && dataSimulado >= dataInicioDate && dataSimulado <= dataFimDate;
             }).length;
             break;
           
           case 'desempenho':
             valorAtual = simulados
               .filter((s: any) => {
-                const dataSimulado = s.data.toDate();
+                const dataSimulado = toDateSafe(s.data);
+                if (!dataSimulado) return false;
                 const matchPeriodo = dataSimulado >= dataInicioDate && dataSimulado <= dataFimDate;
                 const matchMateria = !metaAtual.materia || s.questoes?.some((q: any) => q.materia === metaAtual.materia);
                 return matchPeriodo && matchMateria;
@@ -634,7 +651,7 @@ const updateMeta = functions
             valorAtual = progressoSnapshot.docs.filter((doc) => {
               const progresso = doc.data();
               // Usar dataConclusao se existir, senão usar updatedAt ou createdAt
-              const dataConclusao = progresso.dataConclusao?.toDate() || progresso.updatedAt?.toDate() || progresso.createdAt?.toDate();
+              const dataConclusao = toDateSafe(progresso.dataConclusao) || toDateSafe(progresso.updatedAt) || toDateSafe(progresso.createdAt);
               
               if (!dataConclusao) return false;
               

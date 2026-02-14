@@ -2228,11 +2228,11 @@ const getAlunoResumo = functions
 
       // ===== METAS DETALHADAS COM PROGRESSO =====
       const metasDetalhadas = metas
-        .filter((m: any) => m.status === "ativa" && !m.metaPaiId && (m.valor || 0) > 0)
+        .filter((m: any) => m.status === "ativa" && !m.metaPaiId && (m.valorAlvo || 0) > 0)
         .map((meta: any) => {
-          // Usar progressoAtual da meta (já calculado pelo sistema de metas)
-          const valorAtual = meta.progressoAtual || 0;
-          const valorMeta = meta.valor || 0;
+          // Usar valorAtual da meta (já calculado pelo sistema de metas)
+          const valorAtual = meta.valorAtual || 0;
+          const valorMeta = meta.valorAlvo || 0;
           const progresso = valorMeta > 0 ? Math.round((valorAtual / valorMeta) * 100) : 0;
 
           return {
@@ -2241,7 +2241,7 @@ const getAlunoResumo = functions
             valor: valorMeta,
             valorAtual,
             progresso,
-            prazo: meta.prazo,
+            prazo: meta.dataFim,
             descricao: meta.descricao || "",
           };
         });

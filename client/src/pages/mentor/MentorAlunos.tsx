@@ -1224,7 +1224,7 @@ export default function MentorAlunos() {
                     </h3>
                     <div className="space-y-2">
                       {resumoAluno.ultimasAtividades.map((ativ: any) => {
-                        const dataAtiv = ativ.data?.toDate ? ativ.data.toDate() : new Date(ativ.data);
+                        const dataAtiv = ativ.data?.toDate && typeof ativ.data.toDate === 'function' ? ativ.data.toDate() : (ativ.data?._seconds ? new Date(ativ.data._seconds * 1000) : new Date(ativ.data));
                         return (
                           <Card key={ativ.id} className="p-3">
                             <div className="flex items-center justify-between">
@@ -1257,7 +1257,7 @@ export default function MentorAlunos() {
                     </h3>
                     <div className="space-y-2">
                       {resumoAluno.anotacoes.map((anotacao: any) => {
-                        const dataAnotacao = anotacao.createdAt?.toDate ? anotacao.createdAt.toDate() : new Date(anotacao.createdAt);
+                        const dataAnotacao = anotacao.createdAt?.toDate && typeof anotacao.createdAt.toDate === 'function' ? anotacao.createdAt.toDate() : (anotacao.createdAt?._seconds ? new Date(anotacao.createdAt._seconds * 1000) : new Date(anotacao.createdAt));
                         return (
                           <Card key={anotacao.id} className="p-3 bg-blue-50 border-blue-200">
                             <p className="text-sm">{anotacao.texto}</p>

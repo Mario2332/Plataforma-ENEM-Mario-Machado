@@ -512,5 +512,64 @@ service cloud.firestore {
       // Sistema pode criar notificações (via Cloud Functions)
       allow create: if request.auth != null;
     }
+
+    // ============================================
+    // MENTORIAS (Multi-Tenant SaaS)
+    // ============================================
+    match /mentorias/{mentoriaId} {
+      // Gestor pode ler e escrever todas as mentorias
+      allow read, write: if hasRole('gestor');
+      
+      // Mentor pode ler a mentoria à qual pertence
+      allow read: if hasRole('mentor') && 
+                    getUserData().mentoriaId == mentoriaId;
+      
+      // Aluno pode ler a mentoria à qual pertence
+      allow read: if hasRole('aluno') && 
+                    getUserData().mentoriaId == mentoriaId;
+      
+      // Subcoleções da mentoria multi-tenant
+      // Replicam a mesma estrutura das coleções raiz (legacy)
+      match /alunos/{alunoId} {
+        allow read, write: if hasRole('gestor');
+        allow read, write: if hasRole('mentor') && getUserData().mentoriaId == mentoriaId;
+        allow read: if hasRole('aluno') && getUserData().mentoriaId == mentoriaId;
+        allow update: if hasRole('aluno') && isOwner(alunoId) && getUserData().mentoriaId == mentoriaId;
+        allow create: if isAuthenticated() && request.auth.uid == alunoId;
+        
+        // Subcoleções do aluno (estudos, simulados, horários, etc.)
+        match /{subcollection}/{docId} {
+          allow read, write: if hasRole('gestor');
+          allow read, write: if hasRole('mentor') && getUserData().mentoriaId == mentoriaId;
+          allow read, create, update, delete: if hasRole('aluno') && isOwner(alunoId) && getUserData().mentoriaId == mentoriaId;
+        }
+      }
+      
+      match /mentores/{mentorId} {
+        allow read, write: if hasRole('gestor');
+        allow read: if hasRole('mentor') && isOwner(mentorId) && getUserData().mentoriaId == mentoriaId;
+        allow write: if false; // Apenas via Cloud Functions
+      }
+      
+      match /ranking/{rankingId} {
+        allow read: if isAuthenticated() && getUserData().mentoriaId == mentoriaId;
+        allow write: if false; // Apenas via Cloud Functions
+      }
+      
+      match /cronograma_templates/{templateId} {
+        allow read: if isAuthenticated() && getUserData().mentoriaId == mentoriaId;
+        allow write: if isMentorOrGestor() && getUserData().mentoriaId == mentoriaId;
+      }
+      
+      match /conteudos_customizados/{materiaKey} {
+        allow read: if isAuthenticated() && getUserData().mentoriaId == mentoriaId;
+        allow write: if isMentorOrGestor() && getUserData().mentoriaId == mentoriaId;
+        
+        match /topicos/{topicoId} {
+          allow read: if isAuthenticated() && getUserData().mentoriaId == mentoriaId;
+          allow write: if isMentorOrGestor() && getUserData().mentoriaId == mentoriaId;
+        }
+      }
+    }
   }
 }

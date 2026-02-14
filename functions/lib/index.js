@@ -36,7 +36,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.metasFunctions = exports.alunoFunctions = exports.mentorFunctions = exports.gestorFunctions = exports.onUserCreated = void 0;
+exports.mentoriasFunctions = exports.metasFunctions = exports.alunoFunctions = exports.mentorFunctions = exports.gestorFunctions = exports.onUserCreated = void 0;
 const admin = __importStar(require("firebase-admin"));
 const dotenv = __importStar(require("dotenv"));
 // Carregar variáveis de ambiente
@@ -75,4 +75,6 @@ __exportStar(require("./callable/init-ranking"), exports);
 __exportStar(require("./callable/metricas-plataforma"), exports);
 __exportStar(require("./callable/mentor-features"), exports);
 __exportStar(require("./callable/fix-user-role"), exports);
+var mentorias_1 = require("./callable/mentorias");
+Object.defineProperty(exports, "mentoriasFunctions", { enumerable: true, get: function () { return mentorias_1.mentoriasFunctions; } });
 //# sourceMappingURL=index.js.map

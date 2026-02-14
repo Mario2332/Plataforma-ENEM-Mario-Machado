@@ -90,8 +90,10 @@ export default function MentorAlunos() {
     } finally {
       setIsLoading(false);
     }
-  };  useEffect(() => {
-    loadAlunos();
+  };
+
+  useEffect(() => {
+    loadData();
     // Carregar critérios salvos do localStorage
     const criteriosSalvos = localStorage.getItem('criteriosClassificacao');
     if (criteriosSalvos) {

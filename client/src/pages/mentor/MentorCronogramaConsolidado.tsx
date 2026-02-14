@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Settings2 } from "lucide-react";
 import { mentorApi } from "@/lib/api";
 import { toast } from "sonner";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, query, where, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 type FonteDados = "agenda" | "dinamico";
@@ -85,32 +85,43 @@ export default function MentorCronogramaConsolidado() {
           ...data,
           id: doc.id,
           dia: diasDaSemanaMap[dataAtividade.getDay()],
-          atividade: data.titulo || data.atividade || "Sem título",
+          atividade: data.titulo === "Outra atividade" && data.descricao 
+            ? data.descricao 
+            : (data.titulo || data.atividade || "Sem título"),
           horaInicio: data.horaInicio || "",
           horaFim: data.horaFim || "",
         };
       });
     } else {
       // Buscar do cronograma anual dinâmico
-      const cronogramaRef = collection(db, `alunos/${userId}/cronograma_anual_dinamico`);
-      const snapshot = await getDocs(cronogramaRef);
+      const cronogramaRef = doc(db, `alunos/${userId}/cronograma/dinamico`);
+      const snapshot = await getDoc(cronogramaRef);
+      
+      if (!snapshot.exists()) {
+        return [];
+      }
+
+      const data = snapshot.data();
+      const schedule = data.schedule || [];
       
       const atividades: any[] = [];
-      snapshot.docs.forEach(doc => {
-        const data = doc.data();
+      schedule.forEach((day: any) => {
+        const dataAtividade = new Date(day.date);
         // Verificar se a data está dentro da semana selecionada
-        if (data.data) {
-          const dataAtividade = new Date(data.data);
-          if (dataAtividade >= dataInicio && dataAtividade <= dataFim) {
+        if (dataAtividade >= dataInicio && dataAtividade <= dataFim) {
+          // Cada dia pode ter múltiplas tarefas
+          (day.tasks || []).forEach((task: any) => {
             atividades.push({
-              ...data,
-              id: doc.id,
+              id: `${day.date}_${task.name}`,
               dia: diasDaSemanaMap[dataAtividade.getDay()],
-              atividade: data.materia || data.topico || "Sem título",
-              horaInicio: data.horaInicio || "",
-              horaFim: data.horaFim || "",
+              atividade: task.name || "Sem título",
+              materia: task.subject || "",
+              duracao: task.duration || 0,
+              tipo: task.type || "",
+              horaInicio: "",
+              horaFim: "",
             });
-          }
+          });
         }
       });
       return atividades;

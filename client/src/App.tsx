@@ -72,6 +72,7 @@ const Sociologia = lazy(() => import("./pages/aluno/conteudos/Sociologia"));
 // Lazy load de páginas do Mentor
 const MentorHome = lazy(() => import("./pages/mentor/MentorHome"));
 const MentorAlunos = lazy(() => import("./pages/mentor/MentorAlunos"));
+const MentorCronogramaConsolidado = lazy(() => import("./pages/mentor/MentorCronogramaConsolidado"));
 const MentorMetricas = lazy(() => import("./pages/mentor/MentorMetricas"));
 const MentorConfiguracoes = lazy(() => import("./pages/mentor/MentorConfiguracoes"));
 const MentorViewAluno = lazy(() => import("./pages/mentor/MentorViewAluno"));
@@ -277,6 +278,13 @@ function Router() {
         <DashboardLayout>
           <Suspense fallback={<PageLoader />}>
             <MentorAlunos />
+          </Suspense>
+        </DashboardLayout>
+      </Route>
+      <Route path="/mentor/cronograma-consolidado">
+        <DashboardLayout>
+          <Suspense fallback={<PageLoader />}>
+            <MentorCronogramaConsolidado />
           </Suspense>
         </DashboardLayout>
       </Route>

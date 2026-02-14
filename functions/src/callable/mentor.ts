@@ -2174,6 +2174,154 @@ const getAlunoResumo = functions
         functions.logger.error("Erro ao buscar cronograma dinâmico:", e);
       }
 
+      // ===== CRONOGRAMA SEMANAL (LISTA) =====
+      let cronogramaSemanal: any[] = [];
+      try {
+        const cronogramaSnapshot = await db
+          .collection("alunos")
+          .doc(alunoId)
+          .collection("cronograma_lista")
+          .get();
+        cronogramaSemanal = cronogramaSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+      } catch (e) {
+        functions.logger.error("Erro ao buscar cronograma semanal:", e);
+      }
+
+      // ===== AGENDA (ATIVIDADES DE HOJE) =====
+      let atividadesHoje: any[] = [];
+      try {
+        const hojeData = hoje.toISOString().split("T")[0];
+        const agendaSnapshot = await db
+          .collection("alunos")
+          .doc(alunoId)
+          .collection("agenda")
+          .where("data", "==", hojeData)
+          .get();
+        atividadesHoje = agendaSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+      } catch (e) {
+        functions.logger.error("Erro ao buscar atividades de hoje:", e);
+      }
+
+      // ===== ÚLTIMAS ATIVIDADES REALIZADAS =====
+      let ultimasAtividades: any[] = [];
+      try {
+        const estudosRecentes = await db
+          .collection("alunos")
+          .doc(alunoId)
+          .collection("estudos")
+          .orderBy("data", "desc")
+          .limit(5)
+          .get();
+        ultimasAtividades = estudosRecentes.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+      } catch (e) {
+        functions.logger.error("Erro ao buscar últimas atividades:", e);
+      }
+
+      // ===== METAS DETALHADAS COM PROGRESSO =====
+      const metasDetalhadas = metas
+        .filter((m: any) => m.status === "ativa" && !m.metaPaiId)
+        .map((meta: any) => {
+          // Calcular progresso da meta
+          let progresso = 0;
+          let valorAtual = 0;
+          let valorMeta = meta.valor || 0;
+
+          if (meta.tipo === "questoes") {
+            valorAtual = questoesFeitas;
+          } else if (meta.tipo === "horas") {
+            valorAtual = Math.round((tempoTotal / 60) * 10) / 10;
+          } else if (meta.tipo === "simulados") {
+            valorAtual = simulados.length;
+          }
+
+          progresso = valorMeta > 0 ? Math.round((valorAtual / valorMeta) * 100) : 0;
+
+          return {
+            id: meta.id,
+            tipo: meta.tipo,
+            valor: valorMeta,
+            valorAtual,
+            progresso,
+            prazo: meta.prazo,
+            descricao: meta.descricao || "",
+          };
+        });
+
+      // ===== ANOTAÇÕES DO MENTOR =====
+      let anotacoes: any[] = [];
+      try {
+        const anotacoesSnapshot = await db
+          .collection("alunos")
+          .doc(alunoId)
+          .collection("anotacoes_mentor")
+          .orderBy("createdAt", "desc")
+          .limit(5)
+          .get();
+        anotacoes = anotacoesSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+      } catch (e) {
+        functions.logger.error("Erro ao buscar anotações:", e);
+      }
+
+      // ===== ALERTAS CALCULADOS =====
+      const alertas: any[] = [];
+
+      // Alerta: Metas atrasadas ou com progresso baixo
+      metasDetalhadas.forEach((meta: any) => {
+        if (meta.progresso < 50) {
+          alertas.push({
+            tipo: "meta_atrasada",
+            severidade: "alta",
+            mensagem: `Meta de ${meta.tipo} está em ${meta.progresso}% (${meta.valorAtual}/${meta.valor})`,
+            metaId: meta.id,
+          });
+        } else if (meta.progresso < 80) {
+          alertas.push({
+            tipo: "meta_atencao",
+            severidade: "media",
+            mensagem: `Meta de ${meta.tipo} está em ${meta.progresso}% (${meta.valorAtual}/${meta.valor})`,
+            metaId: meta.id,
+          });
+        }
+      });
+
+      // Alerta: Dias sem estudar
+      if (diasInatividade > 0) {
+        if (diasInatividade >= 3) {
+          alertas.push({
+            tipo: "inatividade",
+            severidade: "alta",
+            mensagem: `Sem estudar há ${diasInatividade} dias`,
+          });
+        } else if (diasInatividade >= 1) {
+          alertas.push({
+            tipo: "inatividade",
+            severidade: "media",
+            mensagem: `Sem estudar há ${diasInatividade} dia${diasInatividade > 1 ? "s" : ""}`,
+          });
+        }
+      }
+
+      // Alerta: Desempenho baixo
+      if (questoesFeitas > 50 && desempenho < 50) {
+        alertas.push({
+          tipo: "desempenho_baixo",
+          severidade: "alta",
+          mensagem: `Desempenho em questões está em ${desempenho}%`,
+        });
+      }
+
       return {
         // Dados básicos
         id: alunoDoc.id,
@@ -2233,6 +2381,14 @@ const getAlunoResumo = functions
         cronogramaDinamicoTopicosConcluidos,
         cronogramaDinamicoTopicosTotal,
         cronogramaDinamicoTipo,
+        
+        // Novos dados para resumo melhorado
+        cronogramaSemanal,
+        atividadesHoje,
+        ultimasAtividades,
+        metasDetalhadas,
+        anotacoes,
+        alertas,
       };
     } catch (error: any) {
       functions.logger.error("Erro ao buscar resumo do aluno:", error);

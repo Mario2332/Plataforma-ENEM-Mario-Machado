@@ -16,6 +16,8 @@ import { mentorApi } from "@/lib/api";
 import { Plus, Users, ArrowUpDown, Edit, Trash2, Search, TrendingUp, Eye, FileText, Calendar, Clock, Target, Award, Flame, BookOpen, Trophy, CheckCircle2, XCircle, User, Zap, HelpCircle } from "lucide-react";
 import { DefinirMetasModal } from "@/components/DefinirMetasModal";
 import { AnotacoesAluno } from "@/components/mentor/AnotacoesAluno";
+import { MetasBadges } from "@/components/mentor/MetasBadges";
+import { AlunoCardExpandivel } from "@/components/mentor/AlunoCardExpandivel";
 import { getMetasNaoAtingidas } from "@/services/metasMentor";
 import { toast } from "sonner";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -39,6 +41,7 @@ export default function MentorAlunos() {
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [filtroInteligente, setFiltroInteligente] = useState<string>("todos");
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [periodoFiltro, setPeriodoFiltro] = useState("todo");
@@ -275,23 +278,86 @@ export default function MentorAlunos() {
       }));
   }, [evolucao, periodoFiltro]);
 
-  // Filtrar e ordenar alunos com métricas
-  const filteredAndSortedAlunos = useMemo(() => {
-    let result = alunos.map(aluno => {
+  // Função para classificar aluno
+  const classificarAluno = (aluno: any): string => {
+    const { diasInatividade, desempenho, questoesFeitas, metasNaoAtingidas } = aluno;
+    
+    // Inativo: sem atividade há 7+ dias
+    if (diasInatividade >= 7) return "inativo";
+    
+    // Atenção Urgente: múltiplos problemas
+    if (
+      diasInatividade >= 3 ||
+      (questoesFeitas > 50 && desempenho < 50) ||
+      metasNaoAtingidas > 2
+    ) {
+      return "urgente";
+    }
+    
+    // Precisa Acompanhamento
+    if (
+      diasInatividade >= 1 ||
+      (questoesFeitas > 20 && desempenho < 60) ||
+      metasNaoAtingidas > 0
+    ) {
+      return "atencao";
+    }
+    
+    // Destaque: indo muito bem
+    if (
+      diasInatividade === 0 &&
+      desempenho >= 85 &&
+      questoesFeitas > 100
+    ) {
+      return "destaque";
+    }
+    
+    // Indo Bem: padrão
+    return "bem";
+  };
+
+  // Calcular classificações para todos os alunos
+  const alunosComClassificacao = useMemo(() => {
+    return alunos.map(aluno => {
       const metrica = metricas.find(m => m.alunoId === aluno.id);
-      return {
+      const alunoComMetricas = {
         ...aluno,
         questoesFeitas: metrica?.questoesFeitas || 0,
         desempenho: metrica?.desempenho || 0,
         horasEstudo: metrica?.horasEstudo || 0,
       };
+      return {
+        ...alunoComMetricas,
+        classificacao: classificarAluno(alunoComMetricas),
+      };
     });
+  }, [alunos, metricas]);
+
+  // Contadores de classificação
+  const contadoresClassificacao = useMemo(() => {
+    return {
+      urgente: alunosComClassificacao.filter(a => a.classificacao === "urgente").length,
+      atencao: alunosComClassificacao.filter(a => a.classificacao === "atencao").length,
+      bem: alunosComClassificacao.filter(a => a.classificacao === "bem").length,
+      destaque: alunosComClassificacao.filter(a => a.classificacao === "destaque").length,
+      inativo: alunosComClassificacao.filter(a => a.classificacao === "inativo").length,
+    };
+  }, [alunosComClassificacao]);
+
+  // Filtrar e ordenar alunos com métricas
+  const filteredAndSortedAlunos = useMemo(() => {
+    let result = [...alunosComClassificacao];
     
     // Filtrar por nome
     if (searchTerm) {
       result = result.filter(aluno => 
         aluno.nome?.toLowerCase().includes(searchTerm.toLowerCase())
       );
+    }
+    
+    // Filtrar por classificação inteligente
+    if (filtroInteligente !== "todos") {
+      result = result.filter(aluno => aluno.classificacao === filtroInteligente);
     }
     
     // Ordenar
@@ -333,7 +399,7 @@ export default function MentorAlunos() {
     }
     
     return result;
-  }, [alunos, metricas, searchTerm, sortColumn, sortDirection]);
+  }, [alunosComClassificacao, searchTerm, filtroInteligente, sortColumn, sortDirection]);
 
   const alunosAtivos = alunos.filter(a => a.ativo !== false).length;
 
@@ -520,6 +586,65 @@ export default function MentorAlunos() {
         />
       </div>
 
+      {/* Filtros Inteligentes */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Filtros Rápidos</CardTitle>
+          <CardDescription>Classificação automática baseada em métricas</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant={filtroInteligente === "todos" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setFiltroInteligente("todos")}
+            >
+              Todos ({alunos.length})
+            </Button>
+            <Button
+              variant={filtroInteligente === "urgente" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setFiltroInteligente("urgente")}
+              className={filtroInteligente === "urgente" ? "" : "border-red-500 text-red-600 hover:bg-red-50"}
+            >
+              🔴 Atenção Urgente ({contadoresClassificacao.urgente})
+            </Button>
+            <Button
+              variant={filtroInteligente === "atencao" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setFiltroInteligente("atencao")}
+              className={filtroInteligente === "atencao" ? "" : "border-yellow-500 text-yellow-600 hover:bg-yellow-50"}
+            >
+              🟡 Precisa Acompanhamento ({contadoresClassificacao.atencao})
+            </Button>
+            <Button
+              variant={filtroInteligente === "bem" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setFiltroInteligente("bem")}
+              className={filtroInteligente === "bem" ? "" : "border-green-500 text-green-600 hover:bg-green-50"}
+            >
+              ✅ Indo Bem ({contadoresClassificacao.bem})
+            </Button>
+            <Button
+              variant={filtroInteligente === "destaque" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setFiltroInteligente("destaque")}
+              className={filtroInteligente === "destaque" ? "" : "border-blue-500 text-blue-600 hover:bg-blue-50"}
+            >
+              ⭐ Destaque ({contadoresClassificacao.destaque})
+            </Button>
+            <Button
+              variant={filtroInteligente === "inativo" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setFiltroInteligente("inativo")}
+              className={filtroInteligente === "inativo" ? "" : "border-gray-500 text-gray-600 hover:bg-gray-50"}
+            >
+              💤 Inativos ({contadoresClassificacao.inativo})
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Tabela de Alunos */}
       <Card>
         <CardHeader>
@@ -546,7 +671,7 @@ export default function MentorAlunos() {
                     </TableHead>
                     <TableHead>
                       <Button variant="ghost" size="sm" onClick={() => handleSort('metasNaoAtingidas')} className="h-8 px-2">
-                        Metas não atingidas
+                        Progresso das Metas
                         <ArrowUpDown className="ml-2 h-4 w-4" />
                       </Button>
                     </TableHead>
@@ -580,99 +705,17 @@ export default function MentorAlunos() {
                 </TableHeader>
                 <TableBody>
                   {filteredAndSortedAlunos.map((aluno) => (
-                    <TableRow key={aluno.id}>
-                      <TableCell className="font-medium">{aluno.nome}</TableCell>
-                      <TableCell>{formatarDataCadastro(aluno)}</TableCell>
-                      <TableCell>
-                        {aluno.metasNaoAtingidas > 0 ? (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800">
-                            {aluno.metasNaoAtingidas}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>{aluno.questoesFeitas}</TableCell>
-                      <TableCell>
-                        <span className={`font-medium ${
-                          aluno.desempenho >= 80 ? 'text-green-600' :
-                          aluno.desempenho >= 60 ? 'text-yellow-600' :
-                          'text-red-600'
-                        }`}>
-                          {aluno.desempenho}%
-                        </span>
-                      </TableCell>
-                      <TableCell>{aluno.horasEstudo}h</TableCell>
-                      <TableCell>
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          aluno.diasInatividade === 0 ? 'bg-green-100 text-green-800' :
-                          aluno.diasInatividade <= 3 ? 'bg-yellow-100 text-yellow-800' :
-                          aluno.diasInatividade <= 7 ? 'bg-orange-100 text-orange-800' :
-                          'bg-red-100 text-red-800'
-                        }`}>
-                          {aluno.diasInatividade === 0 ? 'Hoje' :
-                           aluno.diasInatividade === 1 ? '1 dia' :
-                           `${aluno.diasInatividade} dias`}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${aluno.ativo !== false ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}>
-                          {aluno.ativo !== false ? "Ativo" : "Inativo"}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleOpenResumoDialog(aluno)}
-                            title="Ver resumo"
-                          >
-                            <FileText className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleOpenAnotacoesDialog(aluno)}
-                            title="Anotações privadas"
-                          >
-                            <FileText className="h-4 w-4 text-blue-600" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleOpenMetasDialog(aluno)}
-                            title="Definir metas"
-                          >
-                            <Target className="h-4 w-4 text-orange-600" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setLocation(`/mentor/alunos/${aluno.id}`)}
-                            title="Ver como aluno"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleOpenEditDialog(aluno)}
-                            title="Editar aluno"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleOpenDeleteDialog(aluno)}
-                            title="Excluir aluno"
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
+                    <AlunoCardExpandivel
+                      key={aluno.id}
+                      aluno={aluno}
+                      formatarDataCadastro={formatarDataCadastro}
+                      onVerAreaCompleta={(a) => setLocation(`/mentor/alunos/${a.id}`)}
+                      onResumo={handleOpenResumoDialog}
+                      onMetas={handleOpenMetasDialog}
+                      onAnotacoes={handleOpenAnotacoesDialog}
+                      onEdit={handleOpenEditDialog}
+                      onDelete={handleOpenDeleteDialog}
+                    />
                   ))}
                 </TableBody>
               </Table>
@@ -1060,6 +1103,174 @@ export default function MentorAlunos() {
                   </Card>
                 </div>
               </div>
+
+              <Separator />
+
+              {/* Alertas e Pendências */}
+              {resumoAluno.alertas && resumoAluno.alertas.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-lg flex items-center gap-2">
+                    <HelpCircle className="h-4 w-4" />
+                    Alertas e Pendências
+                  </h3>
+                  <div className="space-y-2">
+                    {resumoAluno.alertas.map((alerta: any, idx: number) => (
+                      <Card key={idx} className={`p-3 ${
+                        alerta.severidade === 'alta' ? 'border-red-500 bg-red-50' :
+                        alerta.severidade === 'media' ? 'border-yellow-500 bg-yellow-50' :
+                        'border-blue-500 bg-blue-50'
+                      }`}>
+                        <div className="flex items-center gap-2">
+                          {alerta.severidade === 'alta' ? (
+                            <XCircle className="h-4 w-4 text-red-600" />
+                          ) : alerta.severidade === 'media' ? (
+                            <HelpCircle className="h-4 w-4 text-yellow-600" />
+                          ) : (
+                            <CheckCircle2 className="h-4 w-4 text-blue-600" />
+                          )}
+                          <span className="text-sm font-medium">{alerta.mensagem}</span>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Metas Detalhadas */}
+              {resumoAluno.metasDetalhadas && resumoAluno.metasDetalhadas.length > 0 && (
+                <>
+                  <Separator />
+                  <div className="space-y-3">
+                    <h3 className="font-semibold text-lg flex items-center gap-2">
+                      <Target className="h-4 w-4" />
+                      Progresso das Metas
+                    </h3>
+                    <div className="space-y-3">
+                      {resumoAluno.metasDetalhadas.map((meta: any) => (
+                        <Card key={meta.id} className="p-4">
+                          <div className="space-y-2">
+                            <div className="flex justify-between items-center">
+                              <span className="font-medium capitalize">
+                                {meta.tipo === 'questoes' ? 'Questões' :
+                                 meta.tipo === 'horas' ? 'Horas de Estudo' :
+                                 meta.tipo === 'simulados' ? 'Simulados' : meta.tipo}
+                              </span>
+                              <Badge variant={
+                                meta.progresso >= 100 ? 'default' :
+                                meta.progresso >= 80 ? 'secondary' :
+                                meta.progresso >= 50 ? 'outline' : 'destructive'
+                              }>
+                                {meta.progresso}%
+                              </Badge>
+                            </div>
+                            <div className="flex justify-between text-sm text-muted-foreground">
+                              <span>{meta.valorAtual} de {meta.valor}</span>
+                              {meta.prazo && (
+                                <span>Prazo: {new Date(meta.prazo).toLocaleDateString('pt-BR')}</span>
+                              )}
+                            </div>
+                            <Progress value={meta.progresso} className="h-2" />
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Atividades de Hoje */}
+              {resumoAluno.atividadesHoje && resumoAluno.atividadesHoje.length > 0 && (
+                <>
+                  <Separator />
+                  <div className="space-y-3">
+                    <h3 className="font-semibold text-lg flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      Atividades de Hoje
+                    </h3>
+                    <div className="space-y-2">
+                      {resumoAluno.atividadesHoje.map((ativ: any) => (
+                        <Card key={ativ.id} className="p-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: ativ.cor || '#3b82f6' }} />
+                              <div>
+                                <p className="font-medium text-sm">
+                                  {ativ.atividade === 'Outra atividade' ? ativ.atividadePersonalizada : ativ.atividade}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {ativ.horaInicio} - {ativ.horaFim}
+                                </p>
+                              </div>
+                            </div>
+                            {ativ.isManual && (
+                              <Badge variant="outline" className="text-xs">Manual</Badge>
+                            )}
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Últimas Atividades Realizadas */}
+              {resumoAluno.ultimasAtividades && resumoAluno.ultimasAtividades.length > 0 && (
+                <>
+                  <Separator />
+                  <div className="space-y-3">
+                    <h3 className="font-semibold text-lg flex items-center gap-2">
+                      <BookOpen className="h-4 w-4" />
+                      Últimas Atividades Realizadas
+                    </h3>
+                    <div className="space-y-2">
+                      {resumoAluno.ultimasAtividades.map((ativ: any) => {
+                        const dataAtiv = ativ.data?.toDate ? ativ.data.toDate() : new Date(ativ.data);
+                        return (
+                          <Card key={ativ.id} className="p-3">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="font-medium text-sm">{ativ.materia}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {ativ.topico || 'Estudo geral'} • {ativ.tempoMinutos || 0} min
+                                </p>
+                              </div>
+                              <span className="text-xs text-muted-foreground">
+                                {dataAtiv.toLocaleDateString('pt-BR')}
+                              </span>
+                            </div>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Anotações do Mentor */}
+              {resumoAluno.anotacoes && resumoAluno.anotacoes.length > 0 && (
+                <>
+                  <Separator />
+                  <div className="space-y-3">
+                    <h3 className="font-semibold text-lg flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      Anotações do Mentor
+                    </h3>
+                    <div className="space-y-2">
+                      {resumoAluno.anotacoes.map((anotacao: any) => {
+                        const dataAnotacao = anotacao.createdAt?.toDate ? anotacao.createdAt.toDate() : new Date(anotacao.createdAt);
+                        return (
+                          <Card key={anotacao.id} className="p-3 bg-blue-50 border-blue-200">
+                            <p className="text-sm">{anotacao.texto}</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {dataAnotacao.toLocaleDateString('pt-BR')} às {dataAnotacao.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           ) : (
             <p className="text-center text-muted-foreground py-8">

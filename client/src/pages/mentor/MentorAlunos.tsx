@@ -13,11 +13,12 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { mentorApi } from "@/lib/api";
-import { Plus, Users, ArrowUpDown, Edit, Trash2, Search, TrendingUp, Eye, FileText, Calendar, Clock, Target, Award, Flame, BookOpen, Trophy, CheckCircle2, XCircle, User, Zap, HelpCircle } from "lucide-react";
+import { Plus, Users, ArrowUpDown, Edit, Trash2, Search, TrendingUp, Eye, FileText, Calendar, Clock, Target, Award, Flame, BookOpen, Trophy, CheckCircle2, XCircle, User, Zap, HelpCircle, Settings } from "lucide-react";
 import { DefinirMetasModal } from "@/components/DefinirMetasModal";
 import { AnotacoesAluno } from "@/components/mentor/AnotacoesAluno";
 import { MetasBadges } from "@/components/mentor/MetasBadges";
 import { AlunoCardExpandivel } from "@/components/mentor/AlunoCardExpandivel";
+import { ConfigurarCriteriosClassificacao, CRITERIOS_PADRAO, type CriteriosClassificacao } from "@/components/mentor/ConfigurarCriteriosClassificacao";
 import { getMetasNaoAtingidas } from "@/services/metasMentor";
 import { toast } from "sonner";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -32,6 +33,8 @@ export default function MentorAlunos() {
   const [resumoDialogOpen, setResumoDialogOpen] = useState(false);
   const [metasDialogOpen, setMetasDialogOpen] = useState(false);
   const [anotacoesDialogOpen, setAnotacoesDialogOpen] = useState(false);
+  const [criteriosDialogOpen, setCriteriosDialogOpen] = useState(false);
+  const [criteriosClassificacao, setCriteriosClassificacao] = useState<CriteriosClassificacao>(CRITERIOS_PADRAO);
   const [alunos, setAlunos] = useState<any[]>([]);
   const [metricas, setMetricas] = useState<any[]>([]);
   const [evolucao, setEvolucao] = useState<any[]>([]);
@@ -87,10 +90,17 @@ export default function MentorAlunos() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  useEffect(() => {
-    loadData();
+  };  useEffect(() => {
+    loadAlunos();
+    // Carregar critérios salvos do localStorage
+    const criteriosSalvos = localStorage.getItem('criteriosClassificacao');
+    if (criteriosSalvos) {
+      try {
+        setCriteriosClassificacao(JSON.parse(criteriosSalvos));
+      } catch (e) {
+        console.error('Erro ao carregar critérios salvos:', e);
+      }
+    }
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -278,36 +288,36 @@ export default function MentorAlunos() {
       }));
   }, [evolucao, periodoFiltro]);
 
-  // Função para classificar aluno
+  // Função para classificar aluno usando critérios personalizados
   const classificarAluno = (aluno: any): string => {
     const { diasInatividade, desempenho, questoesFeitas, metasNaoAtingidas } = aluno;
     
-    // Inativo: sem atividade há 7+ dias
-    if (diasInatividade >= 7) return "inativo";
+    // Inativo: sem atividade há X+ dias
+    if (diasInatividade >= criteriosClassificacao.inativo.diasInatividade) return "inativo";
     
     // Atenção Urgente: múltiplos problemas
     if (
-      diasInatividade >= 3 ||
-      (questoesFeitas > 50 && desempenho < 50) ||
-      metasNaoAtingidas > 2
+      diasInatividade >= criteriosClassificacao.urgente.diasInatividade ||
+      (questoesFeitas > criteriosClassificacao.urgente.questoesMinimas && desempenho < criteriosClassificacao.urgente.desempenhoMinimo) ||
+      metasNaoAtingidas > criteriosClassificacao.urgente.metasNaoAtingidas
     ) {
       return "urgente";
     }
     
     // Precisa Acompanhamento
     if (
-      diasInatividade >= 1 ||
-      (questoesFeitas > 20 && desempenho < 60) ||
-      metasNaoAtingidas > 0
+      diasInatividade >= criteriosClassificacao.atencao.diasInatividade ||
+      (questoesFeitas > criteriosClassificacao.atencao.questoesMinimas && desempenho < criteriosClassificacao.atencao.desempenhoMinimo) ||
+      metasNaoAtingidas > criteriosClassificacao.atencao.metasNaoAtingidas
     ) {
       return "atencao";
     }
     
     // Destaque: indo muito bem
     if (
-      diasInatividade === 0 &&
-      desempenho >= 85 &&
-      questoesFeitas > 100
+      diasInatividade === criteriosClassificacao.destaque.diasInatividade &&
+      desempenho >= criteriosClassificacao.destaque.desempenhoMinimo &&
+      questoesFeitas > criteriosClassificacao.destaque.questoesMinimas
     ) {
       return "destaque";
     }
@@ -331,7 +341,7 @@ export default function MentorAlunos() {
         classificacao: classificarAluno(alunoComMetricas),
       };
     });
-  }, [alunos, metricas]);
+  }, [alunos, metricas, criteriosClassificacao]);
 
   // Contadores de classificação
   const contadoresClassificacao = useMemo(() => {
@@ -589,8 +599,21 @@ export default function MentorAlunos() {
       {/* Filtros Inteligentes */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Filtros Rápidos</CardTitle>
-          <CardDescription>Classificação automática baseada em métricas</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Filtros Inteligentes</CardTitle>
+              <CardDescription>Classificação automática baseada em métricas</CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCriteriosDialogOpen(true)}
+              className="flex items-center gap-2"
+            >
+              <Settings className="h-4 w-4" />
+              Configurar Critérios
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
@@ -1310,6 +1333,18 @@ export default function MentorAlunos() {
           onClose={() => setAnotacoesDialogOpen(false)}
         />
       )}
+      
+      {/* Modal de Configurar Critérios de Classificação */}
+      <ConfigurarCriteriosClassificacao
+        open={criteriosDialogOpen}
+        onClose={() => setCriteriosDialogOpen(false)}
+        criteriosAtuais={criteriosClassificacao}
+        onSalvar={(novosCriterios) => {
+          setCriteriosClassificacao(novosCriterios);
+          // Salvar no localStorage para persistência
+          localStorage.setItem('criteriosClassificacao', JSON.stringify(novosCriterios));
+        }}
+      />
     </div>
   );
 }

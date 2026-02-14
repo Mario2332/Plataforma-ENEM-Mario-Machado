@@ -2230,20 +2230,10 @@ const getAlunoResumo = functions
       const metasDetalhadas = metas
         .filter((m: any) => m.status === "ativa" && !m.metaPaiId)
         .map((meta: any) => {
-          // Calcular progresso da meta
-          let progresso = 0;
-          let valorAtual = 0;
-          let valorMeta = meta.valor || 0;
-
-          if (meta.tipo === "questoes") {
-            valorAtual = questoesFeitas;
-          } else if (meta.tipo === "horas") {
-            valorAtual = Math.round((tempoTotal / 60) * 10) / 10;
-          } else if (meta.tipo === "simulados") {
-            valorAtual = simulados.length;
-          }
-
-          progresso = valorMeta > 0 ? Math.round((valorAtual / valorMeta) * 100) : 0;
+          // Usar progressoAtual da meta (já calculado pelo sistema de metas)
+          const valorAtual = meta.progressoAtual || 0;
+          const valorMeta = meta.valor || 0;
+          const progresso = valorMeta > 0 ? Math.round((valorAtual / valorMeta) * 100) : 0;
 
           return {
             id: meta.id,

@@ -51,7 +51,7 @@ export const AnotacoesAluno: React.FC<AnotacoesAlunoProps> = ({
         // Converter timestamp do Firestore (formato {_seconds, _nanoseconds})
         const convertTimestamp = (ts: any) => {
           if (!ts) return new Date();
-          if (ts.toDate) return ts.toDate();
+          if (ts.toDate && typeof ts.toDate === 'function') return ts.toDate();
           if (ts._seconds) return new Date(ts._seconds * 1000);
           if (typeof ts === 'string' || typeof ts === 'number') return new Date(ts);
           return new Date();

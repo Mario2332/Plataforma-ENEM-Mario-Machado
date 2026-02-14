@@ -218,7 +218,7 @@ export default function MentorAlunos() {
       let date: Date;
       const timestamp = aluno.createdAt;
       
-      if (timestamp.toDate) {
+      if (timestamp.toDate && typeof timestamp.toDate === 'function') {
         date = timestamp.toDate();
       } else if (timestamp.seconds || timestamp._seconds) {
         const seconds = timestamp.seconds || timestamp._seconds;
@@ -376,7 +376,7 @@ export default function MentorAlunos() {
             if (!val) return 0;
             if (val.seconds) return val.seconds;
             if (val._seconds) return val._seconds;
-            if (val.toDate) return val.toDate().getTime() / 1000;
+            if (val.toDate && typeof val.toDate === 'function') return val.toDate().getTime() / 1000;
             return new Date(val).getTime() / 1000;
           };
           aVal = getTimestamp(aVal);

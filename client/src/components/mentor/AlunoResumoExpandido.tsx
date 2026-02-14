@@ -205,9 +205,9 @@ export function AlunoResumoExpandido({
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
             {resumo.ultimasAtividades.map((ativ: any) => {
-              const dataAtiv = ativ.data?.toDate
+              const dataAtiv = ativ.data?.toDate && typeof ativ.data.toDate === 'function'
                 ? ativ.data.toDate()
-                : new Date(ativ.data);
+                : (ativ.data?._seconds ? new Date(ativ.data._seconds * 1000) : new Date(ativ.data));
               return (
                 <Card key={ativ.id} className="p-3">
                   <p className="font-medium text-sm">{ativ.materia}</p>
@@ -243,9 +243,9 @@ export function AlunoResumoExpandido({
             </h3>
             <div className="space-y-2">
               {resumo.anotacoes.slice(0, 3).map((anotacao: any) => {
-                const dataAnotacao = anotacao.createdAt?.toDate
+                const dataAnotacao = anotacao.createdAt?.toDate && typeof anotacao.createdAt.toDate === 'function'
                   ? anotacao.createdAt.toDate()
-                  : new Date(anotacao.createdAt);
+                  : (anotacao.createdAt?._seconds ? new Date(anotacao.createdAt._seconds * 1000) : new Date(anotacao.createdAt));
                 return (
                   <Card key={anotacao.id} className="p-3 bg-blue-50 border-blue-200">
                     <p className="text-sm">{anotacao.texto}</p>

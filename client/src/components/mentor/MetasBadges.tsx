@@ -64,13 +64,13 @@ export function MetasBadges({ alunoId }: MetasBadgesProps) {
 
   const formatarPrazo = (prazo: any) => {
     if (!prazo) return "Sem prazo";
-    const data = typeof prazo === "string" ? new Date(prazo) : prazo.toDate();
+    const data = typeof prazo === "string" ? new Date(prazo) : (prazo.toDate && typeof prazo.toDate === 'function' ? prazo.toDate() : (prazo._seconds ? new Date(prazo._seconds * 1000) : new Date(prazo)));
     return data.toLocaleDateString("pt-BR");
   };
 
   const calcularDiasRestantes = (prazo: any) => {
     if (!prazo) return null;
-    const data = typeof prazo === "string" ? new Date(prazo) : prazo.toDate();
+    const data = typeof prazo === "string" ? new Date(prazo) : (prazo.toDate && typeof prazo.toDate === 'function' ? prazo.toDate() : (prazo._seconds ? new Date(prazo._seconds * 1000) : new Date(prazo)));
     const hoje = new Date();
     const diff = Math.ceil((data.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
     return diff;

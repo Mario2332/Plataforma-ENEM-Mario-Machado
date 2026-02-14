@@ -59,4 +59,66 @@ export const mentoriasApi = {
   // Deletar mentoria (soft delete)
   deletarMentoria: (mentoriaId: string) =>
     callFunction("mentoriasFunctions-deletarMentoria", { mentoriaId }),
+
+  // ============================================
+  // GESTÃO DE MENTORES EM MENTORIAS
+  // ============================================
+
+  // Criar mentor dentro de uma mentoria
+  createMentorInMentoria: (data: {
+    mentoriaId: string;
+    email: string;
+    password: string;
+    nome: string;
+  }) => callFunction("mentoriaUsuariosFunctions-createMentorInMentoria", data),
+
+  // Listar mentores de uma mentoria
+  getMentoresInMentoria: (mentoriaId: string) =>
+    callFunction("mentoriaUsuariosFunctions-getMentoresInMentoria", { mentoriaId }),
+
+  // Atualizar mentor em uma mentoria
+  updateMentorInMentoria: (data: {
+    mentoriaId: string;
+    mentorId: string;
+    nome?: string;
+    email?: string;
+    ativo?: boolean;
+  }) => callFunction("mentoriaUsuariosFunctions-updateMentorInMentoria", data),
+
+  // Deletar mentor de uma mentoria
+  deleteMentorInMentoria: (mentoriaId: string, mentorId: string) =>
+    callFunction("mentoriaUsuariosFunctions-deleteMentorInMentoria", { mentoriaId, mentorId }),
+
+  // ============================================
+  // GESTÃO DE ALUNOS EM MENTORIAS
+  // ============================================
+
+  // Criar aluno dentro de uma mentoria
+  createAlunoInMentoria: (data: {
+    mentoriaId: string;
+    email: string;
+    password: string;
+    nome: string;
+    mentorId?: string;
+  }) => callFunction("mentoriaUsuariosFunctions-createAlunoInMentoria", data),
+
+  // Listar alunos de uma mentoria
+  getAlunosInMentoria: (mentoriaId: string) =>
+    callFunction("mentoriaUsuariosFunctions-getAlunosInMentoria", { mentoriaId }),
+
+  // Atualizar aluno em uma mentoria
+  updateAlunoInMentoria: (data: {
+    mentoriaId: string;
+    alunoId: string;
+    nome?: string;
+    email?: string;
+    celular?: string;
+    plano?: string;
+    ativo?: boolean;
+    mentorId?: string;
+  }) => callFunction("mentoriaUsuariosFunctions-updateAlunoInMentoria", data),
+
+  // Deletar aluno de uma mentoria
+  deleteAlunoInMentoria: (mentoriaId: string, alunoId: string) =>
+    callFunction("mentoriaUsuariosFunctions-deleteAlunoInMentoria", { mentoriaId, alunoId }),
 };

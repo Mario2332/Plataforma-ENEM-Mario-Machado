@@ -58,6 +58,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { useAuthContext } from "@/contexts/AuthContext";
+import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { LIMITES_POR_PLANO, type MentoriaPlan } from "@/types/mentoria";
 
@@ -104,6 +105,7 @@ interface DashboardData {
 
 export default function GestorMentorias() {
   const { userData } = useAuthContext();
+  const [, navigate] = useLocation();
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [mentorias, setMentorias] = useState<MentoriaData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -533,7 +535,12 @@ export default function GestorMentorias() {
                         {mentoria.modo === "legacy" && (
                           <Crown className="h-4 w-4 text-amber-500" />
                         )}
-                        {mentoria.mentoriaNome}
+                        <button
+                          className="hover:underline cursor-pointer text-left"
+                          onClick={() => navigate(`/gestor/mentorias/${mentoria.mentoriaId}`)}
+                        >
+                          {mentoria.mentoriaNome}
+                        </button>
                       </div>
                     </TableCell>
                     <TableCell>{getModoBadge(mentoria.modo)}</TableCell>
@@ -651,33 +658,42 @@ export default function GestorMentorias() {
                 </div>
               )}
 
-              {mentoria.modo !== "legacy" && (
-                <div className="flex gap-2 pt-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => {
-                      setEditingMentoria(mentoria);
-                      setShowEditDialog(true);
-                    }}
-                  >
-                    <Settings className="h-4 w-4 mr-1" />
-                    Editar
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleToggleStatus(mentoria.id)}
-                  >
-                    {mentoria.status === "ativo" ? (
-                      <Pause className="h-4 w-4 text-yellow-500" />
-                    ) : (
-                      <Play className="h-4 w-4 text-green-500" />
-                    )}
-                  </Button>
-                </div>
-              )}
+              <div className="flex gap-2 pt-2">
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => navigate(`/gestor/mentorias/${mentoria.id}`)}
+                >
+                  <Users className="h-4 w-4 mr-1" />
+                  Gerenciar
+                </Button>
+                {mentoria.modo !== "legacy" && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setEditingMentoria(mentoria);
+                        setShowEditDialog(true);
+                      }}
+                    >
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleToggleStatus(mentoria.id)}
+                    >
+                      {mentoria.status === "ativo" ? (
+                        <Pause className="h-4 w-4 text-yellow-500" />
+                      ) : (
+                        <Play className="h-4 w-4 text-green-500" />
+                      )}
+                    </Button>
+                  </>
+                )}
+              </div>
 
               {mentoria.modo === "legacy" && (
                 <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/20 p-2 rounded">

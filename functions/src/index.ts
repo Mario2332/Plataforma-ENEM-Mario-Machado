@@ -35,3 +35,4 @@ export * from "./callable/metricas-plataforma";
 export * from "./callable/mentor-features";
 export * from "./callable/fix-user-role";
 export { mentoriasFunctions } from "./callable/mentorias";
+export { mentoriaUsuariosFunctions } from "./callable/mentoria-usuarios";

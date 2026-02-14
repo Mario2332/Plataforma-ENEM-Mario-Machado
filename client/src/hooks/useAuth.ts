@@ -22,6 +22,7 @@ export interface UserData {
   email: string;
   name: string;
   role: UserRole;
+  mentoriaId?: string; // ID da mentoria (multi-tenant) ou undefined (legacy)
   createdAt: Date;
   updatedAt: Date;
   lastSignedIn: Date;
@@ -137,6 +138,7 @@ export function useAuth() {
               email,
               name,
               role,
+              mentoriaId: data.mentoriaId || undefined,
               createdAt: data.createdAt?.toDate() || new Date(),
               updatedAt: data.updatedAt?.toDate() || new Date(),
               lastSignedIn: data.lastSignedIn?.toDate() || new Date(),
@@ -148,7 +150,8 @@ export function useAuth() {
             console.log('[useAuth] Definindo authState com userData completo:', {
               loading: false,
               hasPhotoURL: !!userData.photoURL,
-              photoURL: userData.photoURL
+              photoURL: userData.photoURL,
+              mentoriaId: userData.mentoriaId,
             });
             setAuthState({
               user: firebaseUser,
@@ -251,6 +254,7 @@ export function useAuth() {
           email: data.email,
           name: data.name,
           role: data.role as UserRole,
+          mentoriaId: data.mentoriaId || undefined,
           createdAt: data.createdAt?.toDate() || new Date(),
           updatedAt: data.updatedAt?.toDate() || new Date(),
           lastSignedIn: data.lastSignedIn?.toDate() || new Date(),
@@ -352,6 +356,7 @@ export function useAuth() {
           email: data.email || authState.user.email || "",
           name: data.name || data.nome || authState.user.displayName || "Usuário",
           role: data.role as UserRole,
+          mentoriaId: data.mentoriaId || undefined,
           createdAt: data.createdAt?.toDate() || new Date(),
           updatedAt: data.updatedAt?.toDate() || new Date(),
           lastSignedIn: data.lastSignedIn?.toDate() || new Date(),

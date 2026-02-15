@@ -5,7 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useAlunoApi } from "@/hooks/useAlunoApi";
+// Substituindo useAlunoApi por funções diretas atualizadas para multi-tenant
+import { 
+  getSimuladosDirect, 
+  createSimuladoDirect, 
+  updateSimuladoDirect, 
+  deleteSimuladoDirect 
+} from "@/lib/firestore-direct";
 import { FileText, Plus, Trash2, TrendingUp, Edit, Zap, BarChart3, Target, Clock, ClipboardList } from "lucide-react";
 import { useState, useEffect } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
@@ -14,6 +20,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AlunoAutodiagnostico from "./AlunoAutodiagnostico";
 import AlunoPlanoAcao from "./AlunoPlanoAcao";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { useDataService } from "@/hooks/useDataService";
+import { useAuthContext } from "@/contexts/AuthContext";
+import { useMentorViewContext } from "@/contexts/MentorViewContext";
+import { auth } from "@/lib/firebase";
 
 type AreaFiltro = "total" | "linguagens" | "humanas" | "natureza" | "matematica";
 type MetricaFiltro = "acertos" | "tempo";
@@ -37,7 +47,17 @@ const formatarTempo = (minutos: number): string => {
 };
 
 export default function AlunoSimulados() {
-  const api = useAlunoApi();
+  // USANDO DATA SERVICE para obter o contexto
+  const { mentoriaId } = useDataService();
+  const { userData } = useAuthContext();
+  const { alunoId: mentorViewAlunoId, isMentorView } = useMentorViewContext();
+
+  // Função para obter o ID do aluno efetivo
+  const getEffectiveUserId = () => {
+    if (isMentorView && mentorViewAlunoId) return mentorViewAlunoId;
+    return auth.currentUser?.uid || null;
+  };
+
   const [activeTab, setActiveTab] = useState("simulados");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [simulados, setSimulados] = useState<any[]>([]);
@@ -87,7 +107,11 @@ export default function AlunoSimulados() {
   const loadSimulados = async () => {
     try {
       setIsLoading(true);
-      const data = await api.getSimulados();
+      const userId = getEffectiveUserId();
+      if (!userId) return;
+
+      // Usando função direta com suporte a multi-tenant
+      const data = await getSimuladosDirect(userId, mentoriaId);
       setSimulados(data as any[]);
     } catch (error: any) {
       toast.error(error.message || "Erro ao carregar simulados");
@@ -98,7 +122,7 @@ export default function AlunoSimulados() {
 
   useEffect(() => {
     loadSimulados();
-  }, []);
+  }, [mentoriaId]); // Recarregar se mentoriaId mudar
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,13 +132,25 @@ export default function AlunoSimulados() {
     }
     try {
       setIsSaving(true);
+      const userId = getEffectiveUserId();
+      if (!userId) throw new Error("Usuário não identificado");
+
       const [ano, mes, dia] = formData.data.split('-').map(Number);
       const dataLocal = new Date(ano, mes - 1, dia, 12, 0, 0);
+      
       if (editandoId) {
-        await api.updateSimulado({ simuladoId: editandoId, ...formData, data: dataLocal });
+        // Usando updateSimuladoDirect com mentoriaId
+        await updateSimuladoDirect(userId, editandoId, { 
+          ...formData, 
+          data: dataLocal 
+        } as any, mentoriaId);
         toast.success("Simulado atualizado!");
       } else {
-        await api.createSimulado({ ...formData, data: dataLocal });
+        // Usando createSimuladoDirect com mentoriaId
+        await createSimuladoDirect(userId, { 
+          ...formData, 
+          data: dataLocal 
+        } as any, mentoriaId);
         toast.success("Simulado registrado!");
       }
       setDialogOpen(false);
@@ -164,7 +200,11 @@ export default function AlunoSimulados() {
   const handleDelete = async (id: string) => {
     if (confirm("Tem certeza que deseja excluir este simulado?")) {
       try {
-        await api.deleteSimulado(id);
+        const userId = getEffectiveUserId();
+        if (!userId) throw new Error("Usuário não identificado");
+
+        // Usando deleteSimuladoDirect com mentoriaId
+        await deleteSimuladoDirect(userId, id, mentoriaId);
         toast.success("Simulado excluído!");
         await loadSimulados();
       } catch (error: any) {
@@ -253,402 +293,447 @@ export default function AlunoSimulados() {
                 <FileText className="h-10 w-10 text-white" />
               </div>
             </div>
-            <h1 className="text-5xl font-black tracking-tight bg-gradient-to-r from-blue-600 via-cyan-600 to-sky-600 bg-clip-text text-transparent animate-gradient">
-              Simulados
-            </h1>
+            <div>
+              <h1 className="text-4xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-600 dark:from-blue-400 dark:to-cyan-400">
+                Simulados & Diagnósticos
+              </h1>
+              <p className="text-lg text-muted-foreground mt-1">
+                Acompanhe sua evolução e identifique pontos de melhoria.
+              </p>
+            </div>
           </div>
-          <p className="text-lg text-muted-foreground font-medium">
-            Registre seus simulados e acompanhe sua evolução 📝
-          </p>
         </div>
       </div>
 
-      {/* Tabs Premium */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
-        <TabsList className="grid w-full grid-cols-3 p-1.5 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 border-2 border-blue-200/50 dark:border-blue-800/50 rounded-2xl h-auto">
-          <TabsTrigger 
-            value="simulados" 
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-xl font-bold text-base py-3 rounded-xl transition-all"
-          >
-            <FileText className="w-5 h-5 mr-2" />
-            Meus Simulados
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-3 lg:w-[600px] p-1 bg-muted/50 backdrop-blur-sm rounded-xl">
+          <TabsTrigger value="simulados" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:shadow-sm transition-all duration-300">
+            <FileText className="h-4 w-4 mr-2" />
+            Simulados
           </TabsTrigger>
-          <TabsTrigger 
-            value="autodiagnostico" 
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-xl font-bold text-base py-3 rounded-xl transition-all"
-          >
-            <Target className="w-5 h-5 mr-2" />
+          <TabsTrigger value="autodiagnostico" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:shadow-sm transition-all duration-300">
+            <ClipboardList className="h-4 w-4 mr-2" />
             Autodiagnóstico
           </TabsTrigger>
-          <TabsTrigger 
-            value="planos" 
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-xl font-bold text-base py-3 rounded-xl transition-all"
-          >
-            <ClipboardList className="w-5 h-5 mr-2" />
-            Planos de Ação
+          <TabsTrigger value="plano-acao" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:shadow-sm transition-all duration-300">
+            <Target className="h-4 w-4 mr-2" />
+            Plano de Ação
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="simulados" className="space-y-6 mt-6">
-          {/* Gráfico de Evolução Premium */}
-          <Card className="border-2 hover:shadow-2xl transition-shadow rounded-2xl">
+        <TabsContent value="simulados" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="flex justify-end">
+            <Dialog open={dialogOpen} onOpenChange={handleDialogClose}>
+              <DialogTrigger asChild>
+                <Button className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white shadow-lg hover:shadow-blue-500/25 transition-all duration-300 transform hover:-translate-y-0.5">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Novo Simulado
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[600px]">
+                <DialogHeader>
+                  <DialogTitle>{editandoId ? "Editar Simulado" : "Registrar Novo Simulado"}</DialogTitle>
+                  <DialogDescription>
+                    Preencha os dados do seu simulado para acompanhar seu desempenho.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4 py-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="nome">Nome do Simulado</Label>
+                      <Input
+                        id="nome"
+                        placeholder="Ex: Simulado ENEM 2023"
+                        value={formData.nome}
+                        onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="data">Data</Label>
+                      <Input
+                        id="data"
+                        type="date"
+                        value={formData.data}
+                        onChange={(e) => setFormData({ ...formData, data: e.target.value })}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 border rounded-lg p-4 bg-muted/50">
+                    <h4 className="font-medium flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-blue-500" />
+                      Desempenho por Área
+                    </h4>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Linguagens (Acertos)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="45"
+                          value={formData.linguagensAcertos}
+                          onChange={(e) => setFormData({ ...formData, linguagensAcertos: parseInt(e.target.value) || 0 })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Tempo (minutos)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={formData.linguagensTempo}
+                          onChange={(e) => setFormData({ ...formData, linguagensTempo: parseInt(e.target.value) || 0 })}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Humanas (Acertos)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="45"
+                          value={formData.humanasAcertos}
+                          onChange={(e) => setFormData({ ...formData, humanasAcertos: parseInt(e.target.value) || 0 })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Tempo (minutos)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={formData.humanasTempo}
+                          onChange={(e) => setFormData({ ...formData, humanasTempo: parseInt(e.target.value) || 0 })}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Natureza (Acertos)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="45"
+                          value={formData.naturezaAcertos}
+                          onChange={(e) => setFormData({ ...formData, naturezaAcertos: parseInt(e.target.value) || 0 })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Tempo (minutos)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={formData.naturezaTempo}
+                          onChange={(e) => setFormData({ ...formData, naturezaTempo: parseInt(e.target.value) || 0 })}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Matemática (Acertos)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="45"
+                          value={formData.matematicaAcertos}
+                          onChange={(e) => setFormData({ ...formData, matematicaAcertos: parseInt(e.target.value) || 0 })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Tempo (minutos)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={formData.matematicaTempo}
+                          onChange={(e) => setFormData({ ...formData, matematicaTempo: parseInt(e.target.value) || 0 })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 border rounded-lg p-4 bg-muted/50">
+                    <h4 className="font-medium flex items-center gap-2">
+                      <Edit className="h-4 w-4 text-purple-500" />
+                      Redação
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Nota</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="1000"
+                          step="20"
+                          value={formData.redacaoNota}
+                          onChange={(e) => setFormData({ ...formData, redacaoNota: parseInt(e.target.value) || 0 })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Tempo (minutos)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={formData.redacaoTempo}
+                          onChange={(e) => setFormData({ ...formData, redacaoTempo: parseInt(e.target.value) || 0 })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 border rounded-lg p-4 bg-muted/50">
+                    <h4 className="font-medium flex items-center gap-2">
+                      <BarChart3 className="h-4 w-4 text-orange-500" />
+                      Percepção de Dificuldade
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Dia 1 (Ling + Hum + Red)</Label>
+                        <Select
+                          value={formData.dificuldadeDia1}
+                          onValueChange={(value) => setFormData({ ...formData, dificuldadeDia1: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {DIFICULDADES.map((d) => (
+                              <SelectItem key={d.value} value={d.value}>
+                                {d.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Dia 2 (Nat + Mat)</Label>
+                        <Select
+                          value={formData.dificuldadeDia2}
+                          onValueChange={(value) => setFormData({ ...formData, dificuldadeDia2: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {DIFICULDADES.map((d) => (
+                              <SelectItem key={d.value} value={d.value}>
+                                {d.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => handleDialogClose(false)}>
+                      Cancelar
+                    </Button>
+                    <Button type="submit" disabled={isSaving}>
+                      {isSaving ? "Salvando..." : "Salvar"}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          {/* Gráfico de Evolução */}
+          <Card className="border-2 border-muted/50 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardHeader>
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl shadow-lg">
-                    <TrendingUp className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-2xl font-black">Evolução</CardTitle>
-                    <CardDescription className="text-base">Acompanhe seu progresso ao longo do tempo</CardDescription>
-                  </div>
-                </div>
-                <Dialog open={dialogOpen} onOpenChange={handleDialogClose}>
-                  <DialogTrigger asChild>
-                    <Button className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 shadow-xl hover:shadow-2xl font-bold hover:-translate-y-0.5 transition-all">
-                      <Plus className="mr-2 h-5 w-5" />
-                      Novo Simulado
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto border-2">
-                    <DialogHeader>
-                      <DialogTitle className="text-2xl font-black">{editandoId ? "Editar Simulado" : "Novo Simulado"}</DialogTitle>
-                      <DialogDescription className="text-base">Preencha os dados do simulado realizado</DialogDescription>
-                    </DialogHeader>
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="col-span-2">
-                          <Label htmlFor="nome" className="font-bold">Nome do Simulado *</Label>
-                          <Input id="nome" value={formData.nome} onChange={(e) => setFormData({...formData, nome: e.target.value})} placeholder="Ex: Simulado ENEM 2024" required className="border-2 mt-2" />
-                        </div>
-                        <div>
-                          <Label htmlFor="data" className="font-bold">Data</Label>
-                          <Input id="data" type="date" value={formData.data} onChange={(e) => setFormData({...formData, data: e.target.value})} className="border-2 mt-2" />
-                        </div>
-                      </div>
-
-                      <div className="space-y-4">
-                        <h3 className="font-black text-lg flex items-center gap-2">
-                          <div className="w-1.5 h-6 bg-gradient-to-b from-blue-500 to-cyan-500 rounded-full" />
-                          Linguagens e Códigos (45 questões)
-                        </h3>
-                        <div className="grid grid-cols-2 gap-4 p-4 bg-blue-50 dark:bg-blue-950/20 rounded-xl border-2 border-blue-200/50">
-                          <div>
-                            <Label htmlFor="linguagensAcertos" className="font-semibold">Acertos</Label>
-                            <Input id="linguagensAcertos" type="number" min="0" max="45" value={formData.linguagensAcertos} onChange={(e) => setFormData({...formData, linguagensAcertos: Number(e.target.value)})} className="border-2 mt-2" />
-                          </div>
-                          <div>
-                            <Label htmlFor="linguagensTempo" className="font-semibold">Tempo (minutos)</Label>
-                            <Input id="linguagensTempo" type="number" min="0" value={formData.linguagensTempo} onChange={(e) => setFormData({...formData, linguagensTempo: Number(e.target.value)})} className="border-2 mt-2" />
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-4">
-                        <h3 className="font-black text-lg flex items-center gap-2">
-                          <div className="w-1.5 h-6 bg-gradient-to-b from-cyan-500 to-sky-500 rounded-full" />
-                          Ciências Humanas (45 questões)
-                        </h3>
-                        <div className="grid grid-cols-2 gap-4 p-4 bg-cyan-50 dark:bg-cyan-950/20 rounded-xl border-2 border-cyan-200/50">
-                          <div>
-                            <Label htmlFor="humanasAcertos" className="font-semibold">Acertos</Label>
-                            <Input id="humanasAcertos" type="number" min="0" max="45" value={formData.humanasAcertos} onChange={(e) => setFormData({...formData, humanasAcertos: Number(e.target.value)})} className="border-2 mt-2" />
-                          </div>
-                          <div>
-                            <Label htmlFor="humanasTempo" className="font-semibold">Tempo (minutos)</Label>
-                            <Input id="humanasTempo" type="number" min="0" value={formData.humanasTempo} onChange={(e) => setFormData({...formData, humanasTempo: Number(e.target.value)})} className="border-2 mt-2" />
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-4">
-                        <h3 className="font-black text-lg flex items-center gap-2">
-                          <div className="w-1.5 h-6 bg-gradient-to-b from-sky-500 to-blue-500 rounded-full" />
-                          Ciências da Natureza (45 questões)
-                        </h3>
-                        <div className="grid grid-cols-2 gap-4 p-4 bg-sky-50 dark:bg-sky-950/20 rounded-xl border-2 border-sky-200/50">
-                          <div>
-                            <Label htmlFor="naturezaAcertos" className="font-semibold">Acertos</Label>
-                            <Input id="naturezaAcertos" type="number" min="0" max="45" value={formData.naturezaAcertos} onChange={(e) => setFormData({...formData, naturezaAcertos: Number(e.target.value)})} className="border-2 mt-2" />
-                          </div>
-                          <div>
-                            <Label htmlFor="naturezaTempo" className="font-semibold">Tempo (minutos)</Label>
-                            <Input id="naturezaTempo" type="number" min="0" value={formData.naturezaTempo} onChange={(e) => setFormData({...formData, naturezaTempo: Number(e.target.value)})} className="border-2 mt-2" />
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-4">
-                        <h3 className="font-black text-lg flex items-center gap-2">
-                          <div className="w-1.5 h-6 bg-gradient-to-b from-indigo-500 to-blue-500 rounded-full" />
-                          Matemática (45 questões)
-                        </h3>
-                        <div className="grid grid-cols-2 gap-4 p-4 bg-indigo-50 dark:bg-indigo-950/20 rounded-xl border-2 border-indigo-200/50">
-                          <div>
-                            <Label htmlFor="matematicaAcertos" className="font-semibold">Acertos</Label>
-                            <Input id="matematicaAcertos" type="number" min="0" max="45" value={formData.matematicaAcertos} onChange={(e) => setFormData({...formData, matematicaAcertos: Number(e.target.value)})} className="border-2 mt-2" />
-                          </div>
-                          <div>
-                            <Label htmlFor="matematicaTempo" className="font-semibold">Tempo (minutos)</Label>
-                            <Input id="matematicaTempo" type="number" min="0" value={formData.matematicaTempo} onChange={(e) => setFormData({...formData, matematicaTempo: Number(e.target.value)})} className="border-2 mt-2" />
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-4">
-                        <h3 className="font-black text-lg flex items-center gap-2">
-                          <div className="w-1.5 h-6 bg-gradient-to-b from-blue-500 to-cyan-500 rounded-full" />
-                          Redação
-                        </h3>
-                        <div className="grid grid-cols-2 gap-4 p-4 bg-blue-50 dark:bg-blue-950/20 rounded-xl border-2 border-blue-200/50">
-                          <div>
-                            <Label htmlFor="redacaoNota" className="font-semibold">Nota (0-1000)</Label>
-                            <Input id="redacaoNota" type="number" min="0" max="1000" value={formData.redacaoNota} onChange={(e) => setFormData({...formData, redacaoNota: Number(e.target.value)})} className="border-2 mt-2" />
-                          </div>
-                          <div>
-                            <Label htmlFor="redacaoTempo" className="font-semibold">Tempo (minutos)</Label>
-                            <Input id="redacaoTempo" type="number" min="0" value={formData.redacaoTempo} onChange={(e) => setFormData({...formData, redacaoTempo: Number(e.target.value)})} className="border-2 mt-2" />
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="dificuldadeDia1" className="font-bold">Dificuldade 1º Dia</Label>
-                          <Select value={formData.dificuldadeDia1} onValueChange={(value) => setFormData({...formData, dificuldadeDia1: value})}>
-                            <SelectTrigger className="border-2 mt-2">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {DIFICULDADES.map(d => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label htmlFor="dificuldadeDia2" className="font-bold">Dificuldade 2º Dia</Label>
-                          <Select value={formData.dificuldadeDia2} onValueChange={(value) => setFormData({...formData, dificuldadeDia2: value})}>
-                            <SelectTrigger className="border-2 mt-2">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {DIFICULDADES.map(d => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-
-                      <DialogFooter className="gap-2">
-                        <Button type="button" variant="outline" onClick={() => handleDialogClose(false)} className="border-2">Cancelar</Button>
-                        <Button type="submit" disabled={isSaving} className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 font-bold">
-                          {isSaving ? "Salvando..." : editandoId ? "Atualizar" : "Salvar"}
-                        </Button>
-                      </DialogFooter>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {simulados.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-full flex items-center justify-center">
-                    <FileText className="w-12 h-12 text-blue-500" />
-                  </div>
-                  <p className="text-lg font-semibold text-gray-600 dark:text-gray-400">Nenhum simulado registrado</p>
-                  <p className="text-sm text-muted-foreground mt-2">Clique em "Novo Simulado" para começar</p>
-                </div>
-              ) : (
-                <>
-                  <div className="flex gap-4 mb-6">
-                    <Select value={areaFiltro} onValueChange={(v: AreaFiltro) => setAreaFiltro(v)}>
-                      <SelectTrigger className="w-48 border-2">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="total">Total (180)</SelectItem>
-                        <SelectItem value="linguagens">Linguagens (45)</SelectItem>
-                        <SelectItem value="humanas">Humanas (45)</SelectItem>
-                        <SelectItem value="natureza">Natureza (45)</SelectItem>
-                        <SelectItem value="matematica">Matemática (45)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Select value={metricaFiltro} onValueChange={(v: MetricaFiltro) => setMetricaFiltro(v)}>
-                      <SelectTrigger className="w-48 border-2">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="acertos">Acertos</SelectItem>
-                        <SelectItem value="tempo">Tempo (min)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={dadosGrafico}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                      <XAxis dataKey="data" stroke="#6b7280" />
-                      <YAxis stroke="#6b7280" />
-                      <Tooltip contentStyle={{ backgroundColor: '#fff', border: '2px solid #3b82f6', borderRadius: '12px', fontWeight: 'bold' }} />
-                      <Legend />
-                      <Line type="monotone" dataKey={labelGrafico} stroke="#3b82f6" strokeWidth={3} dot={{ fill: '#3b82f6', r: 6 }} activeDot={{ r: 8 }} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Tabela de Simulados Premium */}
-          <Card className="border-2 hover:shadow-2xl transition-shadow rounded-2xl">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl shadow-lg">
-                  <BarChart3 className="w-6 h-6 text-white" />
-                </div>
                 <div>
-                  <CardTitle className="text-2xl font-black">Histórico</CardTitle>
-                  <CardDescription className="text-base">Todos os simulados registrados</CardDescription>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5 text-primary" />
+                    Evolução de Desempenho
+                  </CardTitle>
+                  <CardDescription>Acompanhe seu progresso ao longo do tempo</CardDescription>
+                </div>
+                <div className="flex gap-2">
+                  <Select value={areaFiltro} onValueChange={(v) => setAreaFiltro(v as AreaFiltro)}>
+                    <SelectTrigger className="w-[140px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="total">Total</SelectItem>
+                      <SelectItem value="linguagens">Linguagens</SelectItem>
+                      <SelectItem value="humanas">Humanas</SelectItem>
+                      <SelectItem value="natureza">Natureza</SelectItem>
+                      <SelectItem value="matematica">Matemática</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={metricaFiltro} onValueChange={(v) => setMetricaFiltro(v as MetricaFiltro)}>
+                    <SelectTrigger className="w-[140px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="acertos">Acertos</SelectItem>
+                      <SelectItem value="tempo">Tempo</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              {simulados.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground font-medium">Nenhum simulado para exibir</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto rounded-xl border-2">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20">
-                        <TableHead className="font-black">Nome</TableHead>
-                        <TableHead className="font-black">Data</TableHead>
-                        <TableHead className="font-black">Ling.</TableHead>
-                        <TableHead className="font-black">Hum.</TableHead>
-                        <TableHead className="font-black">Nat.</TableHead>
-                        <TableHead className="font-black">Mat.</TableHead>
-                        <TableHead className="font-black">1º Dia</TableHead>
-                        <TableHead className="font-black">Tempo 1º</TableHead>
-                        <TableHead className="font-black">Dif. 1º</TableHead>
-                        <TableHead className="font-black">2º Dia</TableHead>
-                        <TableHead className="font-black">Tempo 2º</TableHead>
-                        <TableHead className="font-black">Dif. 2º</TableHead>
-                        <TableHead className="font-black">Total</TableHead>
-                        <TableHead className="font-black">Redação</TableHead>
-                        <TableHead className="text-right font-black">Ações</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {simulados.map((simulado) => {
-                        let data: Date;
-                        try {
-                          if (simulado.data?.seconds || simulado.data?._seconds) {
-                            const seconds = simulado.data.seconds || simulado.data._seconds;
-                            data = new Date(seconds * 1000);
-                          } else if (simulado.data?.toDate) {
-                            data = simulado.data.toDate();
-                          } else {
-                            data = new Date(simulado.data);
-                          }
-                        } catch {
-                          data = new Date();
-                        }
-                        const linguagens = simulado.linguagensAcertos || 0;
-                        const humanas = simulado.humanasAcertos || 0;
-                        const natureza = simulado.naturezaAcertos || 0;
-                        const matematica = simulado.matematicaAcertos || 0;
-                        const dia1Acertos = linguagens + humanas;
-                        const dia2Acertos = natureza + matematica;
-                        const total = dia1Acertos + dia2Acertos;
-                        const tempoDia1 = (simulado.linguagensTempo || 0) + (simulado.humanasTempo || 0) + (simulado.redacaoTempo || 0);
-                        const tempoDia2 = (simulado.naturezaTempo || 0) + (simulado.matematicaTempo || 0);
-                        return (
-                          <TableRow key={simulado.id} className="hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-colors">
-                            <TableCell className="font-bold">{simulado.nome}</TableCell>
-                            <TableCell className="font-semibold">{data.toLocaleDateString('pt-BR')}</TableCell>
-                            <TableCell>{linguagens}/45</TableCell>
-                            <TableCell>{humanas}/45</TableCell>
-                            <TableCell>{natureza}/45</TableCell>
-                            <TableCell>{matematica}/45</TableCell>
-                            <TableCell className="font-bold">{dia1Acertos}/90</TableCell>
-                            <TableCell>{formatarTempo(tempoDia1)}</TableCell>
-                            <TableCell className="text-sm">{getDificuldadeLabel(simulado.dificuldadeDia1)}</TableCell>
-                            <TableCell className="font-bold">{dia2Acertos}/90</TableCell>
-                            <TableCell>{formatarTempo(tempoDia2)}</TableCell>
-                            <TableCell className="text-sm">{getDificuldadeLabel(simulado.dificuldadeDia2)}</TableCell>
-                            <TableCell className="font-black text-lg">{total}/180</TableCell>
-                            <TableCell className="font-bold">{simulado.redacaoNota > 0 ? simulado.redacaoNota : "-"}</TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <Button variant="ghost" size="sm" onClick={() => handleEdit(simulado)} className="hover:bg-blue-100 dark:hover:bg-blue-900/30">
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="sm" onClick={() => handleDelete(simulado.id)} className="hover:bg-red-100 dark:hover:bg-red-900/30">
-                                  <Trash2 className="h-4 w-4 text-red-600" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
+              <div className="h-[300px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={dadosGrafico}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis 
+                      dataKey="data" 
+                      className="text-xs text-muted-foreground" 
+                      tick={{ fill: 'currentColor' }}
+                    />
+                    <YAxis 
+                      className="text-xs text-muted-foreground" 
+                      tick={{ fill: 'currentColor' }}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--background))', 
+                        borderColor: 'hsl(var(--border))',
+                        borderRadius: '0.5rem',
+                        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                      }}
+                    />
+                    <Legend />
+                    <Line
+                      type="monotone"
+                      dataKey={labelGrafico}
+                      stroke="hsl(var(--primary))"
+                      strokeWidth={3}
+                      dot={{ r: 4, fill: "hsl(var(--primary))", strokeWidth: 2, stroke: "hsl(var(--background))" }}
+                      activeDot={{ r: 6, strokeWidth: 0 }}
+                      animationDuration={1500}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
             </CardContent>
           </Card>
+
+          {/* Lista de Simulados */}
+          <div className="grid gap-4">
+            {simulados.map((simulado) => {
+              let dataFormatada = "";
+              try {
+                let data: Date;
+                if (simulado.data?.seconds || simulado.data?._seconds) {
+                  const seconds = simulado.data.seconds || simulado.data._seconds;
+                  data = new Date(seconds * 1000);
+                } else if (simulado.data?.toDate) {
+                  data = simulado.data.toDate();
+                } else {
+                  data = new Date(simulado.data);
+                }
+                dataFormatada = data.toLocaleDateString();
+              } catch {
+                dataFormatada = "-";
+              }
+
+              const totalAcertos = (simulado.linguagensAcertos || 0) + 
+                                 (simulado.humanasAcertos || 0) + 
+                                 (simulado.naturezaAcertos || 0) + 
+                                 (simulado.matematicaAcertos || 0);
+
+              const totalTempo = (simulado.linguagensTempo || 0) + 
+                               (simulado.humanasTempo || 0) + 
+                               (simulado.naturezaTempo || 0) + 
+                               (simulado.matematicaTempo || 0) +
+                               (simulado.redacaoTempo || 0);
+
+              return (
+                <Card key={simulado.id} className="hover:border-primary/50 transition-all duration-300 group">
+                  <CardContent className="p-6">
+                    <div className="flex flex-col md:flex-row justify-between gap-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold text-lg group-hover:text-primary transition-colors">
+                            {simulado.nome}
+                          </h3>
+                          <span className="text-sm text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                            {dataFormatada}
+                          </span>
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <Target className="h-4 w-4" />
+                            <span>{totalAcertos} acertos</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-4 w-4" />
+                            <span>{formatarTempo(totalTempo)}</span>
+                          </div>
+                          {simulado.redacaoNota > 0 && (
+                            <div className="flex items-center gap-1">
+                              <Edit className="h-4 w-4" />
+                              <span>Redação: {simulado.redacaoNota}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 self-end md:self-center">
+                        <Button variant="ghost" size="sm" onClick={() => handleEdit(simulado)}>
+                          <Edit className="h-4 w-4 mr-2" />
+                          Editar
+                        </Button>
+                        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => handleDelete(simulado.id)}>
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Excluir
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t">
+                      <div className="space-y-1">
+                        <span className="text-xs text-muted-foreground">Linguagens</span>
+                        <div className="font-medium">{simulado.linguagensAcertos || 0} acertos</div>
+                        <div className="text-xs text-muted-foreground">{formatarTempo(simulado.linguagensTempo || 0)}</div>
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-xs text-muted-foreground">Humanas</span>
+                        <div className="font-medium">{simulado.humanasAcertos || 0} acertos</div>
+                        <div className="text-xs text-muted-foreground">{formatarTempo(simulado.humanasTempo || 0)}</div>
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-xs text-muted-foreground">Natureza</span>
+                        <div className="font-medium">{simulado.naturezaAcertos || 0} acertos</div>
+                        <div className="text-xs text-muted-foreground">{formatarTempo(simulado.naturezaTempo || 0)}</div>
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-xs text-muted-foreground">Matemática</span>
+                        <div className="font-medium">{simulado.matematicaAcertos || 0} acertos</div>
+                        <div className="text-xs text-muted-foreground">{formatarTempo(simulado.matematicaTempo || 0)}</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+
+            {simulados.length === 0 && (
+              <div className="text-center py-12 text-muted-foreground bg-muted/20 rounded-xl border-2 border-dashed border-muted">
+                <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p className="text-lg font-medium">Nenhum simulado registrado</p>
+                <p className="text-sm mt-1">Registre seu primeiro simulado para acompanhar sua evolução.</p>
+              </div>
+            )}
+          </div>
         </TabsContent>
 
         <TabsContent value="autodiagnostico">
-          <ErrorBoundary 
-            componentName="AlunoAutodiagnostico" 
-            fallbackMessage="Erro ao carregar Autodiagnóstico"
-          >
+          <ErrorBoundary>
             <AlunoAutodiagnostico />
           </ErrorBoundary>
         </TabsContent>
 
-        <TabsContent value="planos">
-          <ErrorBoundary 
-            componentName="AlunoPlanoAcao" 
-            fallbackMessage="Erro ao carregar Planos de Ação"
-          >
+        <TabsContent value="plano-acao">
+          <ErrorBoundary>
             <AlunoPlanoAcao />
           </ErrorBoundary>
         </TabsContent>
       </Tabs>
-
-      <style>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-20px); }
-        }
-        @keyframes float-delayed {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-30px); }
-        }
-        @keyframes gradient {
-          0%, 100% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-        }
-        @keyframes pulse-slow {
-          0%, 100% { opacity: 0.5; }
-          50% { opacity: 0.8; }
-        }
-        @keyframes fade-in {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes slide-up {
-          from { opacity: 0; transform: translateY(30px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-float { animation: float 8s ease-in-out infinite; }
-        .animate-float-delayed { animation: float-delayed 10s ease-in-out infinite; }
-        .animate-gradient { background-size: 200% 200%; animation: gradient 3s ease infinite; }
-        .animate-pulse-slow { animation: pulse-slow 3s ease-in-out infinite; }
-        .animate-fade-in { animation: fade-in 0.8s ease-out; }
-        .animate-slide-up { animation: slide-up 0.6s ease-out; }
-      `}</style>
     </div>
   );
 }

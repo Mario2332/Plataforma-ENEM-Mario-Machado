@@ -5,13 +5,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { useAlunoApi } from "@/hooks/useAlunoApi";
+// Substituindo useAlunoApi e chamadas diretas ao Firestore por funções do firestore-direct
+import { 
+  getRedacoesDirect, 
+  createRedacaoDirect, 
+  updateRedacaoDirect, 
+  deleteRedacaoDirect,
+  getMetaRedacaoDirect,
+  updateMetaRedacaoDirect
+} from "@/lib/firestore-direct";
 import { Plus, Trash2, Edit2, TrendingUp, Award, FileText, Clock, Target, AlertTriangle, ChevronDown, ChevronUp, PenTool, Zap, Star, Flame } from "lucide-react";
 import { toast } from "sonner";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, BarChart, Bar, Cell, Legend } from "recharts";
-import { db, auth } from "@/lib/firebase";
 import { useMentorViewContext } from "@/contexts/MentorViewContext";
-import { collection, doc, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy, Timestamp, setDoc } from "firebase/firestore";
+import { useDataService } from "@/hooks/useDataService";
+import { useAuthContext } from "@/contexts/AuthContext";
+import { auth } from "@/lib/firebase";
+import { Timestamp } from "firebase/firestore";
 
 // Função para formatar data sem problema de fuso horário
 // A data vem no formato "YYYY-MM-DD" e deve ser exibida como "DD/MM/YYYY"
@@ -94,8 +104,17 @@ const initialForm: RedacaoForm = {
 };
 
 export default function AlunoRedacoes() {
+  // USANDO DATA SERVICE para obter o contexto
+  const { mentoriaId } = useDataService();
+  const { userData } = useAuthContext();
   const { alunoId: mentorViewAlunoId, isMentorView } = useMentorViewContext();
-  const alunoApi = useAlunoApi();
+
+  // Função para obter o ID do aluno efetivo
+  const getEffectiveUserId = () => {
+    if (isMentorView && mentorViewAlunoId) return mentorViewAlunoId;
+    return auth.currentUser?.uid || null;
+  };
+
   const [redacoes, setRedacoes] = useState<Redacao[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -111,33 +130,22 @@ export default function AlunoRedacoes() {
   useEffect(() => {
     loadRedacoes();
     loadMeta();
-  }, []);
-
-  const getAlunoId = () => {
-    // Se estiver na visualização do mentor, usar o ID do aluno do contexto
-    if (isMentorView && mentorViewAlunoId) return mentorViewAlunoId;
-    // Fallback para URL params (compatibilidade)
-    const urlParams = new URLSearchParams(window.location.search);
-    const alunoIdFromUrl = urlParams.get('alunoId');
-    if (alunoIdFromUrl) return alunoIdFromUrl;
-    // Caso contrário, usar o usuário logado
-    return auth.currentUser?.uid || "";
-  };
+  }, [mentoriaId]); // Recarregar se mentoriaId mudar
 
   const loadRedacoes = async () => {
     try {
       setIsLoading(true);
-      const alunoId = getAlunoId();
-      if (!alunoId) return;
+      const userId = getEffectiveUserId();
+      if (!userId) return;
 
-      const redacoesRef = collection(db, "alunos", alunoId, "redacoes");
-      const q = query(redacoesRef, orderBy("data", "desc"));
-      const snapshot = await getDocs(q);
+      // Usando função direta com mentoriaId
+      const redacoesData = await getRedacoesDirect(userId, mentoriaId);
       
-      const redacoesData: Redacao[] = snapshot.docs.map(doc => {
-        const data = doc.data();
+      // Mapeando para o formato local (embora getRedacoesDirect já retorne quase pronto, 
+      // vamos garantir a tipagem correta das datas)
+      const redacoesFormatadas: Redacao[] = redacoesData.map((data: any) => {
         return {
-          id: doc.id,
+          id: data.id,
           titulo: data.titulo || "",
           data: data.data || "",
           tempoHoras: data.tempoHoras || 0,
@@ -151,11 +159,11 @@ export default function AlunoRedacoes() {
           repertorioIntro: data.repertorioIntro || "",
           repertorioD1: data.repertorioD1 || "",
           repertorioD2: data.repertorioD2 || "",
-          criadoEm: data.criadoEm?.toDate() || new Date(),
+          criadoEm: data.criadoEm?.toDate ? data.criadoEm.toDate() : new Date(),
         };
       });
       
-      setRedacoes(redacoesData);
+      setRedacoes(redacoesFormatadas);
     } catch (error) {
       console.error("Erro ao carregar redações:", error);
       toast.error("Erro ao carregar redações");
@@ -166,16 +174,13 @@ export default function AlunoRedacoes() {
 
   const loadMeta = async () => {
     try {
-      const alunoId = getAlunoId();
-      if (!alunoId) return;
+      const userId = getEffectiveUserId();
+      if (!userId) return;
 
-      const snapshot = await getDocs(collection(db, "alunos", alunoId, "configuracoes"));
-      const metaDoc = snapshot.docs.find(d => d.id === "redacoes");
-      if (metaDoc) {
-        const meta = metaDoc.data().metaNota || 900;
-        setMetaNota(meta);
-        setMetaNotaInput(meta.toString());
-      }
+      // Usando função direta com mentoriaId
+      const meta = await getMetaRedacaoDirect(userId, mentoriaId);
+      setMetaNota(meta);
+      setMetaNotaInput(meta.toString());
     } catch (error) {
       console.error("Erro ao carregar meta:", error);
     }
@@ -183,11 +188,11 @@ export default function AlunoRedacoes() {
 
   const saveMeta = async (novaMeta: number) => {
     try {
-      const alunoId = getAlunoId();
-      if (!alunoId) return;
+      const userId = getEffectiveUserId();
+      if (!userId) return;
 
-      const metaRef = doc(db, "alunos", alunoId, "configuracoes", "redacoes");
-      await setDoc(metaRef, { metaNota: novaMeta }, { merge: true });
+      // Usando função direta com mentoriaId
+      await updateMetaRedacaoDirect(userId, novaMeta, mentoriaId);
       setMetaNota(novaMeta);
       setMetaNotaInput(novaMeta.toString());
       toast.success("Meta atualizada!");
@@ -222,8 +227,8 @@ export default function AlunoRedacoes() {
 
     try {
       setIsSaving(true);
-      const alunoId = getAlunoId();
-      if (!alunoId) {
+      const userId = getEffectiveUserId();
+      if (!userId) {
         toast.error("Usuário não identificado");
         return;
       }
@@ -254,13 +259,12 @@ export default function AlunoRedacoes() {
       };
 
       if (editandoId) {
-        // Atualizar redação existente
-        const redacaoRef = doc(db, "alunos", alunoId, "redacoes", editandoId);
-        await updateDoc(redacaoRef, redacaoData);
+        // Atualizar redação existente usando função direta com mentoriaId
+        await updateRedacaoDirect(userId, editandoId, redacaoData, mentoriaId);
         toast.success("Redação atualizada com sucesso!");
       } else {
-        // Criar nova redação
-        await addDoc(collection(db, "alunos", alunoId, "redacoes"), redacaoData);
+        // Criar nova redação usando função direta com mentoriaId
+        await createRedacaoDirect(userId, redacaoData, mentoriaId);
         toast.success("Redação registrada com sucesso!");
       }
 
@@ -299,10 +303,11 @@ export default function AlunoRedacoes() {
     if (!confirm("Tem certeza que deseja excluir esta redação?")) return;
 
     try {
-      const alunoId = getAlunoId();
-      if (!alunoId) return;
+      const userId = getEffectiveUserId();
+      if (!userId) return;
 
-      await deleteDoc(doc(db, "alunos", alunoId, "redacoes", id));
+      // Usando função direta com mentoriaId
+      await deleteRedacaoDirect(userId, id, mentoriaId);
       toast.success("Redação excluída com sucesso!");
       loadRedacoes();
     } catch (error) {
@@ -318,134 +323,92 @@ export default function AlunoRedacoes() {
     const hoje = new Date();
     const dataLimite = new Date();
     
-    switch (filtroPeriodo) {
-      case "30dias":
-        dataLimite.setDate(hoje.getDate() - 30);
-        break;
-      case "90dias":
-        dataLimite.setDate(hoje.getDate() - 90);
-        break;
-      case "6meses":
-        dataLimite.setMonth(hoje.getMonth() - 6);
-        break;
-      case "1ano":
-        dataLimite.setFullYear(hoje.getFullYear() - 1);
-        break;
-      default:
-        return redacoes;
+    if (filtroPeriodo === "mes") {
+      dataLimite.setMonth(hoje.getMonth() - 1);
+    } else if (filtroPeriodo === "trimestre") {
+      dataLimite.setMonth(hoje.getMonth() - 3);
+    } else if (filtroPeriodo === "semestre") {
+      dataLimite.setMonth(hoje.getMonth() - 6);
     }
     
     return redacoes.filter(r => new Date(r.data) >= dataLimite);
   }, [redacoes, filtroPeriodo]);
 
-  // Estatísticas calculadas
-  const estatisticas = useMemo(() => {
-    if (redacoesFiltradas.length === 0) {
-      return {
-        mediaGeral: 0,
-        melhorNota: 0,
-        totalRedacoes: 0,
-        tempoMedio: { horas: 0, minutos: 0 },
-        tempoExcessivo: false,
-        tempoAlerta: false,
-        mediasCompetencias: { c1: 0, c2: 0, c3: 0, c4: 0, c5: 0 },
-        pontoFraco: null as string | null,
-      };
-    }
-
-    // Usar últimas 5 redações para média mais realista
-    const ultimasRedacoes = redacoesFiltradas.slice(0, 5);
-    const mediaGeral = Math.round(ultimasRedacoes.reduce((acc, r) => acc + r.notaTotal, 0) / ultimasRedacoes.length);
-    const melhorNota = Math.max(...redacoesFiltradas.map(r => r.notaTotal));
-    
-    // Tempo médio
-    const totalMinutos = redacoesFiltradas.reduce((acc, r) => acc + (r.tempoHoras * 60) + r.tempoMinutos, 0);
-    const mediaMinutos = totalMinutos / redacoesFiltradas.length;
-    const tempoMedio = {
-      horas: Math.floor(mediaMinutos / 60),
-      minutos: Math.round(mediaMinutos % 60),
-    };
-    
-    // Alertas de tempo
-    const tempoAlerta = mediaMinutos > 90 && mediaMinutos <= 120; // > 1h30 e <= 2h
-    const tempoExcessivo = mediaMinutos > 120; // > 2h
-
-    // Médias por competência
-    const mediasCompetencias = {
-      c1: Math.round(redacoesFiltradas.reduce((acc, r) => acc + r.c1, 0) / redacoesFiltradas.length),
-      c2: Math.round(redacoesFiltradas.reduce((acc, r) => acc + r.c2, 0) / redacoesFiltradas.length),
-      c3: Math.round(redacoesFiltradas.reduce((acc, r) => acc + r.c3, 0) / redacoesFiltradas.length),
-      c4: Math.round(redacoesFiltradas.reduce((acc, r) => acc + r.c4, 0) / redacoesFiltradas.length),
-      c5: Math.round(redacoesFiltradas.reduce((acc, r) => acc + r.c5, 0) / redacoesFiltradas.length),
-    };
-
-    // Identificar ponto fraco (menor média)
-    const menorMedia = Math.min(...Object.values(mediasCompetencias));
-    const pontoFraco = Object.entries(mediasCompetencias).find(([_, v]) => v === menorMedia)?.[0] || null;
-
-    return {
-      mediaGeral,
-      melhorNota,
-      totalRedacoes: redacoesFiltradas.length,
-      tempoMedio,
-      tempoExcessivo,
-      tempoAlerta,
-      mediasCompetencias,
-      pontoFraco,
-    };
-  }, [redacoesFiltradas]);
-
   // Dados para o gráfico de evolução
-  const dadosEvolucao = useMemo(() => {
+  const dadosGrafico = useMemo(() => {
     return [...redacoesFiltradas]
-      .reverse()
-      .map((r, index) => ({
-        nome: `#${index + 1}`,
+      .sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime())
+      .map(r => ({
         data: formatarData(r.data, 'curto'),
         nota: r.notaTotal,
-        titulo: r.titulo,
+        c1: r.c1,
+        c2: r.c2,
+        c3: r.c3,
+        c4: r.c4,
+        c5: r.c5,
+        titulo: r.titulo
       }));
   }, [redacoesFiltradas]);
 
-  // Dados para o gráfico de radar
-  const dadosRadar = useMemo(() => {
-    return [
-      { competencia: "C1", valor: estatisticas.mediasCompetencias.c1, fullMark: 200 },
-      { competencia: "C2", valor: estatisticas.mediasCompetencias.c2, fullMark: 200 },
-      { competencia: "C3", valor: estatisticas.mediasCompetencias.c3, fullMark: 200 },
-      { competencia: "C4", valor: estatisticas.mediasCompetencias.c4, fullMark: 200 },
-      { competencia: "C5", valor: estatisticas.mediasCompetencias.c5, fullMark: 200 },
+  // Médias por competência
+  const mediasCompetencias = useMemo(() => {
+    if (redacoesFiltradas.length === 0) return [
+      { subject: 'C1', A: 0, fullMark: 200 },
+      { subject: 'C2', A: 0, fullMark: 200 },
+      { subject: 'C3', A: 0, fullMark: 200 },
+      { subject: 'C4', A: 0, fullMark: 200 },
+      { subject: 'C5', A: 0, fullMark: 200 },
     ];
-  }, [estatisticas.mediasCompetencias]);
 
-  // Dados para o gráfico de barras
-  const dadosBarras = useMemo(() => {
+    const soma = redacoesFiltradas.reduce((acc, curr) => ({
+      c1: acc.c1 + curr.c1,
+      c2: acc.c2 + curr.c2,
+      c3: acc.c3 + curr.c3,
+      c4: acc.c4 + curr.c4,
+      c5: acc.c5 + curr.c5,
+    }), { c1: 0, c2: 0, c3: 0, c4: 0, c5: 0 });
+
+    const qtd = redacoesFiltradas.length;
+
     return [
-      { nome: "C1", media: estatisticas.mediasCompetencias.c1, cor: CORES_COMPETENCIAS.c1, descricao: "Norma Culta" },
-      { nome: "C2", media: estatisticas.mediasCompetencias.c2, cor: CORES_COMPETENCIAS.c2, descricao: "Tema/Estrutura" },
-      { nome: "C3", media: estatisticas.mediasCompetencias.c3, cor: CORES_COMPETENCIAS.c3, descricao: "Argumentação" },
-      { nome: "C4", media: estatisticas.mediasCompetencias.c4, cor: CORES_COMPETENCIAS.c4, descricao: "Coesão" },
-      { nome: "C5", media: estatisticas.mediasCompetencias.c5, cor: CORES_COMPETENCIAS.c5, descricao: "Proposta" },
+      { subject: 'C1', A: Math.round(soma.c1 / qtd), fullMark: 200 },
+      { subject: 'C2', A: Math.round(soma.c2 / qtd), fullMark: 200 },
+      { subject: 'C3', A: Math.round(soma.c3 / qtd), fullMark: 200 },
+      { subject: 'C4', A: Math.round(soma.c4 / qtd), fullMark: 200 },
+      { subject: 'C5', A: Math.round(soma.c5 / qtd), fullMark: 200 },
     ];
-  }, [estatisticas.mediasCompetencias]);
+  }, [redacoesFiltradas]);
 
-  // Nota total calculada no formulário
-  const notaTotalForm = useMemo(() => {
-    const c1 = parseInt(form.c1) || 0;
-    const c2 = parseInt(form.c2) || 0;
-    const c3 = parseInt(form.c3) || 0;
-    const c4 = parseInt(form.c4) || 0;
-    const c5 = parseInt(form.c5) || 0;
-    return c1 + c2 + c3 + c4 + c5;
-  }, [form]);
+  // Média geral
+  const mediaGeral = useMemo(() => {
+    if (redacoesFiltradas.length === 0) return 0;
+    const soma = redacoesFiltradas.reduce((acc, curr) => acc + curr.notaTotal, 0);
+    return Math.round(soma / redacoesFiltradas.length);
+  }, [redacoesFiltradas]);
+
+  // Melhor nota
+  const melhorNota = useMemo(() => {
+    if (redacoesFiltradas.length === 0) return 0;
+    return Math.max(...redacoesFiltradas.map(r => r.notaTotal));
+  }, [redacoesFiltradas]);
+
+  // Tempo médio
+  const tempoMedio = useMemo(() => {
+    if (redacoesFiltradas.length === 0) return "0h 0min";
+    const totalMinutos = redacoesFiltradas.reduce((acc, curr) => acc + (curr.tempoHoras * 60) + curr.tempoMinutos, 0);
+    const mediaMinutos = Math.round(totalMinutos / redacoesFiltradas.length);
+    const horas = Math.floor(mediaMinutos / 60);
+    const minutos = mediaMinutos % 60;
+    return `${horas}h ${minutos}min`;
+  }, [redacoesFiltradas]);
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="relative">
-          <div className="animate-spin rounded-full h-20 w-20 border-t-4 border-b-4 border-orange-500"></div>
+          <div className="animate-spin rounded-full h-20 w-20 border-t-4 border-b-4 border-blue-500"></div>
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-            <PenTool className="h-8 w-8 text-orange-500 animate-pulse" />
+            <Zap className="h-8 w-8 text-blue-500 animate-pulse" />
           </div>
         </div>
       </div>
@@ -454,863 +417,438 @@ export default function AlunoRedacoes() {
 
   return (
     <div className="space-y-8 pb-8 animate-fade-in">
-      {/* Elementos decorativos flutuantes */}
-      <div className="fixed top-20 right-10 w-72 h-72 bg-orange-500/5 rounded-full blur-3xl animate-float pointer-events-none" />
-      <div className="fixed bottom-20 left-10 w-96 h-96 bg-red-500/5 rounded-full blur-3xl animate-float-delayed pointer-events-none" />
-
-      {/* Header Premium com Glassmorphism */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-orange-500/20 via-red-500/10 to-amber-500/10 p-8 border-2 border-white/20 dark:border-white/10 backdrop-blur-xl shadow-2xl animate-slide-up">
-        {/* Efeitos de luz */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-orange-500/20 to-transparent rounded-full blur-3xl animate-pulse-slow" />
-        <div className="absolute bottom-0 left-0 w-72 h-72 bg-gradient-to-tr from-red-500/20 to-transparent rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '1s' }} />
+      {/* Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Minhas Redações</h1>
+          <p className="text-muted-foreground mt-1">
+            Acompanhe sua evolução na escrita e domine as 5 competências.
+          </p>
+        </div>
         
-        {/* Partículas decorativas */}
-        <div className="absolute top-10 right-20 w-2 h-2 bg-orange-500 rounded-full animate-ping" />
-        <div className="absolute top-20 right-40 w-1.5 h-1.5 bg-red-500 rounded-full animate-ping" style={{ animationDelay: '0.5s' }} />
-        <div className="absolute bottom-10 left-20 w-2 h-2 bg-amber-500 rounded-full animate-ping" style={{ animationDelay: '1s' }} />
-        
-        <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-orange-500 to-red-500 rounded-2xl blur-xl opacity-50 animate-pulse-slow" />
-              <div className="relative bg-gradient-to-br from-orange-500 via-red-500 to-amber-500 p-4 rounded-2xl shadow-2xl">
-                <PenTool className="h-10 w-10 text-white" />
-              </div>
-            </div>
-            <div>
-              <h1 className="text-4xl md:text-5xl font-black tracking-tight bg-gradient-to-r from-orange-600 via-red-600 to-amber-600 bg-clip-text text-transparent animate-gradient">
-                Redações
-              </h1>
-              <p className="text-lg text-muted-foreground font-medium mt-1">
-                Acompanhe sua evolução nas redações do ENEM ✍️
-              </p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <Select value={filtroPeriodo} onValueChange={setFiltroPeriodo}>
-              <SelectTrigger className="w-[180px] border-2 bg-white/50 dark:bg-black/20 backdrop-blur-sm">
-                <SelectValue placeholder="Filtrar período" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todo">Todo o período</SelectItem>
-                <SelectItem value="30dias">Últimos 30 dias</SelectItem>
-                <SelectItem value="90dias">Últimos 90 dias</SelectItem>
-                <SelectItem value="6meses">Últimos 6 meses</SelectItem>
-                <SelectItem value="1ano">Último ano</SelectItem>
-              </SelectContent>
-            </Select>
-            <Dialog open={isDialogOpen} onOpenChange={(open) => {
-              setIsDialogOpen(open);
-              if (!open) {
+        <div className="flex gap-2">
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => {
                 setForm(initialForm);
                 setEditandoId(null);
-              }
-            }}>
-              <DialogTrigger asChild>
-                <Button className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 shadow-lg shadow-orange-500/25 transition-all duration-300 hover:shadow-xl hover:shadow-orange-500/30 hover:scale-105">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nova Redação
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle className="text-xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
-                    {editandoId ? "Editar Redação" : "Registrar Nova Redação"}
-                  </DialogTitle>
-                  <DialogDescription>
-                    Preencha as informações da sua redação para acompanhar sua evolução
-                  </DialogDescription>
-                </DialogHeader>
+              }} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Nova Redação
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>{editandoId ? "Editar Redação" : "Registrar Nova Redação"}</DialogTitle>
+                <DialogDescription>
+                  Preencha os detalhes da sua redação para análise de desempenho.
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="grid gap-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="titulo">Tema da Redação</Label>
+                  <Input 
+                    id="titulo" 
+                    placeholder="Ex: Desafios da educação no Brasil" 
+                    value={form.titulo}
+                    onChange={(e) => setForm({...form, titulo: e.target.value})}
+                  />
+                </div>
                 
-                <div className="space-y-6 py-4">
-                  {/* Título/Tema */}
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="font-semibold">Título/Tema da Redação *</Label>
-                    <Input
-                      placeholder="Ex: A persistência da violência contra a mulher na sociedade brasileira"
-                      value={form.titulo}
-                      onChange={(e) => setForm({ ...form, titulo: e.target.value })}
-                      className="border-2 focus:border-orange-500 transition-colors"
+                    <Label htmlFor="data">Data</Label>
+                    <Input 
+                      id="data" 
+                      type="date" 
+                      value={form.data}
+                      onChange={(e) => setForm({...form, data: e.target.value})}
                     />
                   </div>
-
-                  {/* Data e Tempo */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label className="font-semibold">Data de Realização *</Label>
-                      <Input
-                        type="date"
-                        value={form.data}
-                        onChange={(e) => setForm({ ...form, data: e.target.value })}
-                        className="border-2 focus:border-orange-500 transition-colors"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="font-semibold">Tempo (Horas)</Label>
-                      <Select value={form.tempoHoras} onValueChange={(v) => setForm({ ...form, tempoHoras: v })}>
-                        <SelectTrigger className="border-2">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {[0, 1, 2, 3, 4].map(h => (
-                            <SelectItem key={h} value={h.toString()}>{h}h</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="font-semibold">Tempo (Minutos)</Label>
-                      <Select value={form.tempoMinutos} onValueChange={(v) => setForm({ ...form, tempoMinutos: v })}>
-                        <SelectTrigger className="border-2">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {[0, 15, 30, 45].map(m => (
-                            <SelectItem key={m} value={m.toString()}>{m}min</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  {/* Notas por Competência */}
-                  <div className="space-y-4">
-                    <Label className="font-semibold text-lg">Notas por Competência *</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Selecione a nota de cada competência conforme a correção da sua redação
-                    </p>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* C1 */}
-                      <div className="space-y-2 p-4 rounded-xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/30 dark:to-blue-900/20 dark:border-blue-800">
-                        <Label className="font-semibold text-blue-700 dark:text-blue-400">C1 - Norma Culta</Label>
-                        <Select value={form.c1} onValueChange={(v) => setForm({ ...form, c1: v })}>
-                          <SelectTrigger className="border-2 border-blue-300 bg-white dark:bg-black/20">
-                            <SelectValue placeholder="Selecione a nota" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {NOTAS_COMPETENCIA.map(nota => (
-                              <SelectItem key={nota} value={nota.toString()}>{nota}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {/* C2 */}
-                      <div className="space-y-2 p-4 rounded-xl border-2 border-green-200 bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-950/30 dark:to-green-900/20 dark:border-green-800">
-                        <Label className="font-semibold text-green-700 dark:text-green-400">C2 - Tema/Estrutura</Label>
-                        <Select value={form.c2} onValueChange={(v) => setForm({ ...form, c2: v })}>
-                          <SelectTrigger className="border-2 border-green-300 bg-white dark:bg-black/20">
-                            <SelectValue placeholder="Selecione a nota" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {NOTAS_COMPETENCIA.map(nota => (
-                              <SelectItem key={nota} value={nota.toString()}>{nota}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {/* C3 */}
-                      <div className="space-y-2 p-4 rounded-xl border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-950/30 dark:to-amber-900/20 dark:border-amber-800">
-                        <Label className="font-semibold text-amber-700 dark:text-amber-400">C3 - Argumentação</Label>
-                        <Select value={form.c3} onValueChange={(v) => setForm({ ...form, c3: v })}>
-                          <SelectTrigger className="border-2 border-amber-300 bg-white dark:bg-black/20">
-                            <SelectValue placeholder="Selecione a nota" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {NOTAS_COMPETENCIA.map(nota => (
-                              <SelectItem key={nota} value={nota.toString()}>{nota}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {/* C4 */}
-                      <div className="space-y-2 p-4 rounded-xl border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-purple-100/50 dark:from-purple-950/30 dark:to-purple-900/20 dark:border-purple-800">
-                        <Label className="font-semibold text-purple-700 dark:text-purple-400">C4 - Coesão</Label>
-                        <Select value={form.c4} onValueChange={(v) => setForm({ ...form, c4: v })}>
-                          <SelectTrigger className="border-2 border-purple-300 bg-white dark:bg-black/20">
-                            <SelectValue placeholder="Selecione a nota" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {NOTAS_COMPETENCIA.map(nota => (
-                              <SelectItem key={nota} value={nota.toString()}>{nota}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {/* C5 */}
-                      <div className="space-y-2 p-4 rounded-xl border-2 border-red-200 bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-950/30 dark:to-red-900/20 dark:border-red-800 md:col-span-2">
-                        <Label className="font-semibold text-red-700 dark:text-red-400">C5 - Proposta de Intervenção</Label>
-                        <Select value={form.c5} onValueChange={(v) => setForm({ ...form, c5: v })}>
-                          <SelectTrigger className="border-2 border-red-300 bg-white dark:bg-black/20">
-                            <SelectValue placeholder="Selecione a nota" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {NOTAS_COMPETENCIA.map(nota => (
-                              <SelectItem key={nota} value={nota.toString()}>{nota}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    {/* Nota Total Calculada */}
-                    <div className="p-5 rounded-2xl bg-gradient-to-r from-orange-100 via-red-100 to-amber-100 dark:from-orange-950/50 dark:via-red-950/50 dark:to-amber-950/50 border-2 border-orange-300 dark:border-orange-800">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-orange-800 dark:text-orange-300">Nota Total (calculada automaticamente)</span>
-                        <span className="text-4xl font-black bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">{notaTotalForm}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Campos de Repertório */}
-                  <div className="space-y-4">
-                    <Label className="font-semibold text-lg">Repertórios Utilizados (Opcional)</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Registre os repertórios que você utilizou em cada parte da redação
-                    </p>
-                    
-                    <div className="space-y-3">
-                      {/* Repertório da Introdução */}
-                      <div className="space-y-2">
-                        <Label className="font-medium text-blue-700 dark:text-blue-400">Repertório da Introdução</Label>
-                        <Input
-                          placeholder="Ex: Citação de Zygmunt Bauman sobre modernidade líquida"
-                          value={form.repertorioIntro}
-                          onChange={(e) => setForm({ ...form, repertorioIntro: e.target.value })}
-                          className="border-2 focus:border-blue-500 transition-colors"
+                  
+                  <div className="space-y-2">
+                    <Label>Tempo Gasto</Label>
+                    <div className="flex gap-2 items-center">
+                      <div className="flex-1 flex items-center gap-1">
+                        <Input 
+                          type="number" 
+                          min="0" 
+                          max="5"
+                          value={form.tempoHoras}
+                          onChange={(e) => setForm({...form, tempoHoras: e.target.value})}
                         />
+                        <span className="text-xs text-muted-foreground">h</span>
                       </div>
-
-                      {/* Repertório do D1 */}
-                      <div className="space-y-2">
-                        <Label className="font-medium text-purple-700 dark:text-purple-400">Repertório do Desenvolvimento 1</Label>
-                        <Input
-                          placeholder="Ex: Dados do IBGE sobre desigualdade social"
-                          value={form.repertorioD1}
-                          onChange={(e) => setForm({ ...form, repertorioD1: e.target.value })}
-                          className="border-2 focus:border-purple-500 transition-colors"
+                      <div className="flex-1 flex items-center gap-1">
+                        <Input 
+                          type="number" 
+                          min="0" 
+                          max="59"
+                          value={form.tempoMinutos}
+                          onChange={(e) => setForm({...form, tempoMinutos: e.target.value})}
                         />
-                      </div>
-
-                      {/* Repertório do D2 */}
-                      <div className="space-y-2">
-                        <Label className="font-medium text-emerald-700 dark:text-emerald-400">Repertório do Desenvolvimento 2</Label>
-                        <Input
-                          placeholder="Ex: Referência ao artigo 5º da Constituição Federal"
-                          value={form.repertorioD2}
-                          onChange={(e) => setForm({ ...form, repertorioD2: e.target.value })}
-                          className="border-2 focus:border-emerald-500 transition-colors"
-                        />
+                        <span className="text-xs text-muted-foreground">min</span>
                       </div>
                     </div>
                   </div>
                 </div>
+                
+                <div className="space-y-4 border rounded-lg p-4 bg-muted/30">
+                  <h4 className="font-medium flex items-center gap-2 text-sm">
+                    <Award className="h-4 w-4 text-primary" />
+                    Notas por Competência
+                  </h4>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {Object.entries(NOMES_COMPETENCIAS).map(([key, label]) => (
+                      <div key={key} className="space-y-1">
+                        <Label htmlFor={key} className="text-xs">{label}</Label>
+                        <Select 
+                          value={form[key as keyof RedacaoForm] as string} 
+                          onValueChange={(value) => setForm({...form, [key]: value})}
+                        >
+                          <SelectTrigger id={key}>
+                            <SelectValue placeholder="Nota" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {NOTAS_COMPETENCIA.map((nota) => (
+                              <SelectItem key={nota} value={nota.toString()}>
+                                {nota} pontos
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="flex justify-between items-center pt-2 border-t">
+                    <span className="font-semibold">Nota Total:</span>
+                    <span className="text-xl font-bold text-primary">
+                      {calcularNotaTotal(
+                        parseInt(form.c1) || 0,
+                        parseInt(form.c2) || 0,
+                        parseInt(form.c3) || 0,
+                        parseInt(form.c4) || 0,
+                        parseInt(form.c5) || 0
+                      )}
+                    </span>
+                  </div>
+                </div>
 
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="border-2">
-                    Cancelar
-                  </Button>
-                  <Button 
-                    onClick={handleSubmit} 
-                    disabled={isSaving}
-                    className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
-                  >
-                    {isSaving ? "Salvando..." : editandoId ? "Atualizar" : "Registrar"}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
+                <div className="space-y-4 border rounded-lg p-4 bg-muted/30">
+                  <h4 className="font-medium flex items-center gap-2 text-sm">
+                    <BookOpen className="h-4 w-4 text-primary" />
+                    Repertórios Utilizados (Opcional)
+                  </h4>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="repertorioIntro" className="text-xs">Introdução</Label>
+                    <Input 
+                      id="repertorioIntro" 
+                      placeholder="Ex: Citação de Bauman, Filme Coringa..." 
+                      value={form.repertorioIntro}
+                      onChange={(e) => setForm({...form, repertorioIntro: e.target.value})}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="repertorioD1" className="text-xs">Desenvolvimento 1</Label>
+                    <Input 
+                      id="repertorioD1" 
+                      placeholder="Ex: Constituição Federal, Dados do IBGE..." 
+                      value={form.repertorioD1}
+                      onChange={(e) => setForm({...form, repertorioD1: e.target.value})}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="repertorioD2" className="text-xs">Desenvolvimento 2</Label>
+                    <Input 
+                      id="repertorioD2" 
+                      placeholder="Ex: Alusão histórica, Obra literária..." 
+                      value={form.repertorioD2}
+                      onChange={(e) => setForm({...form, repertorioD2: e.target.value})}
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleSubmit} disabled={isSaving}>
+                  {isSaving ? "Salvando..." : (editandoId ? "Salvar Alterações" : "Registrar Redação")}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
-      {/* Dashboard - Cards de Métricas Premium */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {/* Card Média Geral */}
-        <Card className="relative overflow-hidden border-2 hover:border-blue-500 transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/20 group animate-slide-up" style={{ animationDelay: '0.1s' }}>
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-          <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-blue-500/20 to-transparent rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700 pointer-events-none" />
-          
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-semibold">Média Geral (últimas 5)</CardTitle>
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl blur-md opacity-50 animate-pulse-slow" />
-              <div className="relative p-3 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl shadow-xl">
-                <TrendingUp className="h-6 w-6 text-white" />
-              </div>
-            </div>
+      {/* Cards de Resumo */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Média Geral</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="flex items-baseline gap-2">
-              <div className="text-4xl font-black bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 bg-clip-text text-transparent">
-                {estatisticas.mediaGeral}
-              </div>
-              <span className="text-lg font-bold text-muted-foreground">pts</span>
-            </div>
-            <p className="text-xs text-muted-foreground font-medium">
-              de 1000 pontos possíveis
+          <CardContent>
+            <div className="text-2xl font-bold">{mediaGeral}</div>
+            <p className="text-xs text-muted-foreground">
+              Baseado em {redacoesFiltradas.length} redações
             </p>
           </CardContent>
         </Card>
-
-        {/* Card Melhor Nota */}
-        <Card className="relative overflow-hidden border-2 hover:border-yellow-500 transition-all duration-500 hover:shadow-2xl hover:shadow-yellow-500/20 group animate-slide-up" style={{ animationDelay: '0.2s' }}>
-          <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-          <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-yellow-500/20 to-transparent rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700 pointer-events-none" />
-          
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <div className="space-y-1">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                Melhor Nota
-                {estatisticas.melhorNota >= 900 && <Star className="h-4 w-4 text-yellow-500 fill-yellow-500 animate-spin-slow" />}
-              </CardTitle>
-            </div>
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl blur-md opacity-50 animate-pulse-slow" />
-              <div className="relative p-3 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl shadow-xl">
-                <Award className="h-6 w-6 text-white" />
-              </div>
-            </div>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Melhor Nota</CardTitle>
+            <Award className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="flex items-baseline gap-2">
-              <div className="text-4xl font-black bg-gradient-to-r from-yellow-600 via-yellow-500 to-orange-500 bg-clip-text text-transparent">
-                {estatisticas.melhorNota}
-              </div>
-              <span className="text-lg font-bold text-muted-foreground">pts</span>
-            </div>
-            <p className="text-xs text-muted-foreground font-medium">
-              🏆 Recorde pessoal
+          <CardContent>
+            <div className="text-2xl font-bold">{melhorNota}</div>
+            <p className="text-xs text-muted-foreground">
+              Recorde pessoal
             </p>
           </CardContent>
         </Card>
-
-        {/* Card Total de Redações */}
-        <Card className="relative overflow-hidden border-2 hover:border-emerald-500 transition-all duration-500 hover:shadow-2xl hover:shadow-emerald-500/20 group animate-slide-up" style={{ animationDelay: '0.3s' }}>
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-          <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-emerald-500/20 to-transparent rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700 pointer-events-none" />
-          
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-semibold">Redações Produzidas</CardTitle>
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 to-green-500 rounded-xl blur-md opacity-50 animate-pulse-slow" />
-              <div className="relative p-3 bg-gradient-to-br from-emerald-500 to-green-500 rounded-xl shadow-xl">
-                <FileText className="h-6 w-6 text-white" />
-              </div>
-            </div>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Tempo Médio</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="flex items-baseline gap-2">
-              <div className="text-4xl font-black bg-gradient-to-r from-emerald-600 via-emerald-500 to-green-500 bg-clip-text text-transparent">
-                {estatisticas.totalRedacoes}
-              </div>
-              <span className="text-lg font-bold text-muted-foreground">textos</span>
-            </div>
-            <p className="text-xs text-muted-foreground font-medium">
-              📝 No período selecionado
+          <CardContent>
+            <div className="text-2xl font-bold">{tempoMedio}</div>
+            <p className="text-xs text-muted-foreground">
+              Por redação
             </p>
           </CardContent>
         </Card>
-
-        {/* Card Tempo Médio */}
-        <Card className={`relative overflow-hidden border-2 transition-all duration-500 hover:shadow-2xl group animate-slide-up ${
-          estatisticas.tempoExcessivo 
-            ? "hover:border-red-500 hover:shadow-red-500/20 border-red-300" 
-            : estatisticas.tempoAlerta 
-              ? "hover:border-yellow-500 hover:shadow-yellow-500/20 border-yellow-300" 
-              : "hover:border-purple-500 hover:shadow-purple-500/20"
-        }`} style={{ animationDelay: '0.4s' }}>
-          <div className={`absolute inset-0 bg-gradient-to-br ${
-            estatisticas.tempoExcessivo 
-              ? "from-red-500/10" 
-              : estatisticas.tempoAlerta 
-                ? "from-yellow-500/10" 
-                : "from-purple-500/10"
-          } via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none`} />
-          <div className={`absolute top-0 right-0 w-40 h-40 bg-gradient-to-br ${
-            estatisticas.tempoExcessivo 
-              ? "from-red-500/20" 
-              : estatisticas.tempoAlerta 
-                ? "from-yellow-500/20" 
-                : "from-purple-500/20"
-          } to-transparent rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700 pointer-events-none`} />
-          
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className={`text-sm font-semibold flex items-center gap-2 ${
-              estatisticas.tempoExcessivo ? "text-red-600" : estatisticas.tempoAlerta ? "text-yellow-600" : ""
-            }`}>
-              Tempo Médio
-              {(estatisticas.tempoExcessivo || estatisticas.tempoAlerta) && (
-                <AlertTriangle className="h-4 w-4" />
-              )}
-            </CardTitle>
-            <div className="relative">
-              <div className={`absolute inset-0 bg-gradient-to-br ${
-                estatisticas.tempoExcessivo 
-                  ? "from-red-500 to-rose-500" 
-                  : estatisticas.tempoAlerta 
-                    ? "from-yellow-500 to-amber-500" 
-                    : "from-purple-500 to-pink-500"
-              } rounded-xl blur-md opacity-50 animate-pulse-slow`} />
-              <div className={`relative p-3 bg-gradient-to-br ${
-                estatisticas.tempoExcessivo 
-                  ? "from-red-500 to-rose-500" 
-                  : estatisticas.tempoAlerta 
-                    ? "from-yellow-500 to-amber-500" 
-                    : "from-purple-500 to-pink-500"
-              } rounded-xl shadow-xl`}>
-                <Clock className="h-6 w-6 text-white" />
-              </div>
-            </div>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Meta de Nota</CardTitle>
+            <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="flex items-baseline gap-2">
-              <div className={`text-4xl font-black ${
-                estatisticas.tempoExcessivo 
-                  ? "text-red-600" 
-                  : estatisticas.tempoAlerta 
-                    ? "text-yellow-600" 
-                    : "bg-gradient-to-r from-purple-600 via-purple-500 to-pink-500 bg-clip-text text-transparent"
-              }`}>
-                {estatisticas.tempoMedio.horas}h{estatisticas.tempoMedio.minutos}
-              </div>
-              <span className="text-lg font-bold text-muted-foreground">min</span>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              <Input 
+                className="h-8 w-20 text-lg font-bold p-1" 
+                value={metaNotaInput}
+                onChange={(e) => setMetaNotaInput(e.target.value)}
+                onBlur={() => {
+                  const val = parseInt(metaNotaInput);
+                  if (!isNaN(val) && val >= 0 && val <= 1000) {
+                    saveMeta(val);
+                  } else {
+                    setMetaNotaInput(metaNota.toString());
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.currentTarget.blur();
+                  }
+                }}
+              />
+              <span className="text-xs text-muted-foreground">pontos</span>
             </div>
-            <p className={`text-xs font-medium ${
-              estatisticas.tempoExcessivo ? "text-red-500" : estatisticas.tempoAlerta ? "text-yellow-500" : "text-muted-foreground"
-            }`}>
-              {estatisticas.tempoExcessivo ? "⚠️ Tempo excessivo!" : estatisticas.tempoAlerta ? "⏰ Atenção ao tempo" : "⏱️ Por redação"}
+            <p className="text-xs text-muted-foreground mt-1">
+              {mediaGeral >= metaNota ? "Meta alcançada! 🎉" : `Faltam ${metaNota - mediaGeral} pontos`}
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Meta de Nota */}
-      <Card className="relative overflow-hidden border-2 hover:border-orange-500 transition-all duration-500 hover:shadow-xl group animate-slide-up z-10" style={{ animationDelay: '0.5s' }}>
-        <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-        
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-bold flex items-center gap-2">
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-orange-500 to-red-500 rounded-lg blur-md opacity-50" />
-              <div className="relative p-2 bg-gradient-to-br from-orange-500 to-red-500 rounded-lg">
-                <Target className="h-5 w-5 text-white" />
-              </div>
-            </div>
-            <span className="bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">Minha Meta</span>
-          </CardTitle>
-          <CardDescription>
-            Defina sua meta de nota para acompanhar no gráfico de evolução
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap items-center gap-4">
-            <Input
-              type="number"
-              min={0}
-              max={1000}
-              step={20}
-              value={metaNotaInput}
-              onChange={(e) => setMetaNotaInput(e.target.value)}
-              className="w-32 border-2 focus:border-orange-500 transition-colors"
-            />
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                const valor = parseInt(metaNotaInput) || 0;
-                if (valor >= 0 && valor <= 1000) {
-                  saveMeta(valor);
-                } else {
-                  toast.error("A meta deve estar entre 0 e 1000");
-                }
-              }}
-              className="border-2 hover:border-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950/30 transition-all"
-            >
-              Salvar Meta
-            </Button>
-            <span className="text-sm text-muted-foreground">
-              Meta atual: <strong className="text-orange-600">{metaNota}</strong> pontos
-            </span>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Gráfico de Evolução */}
-      {redacoesFiltradas.length > 0 && (
-        <Card className="relative overflow-hidden border-2 hover:border-blue-500 transition-all duration-500 hover:shadow-xl animate-slide-up" style={{ animationDelay: '0.6s' }}>
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-transparent pointer-events-none" />
-          
+      {/* Gráficos */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card className="col-span-2">
           <CardHeader>
-            <CardTitle className="text-lg font-bold flex items-center gap-2">
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg blur-md opacity-50" />
-                <div className="relative p-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg">
-                  <TrendingUp className="h-5 w-5 text-white" />
-                </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Evolução das Notas</CardTitle>
+                <CardDescription>Acompanhe seu progresso ao longo do tempo</CardDescription>
               </div>
-              <span className="bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">Evolução das Notas</span>
-            </CardTitle>
-            <CardDescription>
-              Acompanhe sua trajetória ao longo do tempo
-            </CardDescription>
+              <Select value={filtroPeriodo} onValueChange={setFiltroPeriodo}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Período" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todo">Todo o período</SelectItem>
+                  <SelectItem value="semestre">Últimos 6 meses</SelectItem>
+                  <SelectItem value="trimestre">Últimos 3 meses</SelectItem>
+                  <SelectItem value="mes">Último mês</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={350}>
-              <LineChart data={dadosEvolucao}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="data" stroke="#6b7280" fontSize={12} />
-                <YAxis domain={[0, 1000]} stroke="#6b7280" fontSize={12} />
-                <RechartsTooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#fff', 
-                    border: '2px solid #f97316', 
-                    borderRadius: '12px', 
-                    fontWeight: 'bold',
-                    boxShadow: '0 10px 40px rgba(249, 115, 22, 0.2)'
-                  }}
-                  formatter={(value: number, name: string) => [value, "Nota"]}
-                  labelFormatter={(label) => `Data: ${label}`}
-                />
-                <ReferenceLine 
-                  y={metaNota} 
-                  stroke="#ef4444" 
-                  strokeDasharray="5 5" 
-                  strokeWidth={2}
-                  label={{ value: `Meta: ${metaNota}`, position: 'right', fill: '#ef4444', fontSize: 12, fontWeight: 'bold' }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="nota" 
-                  stroke="url(#colorGradient)" 
-                  strokeWidth={4}
-                  dot={{ fill: '#f97316', strokeWidth: 2, r: 6 }}
-                  activeDot={{ r: 10, fill: '#ea580c', stroke: '#fff', strokeWidth: 2 }}
-                />
-                <defs>
-                  <linearGradient id="colorGradient" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stopColor="#f97316" />
-                    <stop offset="100%" stopColor="#ef4444" />
-                  </linearGradient>
-                </defs>
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Diagnóstico por Competência */}
-      {redacoesFiltradas.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Gráfico de Radar */}
-          <Card className="relative overflow-hidden border-2 hover:border-purple-500 transition-all duration-500 hover:shadow-xl animate-slide-up" style={{ animationDelay: '0.7s' }}>
-            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-transparent pointer-events-none" />
-            
-            <CardHeader>
-              <CardTitle className="text-lg font-bold flex items-center gap-2">
-                <div className="relative">
-                  <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg blur-md opacity-50" />
-                  <div className="relative p-2 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg">
-                    <Zap className="h-5 w-5 text-white" />
-                  </div>
-                </div>
-                <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">Equilíbrio entre Competências</span>
-              </CardTitle>
-              <CardDescription>
-                Visualize o equilíbrio das suas notas nas 5 competências
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <RadarChart data={dadosRadar}>
-                  <PolarGrid stroke="#e5e7eb" />
-                  <PolarAngleAxis dataKey="competencia" stroke="#6b7280" fontSize={12} fontWeight="bold" />
-                  <PolarRadiusAxis angle={30} domain={[0, 200]} stroke="#6b7280" fontSize={10} />
-                  <RechartsTooltip
-                    contentStyle={{
-                      backgroundColor: '#fff',
-                      border: '2px solid #8b5cf6',
-                      borderRadius: '12px',
-                      fontWeight: 'bold',
-                      boxShadow: '0 10px 40px rgba(139, 92, 246, 0.2)'
-                    }}
-                    formatter={(value: number, name: string) => [value, "Nota"]}
-                  />
-                  <Radar
-                    name="Média"
-                    dataKey="valor"
-                    stroke="#8b5cf6"
-                    fill="url(#radarGradient)"
-                    fillOpacity={0.6}
-                    strokeWidth={2}
-                  />
-                  <defs>
-                    <linearGradient id="radarGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.8} />
-                      <stop offset="100%" stopColor="#ec4899" stopOpacity={0.3} />
-                    </linearGradient>
-                  </defs>
-                </RadarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          {/* Gráfico de Barras */}
-          <Card className="relative overflow-hidden border-2 hover:border-emerald-500 transition-all duration-500 hover:shadow-xl animate-slide-up" style={{ animationDelay: '0.8s' }}>
-            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-transparent pointer-events-none" />
-            
-            <CardHeader>
-              <CardTitle className="text-lg font-bold flex items-center gap-2">
-                <div className="relative">
-                  <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 to-green-500 rounded-lg blur-md opacity-50" />
-                  <div className="relative p-2 bg-gradient-to-br from-emerald-500 to-green-500 rounded-lg">
-                    <Award className="h-5 w-5 text-white" />
-                  </div>
-                </div>
-                <span className="bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent">Média por Competência</span>
-              </CardTitle>
-              <CardDescription>
-                Compare suas médias históricas em cada competência
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={dadosBarras}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis dataKey="nome" stroke="#6b7280" fontSize={12} fontWeight="bold" />
-                  <YAxis domain={[0, 200]} stroke="#6b7280" fontSize={12} />
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={dadosGrafico} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="data" className="text-xs" tick={{ fill: 'currentColor' }} />
+                  <YAxis domain={[0, 1000]} className="text-xs" tick={{ fill: 'currentColor' }} />
                   <RechartsTooltip 
                     contentStyle={{ 
-                      backgroundColor: '#fff', 
-                      border: '2px solid #6b7280', 
-                      borderRadius: '12px',
-                      boxShadow: '0 10px 40px rgba(0, 0, 0, 0.1)'
-                    }}
-                    formatter={(value: number, name: string, props: any) => [
-                      value, 
-                      props.payload.descricao
-                    ]}
+                      backgroundColor: 'hsl(var(--background))', 
+                      borderColor: 'hsl(var(--border))',
+                      borderRadius: '0.5rem' 
+                    }} 
                   />
-                  <Bar dataKey="media" radius={[8, 8, 0, 0]}>
-                    {dadosBarras.map((entry, index) => (
-                      <Cell 
-                        key={`cell-${index}`} 
-                        fill={entry.cor}
-                        opacity={estatisticas.pontoFraco === `c${index + 1}` ? 1 : 0.7}
-                      />
+                  <ReferenceLine y={metaNota} stroke="hsl(var(--primary))" strokeDasharray="3 3" label={{ value: 'Meta', position: 'right', fill: 'hsl(var(--primary))' }} />
+                  <Line 
+                    type="monotone" 
+                    dataKey="nota" 
+                    stroke="hsl(var(--primary))" 
+                    strokeWidth={2} 
+                    activeDot={{ r: 8 }} 
+                    name="Nota Total"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Desempenho por Competência</CardTitle>
+            <CardDescription>Média de pontos em cada competência</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <RadarChart cx="50%" cy="50%" outerRadius="80%" data={mediasCompetencias}>
+                  <PolarGrid className="stroke-muted" />
+                  <PolarAngleAxis dataKey="subject" className="text-xs font-bold" tick={{ fill: 'currentColor' }} />
+                  <PolarRadiusAxis angle={30} domain={[0, 200]} className="text-xs" tick={{ fill: 'currentColor' }} />
+                  <Radar
+                    name="Média"
+                    dataKey="A"
+                    stroke="hsl(var(--primary))"
+                    fill="hsl(var(--primary))"
+                    fillOpacity={0.3}
+                  />
+                  <RechartsTooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--background))', 
+                      borderColor: 'hsl(var(--border))',
+                      borderRadius: '0.5rem' 
+                    }} 
+                  />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Análise Detalhada</CardTitle>
+            <CardDescription>Comparativo entre competências</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={mediasCompetencias} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} className="stroke-muted" />
+                  <XAxis type="number" domain={[0, 200]} className="text-xs" tick={{ fill: 'currentColor' }} />
+                  <YAxis dataKey="subject" type="category" className="text-xs font-bold" tick={{ fill: 'currentColor' }} />
+                  <RechartsTooltip 
+                    cursor={{ fill: 'hsl(var(--muted))', opacity: 0.2 }}
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--background))', 
+                      borderColor: 'hsl(var(--border))',
+                      borderRadius: '0.5rem' 
+                    }} 
+                  />
+                  <Bar dataKey="A" name="Média" radius={[0, 4, 4, 0]}>
+                    {mediasCompetencias.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={Object.values(CORES_COMPETENCIAS)[index]} />
                     ))}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
-              
-              {/* Tabela de Médias */}
-              <div className="mt-4 space-y-2">
-                {dadosBarras.map((item, index) => {
-                  const isPontoFraco = estatisticas.pontoFraco === `c${index + 1}`;
-                  return (
-                    <div 
-                      key={item.nome}
-                      className={`flex items-center justify-between p-3 rounded-xl transition-all duration-300 ${
-                        isPontoFraco 
-                          ? "bg-gradient-to-r from-red-50 to-red-100 dark:from-red-950/30 dark:to-red-900/20 border-2 border-red-200 dark:border-red-800" 
-                          : "bg-gray-50 dark:bg-gray-900/50 hover:bg-gray-100 dark:hover:bg-gray-800/50"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div 
-                          className="w-4 h-4 rounded-full shadow-lg" 
-                          style={{ backgroundColor: item.cor }}
-                        />
-                        <span className={`text-sm font-medium ${isPontoFraco ? "font-bold text-red-600 dark:text-red-400" : ""}`}>
-                          {item.nome} - {item.descricao}
-                        </span>
-                        {isPontoFraco && (
-                          <span className="text-xs bg-gradient-to-r from-red-500 to-rose-500 text-white px-2 py-1 rounded-full font-bold shadow-lg">
-                            ⚠️ Ponto Fraco
-                          </span>
-                        )}
-                      </div>
-                      <span className={`font-black text-lg ${isPontoFraco ? "text-red-600 dark:text-red-400" : ""}`}>
-                        {item.media}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Histórico Detalhado */}
-      <Card className="relative overflow-hidden border-2 hover:border-gray-400 transition-all duration-500 hover:shadow-xl animate-slide-up" style={{ animationDelay: '0.9s' }}>
-        <CardHeader 
-          className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors rounded-t-xl"
-          onClick={() => setShowHistorico(!showHistorico)}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-gray-500 to-gray-600 rounded-lg blur-md opacity-50" />
-                <div className="relative p-2 bg-gradient-to-br from-gray-500 to-gray-600 rounded-lg">
-                  <FileText className="h-5 w-5 text-white" />
-                </div>
-              </div>
-              <div>
-                <CardTitle className="text-lg font-bold">Histórico Detalhado</CardTitle>
-                <CardDescription>
-                  {redacoesFiltradas.length} redação(ões) registrada(s)
-                </CardDescription>
-              </div>
-            </div>
-            <div className={`p-2 rounded-full bg-gray-100 dark:bg-gray-800 transition-transform duration-300 ${showHistorico ? 'rotate-180' : ''}`}>
-              <ChevronDown className="h-5 w-5 text-gray-500" />
-            </div>
-          </div>
-        </CardHeader>
-        {showHistorico && (
-          <CardContent className="pt-0">
-            {redacoesFiltradas.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="relative inline-block">
-                  <div className="absolute inset-0 bg-gradient-to-br from-orange-500 to-red-500 rounded-full blur-xl opacity-20" />
-                  <FileText className="h-16 w-16 mx-auto text-orange-300 relative" />
-                </div>
-                <p className="mt-4 text-lg font-medium text-muted-foreground">Nenhuma redação registrada ainda.</p>
-                <p className="text-sm text-muted-foreground">Clique em "Nova Redação" para começar!</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {redacoesFiltradas.map((redacao, index) => (
-                  <div 
-                    key={redacao.id}
-                    className="p-5 rounded-2xl border-2 hover:border-orange-300 hover:shadow-lg transition-all duration-300 bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-950 animate-slide-up"
-                    style={{ animationDelay: `${index * 0.05}s` }}
-                  >
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                      <div className="flex-1">
-                        <h4 className="font-bold text-lg">{redacao.titulo}</h4>
-                        <div className="flex flex-wrap gap-4 mt-2 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            📅 {formatarData(redacao.data)}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            ⏱️ {redacao.tempoHoras}h {redacao.tempoMinutos}min
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap gap-2 mt-3">
-                          <span className="px-3 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900/50 dark:to-blue-800/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700">
-                            C1: {redacao.c1}
-                          </span>
-                          <span className="px-3 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-green-100 to-green-200 dark:from-green-900/50 dark:to-green-800/50 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-700">
-                            C2: {redacao.c2}
-                          </span>
-                          <span className="px-3 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-amber-100 to-amber-200 dark:from-amber-900/50 dark:to-amber-800/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700">
-                            C3: {redacao.c3}
-                          </span>
-                          <span className="px-3 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-purple-100 to-purple-200 dark:from-purple-900/50 dark:to-purple-800/50 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-700">
-                            C4: {redacao.c4}
-                          </span>
-                          <span className="px-3 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-red-100 to-red-200 dark:from-red-900/50 dark:to-red-800/50 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-700">
-                            C5: {redacao.c5}
-                          </span>
-                        </div>
-                        
-                        {/* Repertórios */}
-                        {(redacao.repertorioIntro || redacao.repertorioD1 || redacao.repertorioD2) && (
-                          <div className="mt-4 space-y-2">
-                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Repertórios Utilizados</p>
-                            {redacao.repertorioIntro && (
-                              <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
-                                <p className="text-xs font-semibold text-blue-700 dark:text-blue-400 mb-1">📘 Introdução</p>
-                                <p className="text-sm text-blue-900 dark:text-blue-200">{redacao.repertorioIntro}</p>
-                              </div>
-                            )}
-                            {redacao.repertorioD1 && (
-                              <div className="p-3 rounded-lg bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800">
-                                <p className="text-xs font-semibold text-purple-700 dark:text-purple-400 mb-1">📜 Desenvolvimento 1</p>
-                                <p className="text-sm text-purple-900 dark:text-purple-200">{redacao.repertorioD1}</p>
-                              </div>
-                            )}
-                            {redacao.repertorioD2 && (
-                              <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800">
-                                <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-1">📗 Desenvolvimento 2</p>
-                                <p className="text-sm text-emerald-900 dark:text-emerald-200">{redacao.repertorioD2}</p>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-center">
-                          <div className="text-4xl font-black bg-gradient-to-r from-orange-500 to-red-500 bg-clip-text text-transparent">
-                            {redacao.notaTotal}
-                          </div>
-                          <div className="text-xs text-muted-foreground font-medium">pontos</div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEdit(redacao)}
-                            className="border-2 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-all"
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDelete(redacao.id)}
-                            className="border-2 text-red-500 hover:text-red-700 hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        )}
-      </Card>
-
-      {/* Mensagem quando não há redações */}
-      {redacoes.length === 0 && !isLoading && (
-        <Card className="relative overflow-hidden border-2 border-dashed border-orange-300 animate-slide-up" style={{ animationDelay: '0.5s' }}>
-          <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 via-red-500/5 to-amber-500/5" />
-          
-          <CardContent className="py-16">
-            <div className="text-center">
-              <div className="relative inline-block mb-6">
-                <div className="absolute inset-0 bg-gradient-to-br from-orange-500 to-red-500 rounded-full blur-2xl opacity-30 animate-pulse-slow" />
-                <div className="relative bg-gradient-to-br from-orange-100 to-red-100 dark:from-orange-900/30 dark:to-red-900/30 p-6 rounded-full">
-                  <PenTool className="h-16 w-16 text-orange-500" />
-                </div>
-              </div>
-              <h3 className="text-2xl font-black mb-3 bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
-                Comece a registrar suas redações!
-              </h3>
-              <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                Acompanhe sua evolução nas redações do ENEM registrando suas notas por competência.
-              </p>
-              <Button 
-                onClick={() => setIsDialogOpen(true)}
-                className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 shadow-lg shadow-orange-500/25 transition-all duration-300 hover:shadow-xl hover:shadow-orange-500/30 hover:scale-105"
-                size="lg"
-              >
-                <Plus className="h-5 w-5 mr-2" />
-                Registrar Primeira Redação
-              </Button>
             </div>
           </CardContent>
         </Card>
-      )}
+      </div>
+
+      {/* Histórico Detalhado */}
+      <Card>
+        <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setShowHistorico(!showHistorico)}>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Histórico de Redações</CardTitle>
+              <CardDescription>Lista completa de todas as redações registradas</CardDescription>
+            </div>
+            {showHistorico ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+          </div>
+        </CardHeader>
+        {showHistorico && (
+          <CardContent>
+            <div className="space-y-4">
+              {redacoesFiltradas.map((redacao) => (
+                <div key={redacao.id} className="flex flex-col md:flex-row justify-between items-start md:items-center p-4 border rounded-lg hover:bg-muted/30 transition-colors gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold">{redacao.titulo}</h3>
+                      <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                        {formatarData(redacao.data)}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {redacao.tempoHoras}h {redacao.tempoMinutos}min
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Award className="h-3 w-3" />
+                        Nota: <span className="font-bold text-primary">{redacao.notaTotal}</span>
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-4 w-full md:w-auto">
+                    <div className="grid grid-cols-5 gap-1 flex-1 md:flex-none">
+                      <div className="flex flex-col items-center p-1 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-100 dark:border-blue-900/30">
+                        <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold">C1</span>
+                        <span className="text-xs font-medium">{redacao.c1}</span>
+                      </div>
+                      <div className="flex flex-col items-center p-1 bg-green-50 dark:bg-green-900/20 rounded border border-green-100 dark:border-green-900/30">
+                        <span className="text-[10px] text-green-600 dark:text-green-400 font-bold">C2</span>
+                        <span className="text-xs font-medium">{redacao.c2}</span>
+                      </div>
+                      <div className="flex flex-col items-center p-1 bg-amber-50 dark:bg-amber-900/20 rounded border border-amber-100 dark:border-amber-900/30">
+                        <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold">C3</span>
+                        <span className="text-xs font-medium">{redacao.c3}</span>
+                      </div>
+                      <div className="flex flex-col items-center p-1 bg-purple-50 dark:bg-purple-900/20 rounded border border-purple-100 dark:border-purple-900/30">
+                        <span className="text-[10px] text-purple-600 dark:text-purple-400 font-bold">C4</span>
+                        <span className="text-xs font-medium">{redacao.c4}</span>
+                      </div>
+                      <div className="flex flex-col items-center p-1 bg-red-50 dark:bg-red-900/20 rounded border border-red-100 dark:border-red-900/30">
+                        <span className="text-[10px] text-red-600 dark:text-red-400 font-bold">C5</span>
+                        <span className="text-xs font-medium">{redacao.c5}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(redacao)}>
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDelete(redacao.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        )}
+      </Card>
     </div>
   );
 }

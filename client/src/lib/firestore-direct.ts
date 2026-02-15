@@ -858,3 +858,144 @@ export async function resolverPlanoAcaoDirect(planoId: string, overrideUserId?: 
 export async function reabrirPlanoAcaoDirect(planoId: string, overrideUserId?: string | null, mentoriaId?: string | null): Promise<void> {
   return updatePlanoAcaoDirect(planoId, { resolvido: false }, overrideUserId, mentoriaId);
 }
+
+export const updateEstudoDirect = async (userId: string, estudoId: string, data: any, mentoriaId?: string) => {
+  try {
+    const estudoRef = doc(db, getAlunoSubcollectionPath(userId, "estudos", mentoriaId), estudoId);
+    await updateDoc(estudoRef, data);
+    return { id: estudoId, ...data };
+  } catch (error) {
+    console.error("Erro ao atualizar estudo:", error);
+    throw error;
+  }
+};
+
+export const createEstudoDirect = async (userId: string, data: any, mentoriaId?: string) => {
+  try {
+    const estudosRef = collection(db, getAlunoSubcollectionPath(userId, "estudos", mentoriaId));
+    const docRef = await addDoc(estudosRef, {
+      ...data,
+      createdAt: Timestamp.now()
+    });
+    return { id: docRef.id, ...data };
+  } catch (error) {
+    console.error("Erro ao criar estudo:", error);
+    throw error;
+  }
+};
+
+export const deleteEstudoDirect = async (userId: string, estudoId: string, mentoriaId?: string) => {
+  try {
+    const estudoRef = doc(db, getAlunoSubcollectionPath(userId, "estudos", mentoriaId), estudoId);
+    await deleteDoc(estudoRef);
+    return true;
+  } catch (error) {
+    console.error("Erro ao deletar estudo:", error);
+    throw error;
+  }
+};
+
+export const checkExpiredMetasDirect = async (userId: string, mentoriaId?: string) => {
+  try {
+    const metasRef = collection(db, getAlunoSubcollectionPath(userId, "metas", mentoriaId));
+    const q = query(metasRef, where("status", "==", "pendente"));
+    const snapshot = await getDocs(q);
+    
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    
+    const batch = writeBatch(db);
+    let updatedCount = 0;
+    
+    snapshot.docs.forEach(doc => {
+      const meta = doc.data();
+      let dataLimite: Date;
+      
+      if (meta.prazo?.toDate) {
+        dataLimite = meta.prazo.toDate();
+      } else if (meta.prazo?.seconds) {
+        dataLimite = new Date(meta.prazo.seconds * 1000);
+      } else {
+        dataLimite = new Date(meta.prazo);
+      }
+      
+      if (dataLimite < hoje) {
+        batch.update(doc.ref, { status: "nao_cumprida" });
+        updatedCount++;
+      }
+    });
+    
+    if (updatedCount > 0) {
+      await batch.commit();
+    }
+    
+    return updatedCount;
+  } catch (error) {
+    console.error("Erro ao verificar metas expiradas:", error);
+    return 0;
+  }
+};
+
+export const getMetaRedacaoDirect = async (userId: string, mentoriaId?: string) => {
+  try {
+    const metaRef = doc(db, getAlunoSubcollectionPath(userId, "metasRedacao", mentoriaId), "atual");
+    const snapshot = await getDoc(metaRef);
+    if (snapshot.exists()) {
+      return snapshot.data();
+    }
+    return null;
+  } catch (error) {
+    console.error("Erro ao buscar meta de redação:", error);
+    return null;
+  }
+};
+
+export const updateMetaRedacaoDirect = async (userId: string, data: any, mentoriaId?: string) => {
+  try {
+    const metaRef = doc(db, getAlunoSubcollectionPath(userId, "metasRedacao", mentoriaId), "atual");
+    await setDoc(metaRef, {
+      ...data,
+      updatedAt: Timestamp.now()
+    }, { merge: true });
+    return data;
+  } catch (error) {
+    console.error("Erro ao atualizar meta de redação:", error);
+    throw error;
+  }
+};
+
+export const updateSimuladoDirect = async (userId: string, simuladoId: string, data: any, mentoriaId?: string) => {
+  try {
+    const simuladoRef = doc(db, getAlunoSubcollectionPath(userId, "simulados", mentoriaId), simuladoId);
+    await updateDoc(simuladoRef, data);
+    return { id: simuladoId, ...data };
+  } catch (error) {
+    console.error("Erro ao atualizar simulado:", error);
+    throw error;
+  }
+};
+
+export const createSimuladoDirect = async (userId: string, data: any, mentoriaId?: string) => {
+  try {
+    const simuladosRef = collection(db, getAlunoSubcollectionPath(userId, "simulados", mentoriaId));
+    const docRef = await addDoc(simuladosRef, {
+      ...data,
+      createdAt: Timestamp.now()
+    });
+    return { id: docRef.id, ...data };
+  } catch (error) {
+    console.error("Erro ao criar simulado:", error);
+    throw error;
+  }
+};
+
+export const deleteSimuladoDirect = async (userId: string, simuladoId: string, mentoriaId?: string) => {
+  try {
+    const simuladoRef = doc(db, getAlunoSubcollectionPath(userId, "simulados", mentoriaId), simuladoId);
+    await deleteDoc(simuladoRef);
+    return true;
+  } catch (error) {
+    console.error("Erro ao deletar simulado:", error);
+    throw error;
+  }
+};

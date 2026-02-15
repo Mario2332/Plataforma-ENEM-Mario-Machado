@@ -1,7 +1,14 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useAlunoApi } from "@/hooks/useAlunoApi";
+// Substituindo useAlunoApi por funções diretas atualizadas para multi-tenant
+import { 
+  getMetasDirect, 
+  createMetaDirect, 
+  updateMetaDirect, 
+  deleteMetaDirect,
+  checkExpiredMetasDirect
+} from "@/lib/firestore-direct";
 import { 
   Target, 
   Plus, 
@@ -46,6 +53,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useDataService } from "@/hooks/useDataService";
+import { useAuthContext } from "@/contexts/AuthContext";
+import { useMentorViewContext } from "@/contexts/MentorViewContext";
+import { auth } from "@/lib/firebase";
 
 // Tipos de metas
 type TipoMeta = 'horas' | 'questoes' | 'simulados' | 'topicos' | 'sequencia' | 'desempenho';
@@ -140,7 +151,17 @@ const TIPOS_META = {
 };
 
 export default function AlunoMetas() {
-  const api = useAlunoApi();
+  // USANDO DATA SERVICE para obter o contexto
+  const { mentoriaId } = useDataService();
+  const { userData } = useAuthContext();
+  const { alunoId: mentorViewAlunoId, isMentorView } = useMentorViewContext();
+
+  // Função para obter o ID do aluno efetivo
+  const getEffectiveUserId = () => {
+    if (isMentorView && mentorViewAlunoId) return mentorViewAlunoId;
+    return auth.currentUser?.uid || null;
+  };
+
   const [metas, setMetas] = useState<Meta[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -168,8 +189,14 @@ export default function AlunoMetas() {
   const loadMetas = async () => {
     try {
       setIsLoading(true);
-      await api.checkExpiredMetas(); // Verificar metas expiradas
-      const metasData = await api.getMetas();
+      const userId = getEffectiveUserId();
+      if (!userId) return;
+
+      // Verificar metas expiradas usando função direta com mentoriaId
+      await checkExpiredMetasDirect(userId, mentoriaId); 
+      
+      // Carregar metas usando função direta com mentoriaId
+      const metasData = await getMetasDirect(userId, mentoriaId);
       setMetas(metasData as Meta[]);
     } catch (error: any) {
       toast.error(error.message || "Erro ao carregar metas");
@@ -183,8 +210,11 @@ export default function AlunoMetas() {
     
     // Atualizar metas automaticamente a cada 5 segundos para refletir mudanças do backend
     const interval = setInterval(() => {
+      const userId = getEffectiveUserId();
+      if (!userId) return;
+
       // Recarregar metas silenciosamente (sem mostrar loading)
-      api.getMetas().then((metasData) => {
+      getMetasDirect(userId, mentoriaId).then((metasData) => {
         setMetas(metasData as Meta[]);
       }).catch(() => {
         // Ignorar erros silenciosos
@@ -192,7 +222,7 @@ export default function AlunoMetas() {
     }, 5000);
     
     return () => clearInterval(interval);
-  }, []);
+  }, [mentoriaId]); // Recarregar se mentoriaId mudar
 
   const handleOpenDialog = (meta?: Meta) => {
     if (meta) {
@@ -236,6 +266,9 @@ export default function AlunoMetas() {
     }
 
     try {
+      const userId = getEffectiveUserId();
+      if (!userId) throw new Error("Usuário não identificado");
+
       const unidade = TIPOS_META[tipo].unidade;
       
       // Converter datas para ISO com horário meio-dia (evita problemas de timezone)
@@ -243,18 +276,19 @@ export default function AlunoMetas() {
       const dataFimISO = `${dataFim}T12:00:00`;
       
       if (isEditMode && metaEditando) {
-        await api.updateMeta({
-          metaId: metaEditando.id,
+        // Usando updateMetaDirect com mentoriaId
+        await updateMetaDirect(userId, metaEditando.id, {
           nome,
           descricao,
           valorAlvo: Number(valorAlvo),
           dataInicio: dataInicioISO,
           dataFim: dataFimISO,
           repetirDiariamente: (tipo === 'horas' || tipo === 'questoes' || tipo === 'topicos') ? repetirDiariamente : undefined,
-        });
+        }, mentoriaId);
         toast.success("Meta atualizada com sucesso!");
       } else {
-        await api.createMeta({
+        // Usando createMetaDirect com mentoriaId
+        await createMetaDirect(userId, {
           tipo,
           nome,
           descricao,
@@ -264,7 +298,7 @@ export default function AlunoMetas() {
           dataFim: dataFimISO,
           materia: materia || undefined,
           repetirDiariamente: (tipo === 'horas' || tipo === 'questoes' || tipo === 'topicos') ? repetirDiariamente : undefined,
-        });
+        }, mentoriaId);
         toast.success("Meta criada com sucesso!");
       }
 
@@ -280,7 +314,11 @@ export default function AlunoMetas() {
     if (!confirm("Tem certeza que deseja excluir esta meta?")) return;
 
     try {
-      await api.deleteMeta(metaId);
+      const userId = getEffectiveUserId();
+      if (!userId) throw new Error("Usuário não identificado");
+
+      // Usando deleteMetaDirect com mentoriaId
+      await deleteMetaDirect(userId, metaId, mentoriaId);
       toast.success("Meta excluída");
       loadMetas();
     } catch (error: any) {
@@ -290,10 +328,13 @@ export default function AlunoMetas() {
 
   const handleCancelMeta = async (metaId: string) => {
     try {
-      await api.updateMeta({
-        metaId,
+      const userId = getEffectiveUserId();
+      if (!userId) throw new Error("Usuário não identificado");
+
+      // Usando updateMetaDirect com mentoriaId
+      await updateMetaDirect(userId, metaId, {
         status: 'cancelada',
-      });
+      }, mentoriaId);
       toast.success("Meta cancelada");
       loadMetas();
     } catch (error: any) {
@@ -338,423 +379,280 @@ export default function AlunoMetas() {
     if (progresso >= 75) return "bg-blue-500";
     if (progresso >= 50) return "bg-yellow-500";
     if (progresso >= 25) return "bg-orange-500";
-    return "bg-gray-500";
+    return "bg-red-500";
   };
 
-  // Filtrar metas para exibição
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0);
-  const hojeStr = hoje.toISOString().split('T')[0];
-  
-  console.log('=== DEBUG METAS ===');
-  console.log('Total de metas:', metas.length);
-  console.log('Hoje (string):', hojeStr);
-  console.log('Todas as metas:', metas);
-  
-  // Filtrar apenas:
-  // 1. Metas não-diárias (sem metaPaiId)
-  // 2. Instâncias diárias de hoje (com metaPaiId e dataReferencia = hoje)
-  const metasExibir = metas.filter(m => {
-    console.log('Analisando meta:', m.nome, '| metaPaiId:', m.metaPaiId, '| repetirDiariamente:', m.repetirDiariamente);
-    
-    if (m.metaPaiId) {
-      // É instância diária, mostrar apenas se for de hoje
-      if (m.dataReferencia) {
-        const dataRef = toDate(m.dataReferencia);
-        dataRef.setHours(0, 0, 0, 0);
-        const dataRefStr = dataRef.toISOString().split('T')[0];
-        console.log('  -> Instância diária | dataRef:', dataRefStr, '| hoje:', hojeStr, '| match:', dataRefStr === hojeStr);
-        return dataRefStr === hojeStr;
-      }
-      console.log('  -> Instância sem dataReferencia, escondendo');
-      return false;
-    }
-    // Não é instância diária
-    // Se for meta "pai" (template), não mostrar
-    if (m.repetirDiariamente && !m.metaPaiId) {
-      console.log('  -> Meta PAI (template), escondendo');
-      return false; // Meta "pai", não mostrar
-    }
-    console.log('  -> Meta normal, mostrando');
-    return true; // Meta normal, mostrar
-  });
-  
-  console.log('Metas após filtro:', metasExibir.length);
-  
-  // Calcular estatísticas
-  const metasAtivas = metasExibir.filter(m => m.status === 'ativa');
-  const metasConcluidas = metasExibir.filter(m => m.status === 'concluida');
-  const metasNaoAlcancadas = metasExibir.filter(m => m.status === 'expirada' || m.status === 'cancelada');
-  const totalMetasFinalizadas = metasAtivas.length + metasConcluidas.length + metasNaoAlcancadas.length;
-  const taxaConclusao = totalMetasFinalizadas > 0 
-    ? Math.round((metasConcluidas.length / totalMetasFinalizadas) * 100) 
-    : 0;
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="relative">
-          <div className="animate-spin rounded-full h-20 w-20 border-t-4 border-b-4 border-primary"></div>
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-            <Target className="h-8 w-8 text-primary animate-pulse" />
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Filtrar metas por status
+  const metasAtivas = metas.filter(m => m.status === 'ativa');
+  const metasConcluidas = metas.filter(m => m.status === 'concluida');
+  const metasNaoAlcancadas = metas.filter(m => m.status === 'expirada' || m.status === 'cancelada');
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="space-y-8 pb-8 animate-fade-in">
       {/* Header */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-8 mb-6 border-2 border-primary/20 animate-slide-up">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
-        <div className="relative flex justify-between items-center">
-          <div>
-            <h1 className="text-4xl font-bold flex items-center gap-3">
-              <Target className="h-10 w-10 text-primary" />
-              Minhas Metas
-            </h1>
-            <p className="text-muted-foreground mt-2 text-lg">
-              Defina e acompanhe seus objetivos de estudo
-            </p>
-          </div>
-          <Button 
-            onClick={() => handleOpenDialog()} 
-            className="gap-2 bg-gradient-to-r from-primary via-primary to-blue-600 hover:from-primary/90 hover:via-primary/90 hover:to-blue-600/90 shadow-lg hover:shadow-2xl hover:shadow-primary/30 transition-all duration-300 hover:scale-105 text-white font-semibold"
-            size="lg"
-          >
-            <Plus className="h-5 w-5" />
-            Nova Meta
-          </Button>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Minhas Metas</h1>
+          <p className="text-muted-foreground mt-1">
+            Defina objetivos claros e acompanhe seu progresso rumo à aprovação.
+          </p>
         </div>
+        <Button onClick={() => handleOpenDialog()} className="gap-2">
+          <Plus className="h-4 w-4" />
+          Nova Meta
+        </Button>
       </div>
 
-      {/* Cards de Estatísticas */}
-      <EstatisticasMetasCards metas={metasExibir} />
+      {/* Estatísticas Rápidas */}
+      <EstatisticasMetasCards metas={metas} />
 
-      {/* Filtro de Período */}
-      <div className="flex justify-end animate-slide-up" style={{ animationDelay: '0.15s' }}>
-        <FiltrosPeriodoGraficos periodo={periodoGraficos} onPeriodoChange={setPeriodoGraficos} />
-      </div>
-
-      {/* Gráficos de Análise */}
-      <div className="space-y-6 animate-slide-up" style={{ animationDelay: '0.2s' }}>
-        {/* Gráfico de Linhas - Evolução */}
-        <GraficoMetasPorDia 
-          metas={metasExibir} 
-          diasPeriodo={periodoGraficos === 'todos' ? 365 : Number(periodoGraficos)} 
-        />
+      {/* Gráficos */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card className="col-span-2 md:col-span-1">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Metas Concluídas</CardTitle>
+                <CardDescription>Evolução diária de conclusão</CardDescription>
+              </div>
+              <FiltrosPeriodoGraficos periodo={periodoGraficos} onChange={setPeriodoGraficos} />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <GraficoMetasPorDia metas={metas} periodo={periodoGraficos} />
+          </CardContent>
+        </Card>
         
-        {/* Gráficos de Pizza e Barras */}
-        <GraficosStatusETipo metas={metasExibir} />
+        <Card className="col-span-2 md:col-span-1">
+          <CardHeader>
+            <CardTitle>Distribuição de Metas</CardTitle>
+            <CardDescription>Por status e tipo</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <GraficosStatusETipo metas={metas} />
+          </CardContent>
+        </Card>
       </div>
 
       {/* Metas Ativas */}
-      {metasAtivas.length > 0 && (
-        <div className="space-y-4 animate-slide-up" style={{ animationDelay: '0.2s' }}>
-          <button
-            onClick={() => setMetasAtivasExpanded(!metasAtivasExpanded)}
-            className="w-full flex items-center justify-between text-left hover:bg-accent/50 p-4 rounded-lg transition-colors"
-          >
-            <h2 className="text-2xl font-bold flex items-center gap-2">
-              <Flame className="h-6 w-6 text-orange-500" />
-              Metas Ativas
-              <Badge variant="secondary" className="ml-2">{metasAtivas.length}</Badge>
-            </h2>
-            <ChevronDown className={`h-6 w-6 transition-transform duration-300 ${metasAtivasExpanded ? 'rotate-180' : ''}`} />
-          </button>
-          {metasAtivasExpanded && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {metasAtivas.map((meta, index) => {
-              const Icon = TIPOS_META[meta.tipo].icon;
-              
-              // Calcular progresso considerando metas diárias
-              let progresso = 0;
-              let valorAtualExibido = meta.valorAtual;
-              let valorAlvoExibido = meta.valorAlvo;
-              let textoProgresso = '';
-              
-              // Metas diárias já mostram progresso do dia (instância)
-              // Metas normais mostram progresso total
-              progresso = Math.min(100, Math.round((meta.valorAtual / meta.valorAlvo) * 100));
-              
-              if (meta.repetirDiariamente) {
-                textoProgresso = `${meta.valorAtual} / ${meta.valorAlvo} ${meta.unidade} hoje`;
-              } else {
-                textoProgresso = `${meta.valorAtual} / ${meta.valorAlvo} ${meta.unidade}`;
-              }
-              
-              return (
-                <Card 
-                  key={meta.id}
-                  className="relative overflow-hidden border-2 hover:border-primary transition-all duration-500 hover:shadow-2xl hover:shadow-primary/20 group animate-slide-up bg-yellow-50/30 dark:bg-yellow-900/10"
-                  style={{ animationDelay: `${index * 0.1}s` }}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-                  <div className="absolute top-0 right-0 w-40 h-40 bg-primary/10 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700 pointer-events-none" />
-                  
-                  <CardHeader className="relative z-10">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-3">
-                        <div className={`p-2 rounded-lg bg-gradient-to-br ${TIPOS_META[meta.tipo].bgGradient}`}>
-                          <Icon className={`h-6 w-6 ${TIPOS_META[meta.tipo].color}`} />
-                        </div>
-                        <div>
-                          <CardTitle className="text-lg">{meta.nome}</CardTitle>
-                          <CardDescription className="mt-1">
-                            {meta.descricao || TIPOS_META[meta.tipo].descricao}
-                          </CardDescription>
-                        </div>
-                      </div>
-                      {getStatusBadge(meta)}
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4 relative z-10">
-                    {/* Progresso */}
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground font-medium">Progresso</span>
-                        <span className="font-semibold">
-                          {textoProgresso}
-                        </span>
-                      </div>
-                      {meta.repetirDiariamente && (
-                        <p className="text-xs text-muted-foreground">
-                          Total: {meta.valorAtual} {meta.unidade}
-                        </p>
-                      )}
-                      <div className="relative">
-                        <Progress 
-                          value={progresso} 
-                          className={`h-3 ${getProgressColor(progresso)} transition-all duration-1000`}
-                        />
-                      </div>
-                      <p className="text-xs text-muted-foreground text-right font-semibold">{progresso}%</p>
-                    </div>
-
-                    {/* Informações */}
-                    <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-muted/50 rounded-full">
-                        <Calendar className="h-4 w-4" />
-                        <span>Até {formatDateBR(meta.dataFim)}</span>
-                      </div>
-                      {meta.repetirDiariamente && (
-                        <Badge className="bg-gradient-to-r from-blue-500 to-cyan-500 shadow-lg">
-                          <Flame className="h-3 w-3 mr-1" />
-                          Meta diária
-                        </Badge>
-                      )}
-                      {meta.materia && (
-                        <Badge variant="outline" className="border-primary/50">{meta.materia}</Badge>
-                      )}
-                    </div>
-
-                    {/* Ações */}
-                    <div className="flex gap-2 pt-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleOpenDialog(meta)}
-                        className="flex-1 hover:bg-primary/10 hover:border-primary transition-all duration-300"
-                      >
-                        <Edit className="h-4 w-4 mr-2" />
-                        Editar
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleCancelMeta(meta.id)}
-                        className="flex-1 hover:bg-orange-500/10 hover:border-orange-500 hover:text-orange-600 transition-all duration-300"
-                      >
-                        <XCircle className="h-4 w-4 mr-2" />
-                        Cancelar
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDelete(meta.id)}
-                        className="hover:bg-destructive/10 hover:border-destructive hover:text-destructive transition-all duration-300"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+      <Card className="border-l-4 border-l-blue-500">
+        <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setMetasAtivasExpanded(!metasAtivasExpanded)}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Target className="h-5 w-5 text-blue-500" />
+              <CardTitle>Metas Ativas ({metasAtivas.length})</CardTitle>
+            </div>
+            <ChevronDown className={`h-5 w-5 transition-transform ${metasAtivasExpanded ? 'rotate-180' : ''}`} />
           </div>
-          )}
-        </div>
-      )}
+        </CardHeader>
+        {metasAtivasExpanded && (
+          <CardContent>
+            {isLoading ? (
+              <div className="text-center py-8 text-muted-foreground">Carregando metas...</div>
+            ) : metasAtivas.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                Nenhuma meta ativa no momento. Crie uma nova meta para começar!
+              </div>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {metasAtivas.map((meta) => {
+                  const TipoIcon = TIPOS_META[meta.tipo].icon;
+                  const progresso = Math.min(100, Math.round((meta.valorAtual / meta.valorAlvo) * 100));
+                  
+                  return (
+                    <Card key={meta.id} className="overflow-hidden hover:shadow-md transition-shadow">
+                      <div className={`h-2 w-full bg-gradient-to-r ${TIPOS_META[meta.tipo].bgGradient}`} />
+                      <CardContent className="p-4 space-y-4">
+                        <div className="flex justify-between items-start">
+                          <div className="flex items-center gap-2">
+                            <div className={`p-2 rounded-full bg-muted ${TIPOS_META[meta.tipo].color}`}>
+                              <TipoIcon className="h-4 w-4" />
+                            </div>
+                            <div>
+                              <h3 className="font-semibold line-clamp-1" title={meta.nome}>{meta.nome}</h3>
+                              <p className="text-xs text-muted-foreground capitalize">{TIPOS_META[meta.tipo].nome}</p>
+                            </div>
+                          </div>
+                          {getStatusBadge(meta)}
+                        </div>
+                        
+                        {meta.descricao && (
+                          <p className="text-sm text-muted-foreground line-clamp-2 h-10">
+                            {meta.descricao}
+                          </p>
+                        )}
+                        
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-sm">
+                            <span>Progresso</span>
+                            <span className="font-medium">{progresso}%</span>
+                          </div>
+                          <Progress value={progresso} className="h-2" indicatorClassName={getProgressColor(progresso)} />
+                          <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                            <span>{meta.valorAtual} {meta.unidade}</span>
+                            <span>{meta.valorAlvo} {meta.unidade}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            <span>Fim: {formatDateBR(meta.dataFim)}</span>
+                          </div>
+                          
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleOpenDialog(meta)}>
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleCancelMeta(meta.id)}>
+                              <XCircle className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        )}
+      </Card>
 
       {/* Metas Concluídas */}
-      {metasConcluidas.length > 0 && (
-        <div className="space-y-4">
-          <button
-            onClick={() => setMetasConcluidasExpanded(!metasConcluidasExpanded)}
-            className="w-full flex items-center justify-between text-left hover:bg-accent/50 p-4 rounded-lg transition-colors"
-          >
-            <h2 className="text-xl font-semibold flex items-center gap-2">
-              ✅ Metas Concluídas
-              <Badge variant="secondary" className="ml-2">{metasConcluidas.length}</Badge>
-            </h2>
-            <ChevronDown className={`h-5 w-5 transition-transform duration-300 ${metasConcluidasExpanded ? 'rotate-180' : ''}`} />
-          </button>
-          {metasConcluidasExpanded && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {metasConcluidas.map((meta) => {
-              const Icon = TIPOS_META[meta.tipo].icon;
-              
-              return (
-                <Card key={meta.id} className="border-green-200 bg-green-50/50">
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-3">
-                        <Icon className={`h-5 w-5 mt-1 ${TIPOS_META[meta.tipo].color}`} />
-                        <div>
-                          <CardTitle className="text-lg">{meta.nome}</CardTitle>
-                          <CardDescription className="mt-1">
-                            Concluída em {meta.dataConclusao ? formatDateBR(meta.dataConclusao) : 'N/A'}
-                          </CardDescription>
-                        </div>
-                      </div>
-                      <CheckCircle2 className="h-5 w-5 text-green-500" />
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Meta alcançada</span>
-                      <span className="font-medium">
-                        {meta.valorAtual} / {meta.valorAlvo} {meta.unidade}
-                      </span>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDelete(meta.id)}
-                      className="w-full mt-4"
-                    >
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      Excluir
-                    </Button>
-                  </CardContent>
-                </Card>
-              );
-            })}
+      <Card className="border-l-4 border-l-green-500">
+        <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setMetasConcluidasExpanded(!metasConcluidasExpanded)}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-green-500" />
+              <CardTitle>Metas Concluídas ({metasConcluidas.length})</CardTitle>
+            </div>
+            <ChevronDown className={`h-5 w-5 transition-transform ${metasConcluidasExpanded ? 'rotate-180' : ''}`} />
           </div>
-          )}
-        </div>
-      )}
+        </CardHeader>
+        {metasConcluidasExpanded && (
+          <CardContent>
+            {metasConcluidas.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                Nenhuma meta concluída ainda. Continue se esforçando!
+              </div>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {metasConcluidas.map((meta) => {
+                  const TipoIcon = TIPOS_META[meta.tipo].icon;
+                  
+                  return (
+                    <Card key={meta.id} className="opacity-75 hover:opacity-100 transition-opacity">
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex justify-between items-start">
+                          <div className="flex items-center gap-2">
+                            <div className="p-2 rounded-full bg-green-100 text-green-600 dark:bg-green-900/30">
+                              <TipoIcon className="h-4 w-4" />
+                            </div>
+                            <div>
+                              <h3 className="font-semibold line-clamp-1">{meta.nome}</h3>
+                              <p className="text-xs text-muted-foreground">Concluída em {formatDateBR(meta.dataConclusao || meta.dataFim)}</p>
+                            </div>
+                          </div>
+                          <Badge className="bg-green-500">Concluída</Badge>
+                        </div>
+                        
+                        <div className="pt-2 border-t text-xs text-muted-foreground flex justify-between">
+                          <span>Alvo: {meta.valorAlvo} {meta.unidade}</span>
+                          <span>Realizado: {meta.valorAtual} {meta.unidade}</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        )}
+      </Card>
 
       {/* Metas Não Alcançadas */}
-      {metasNaoAlcancadas.length > 0 && (
-        <div className="space-y-4">
-          <button
-            onClick={() => setMetasNaoAlcancadasExpanded(!metasNaoAlcancadasExpanded)}
-            className="w-full flex items-center justify-between text-left hover:bg-accent/50 p-4 rounded-lg transition-colors"
-          >
-            <h2 className="text-xl font-semibold flex items-center gap-2">
+      <Card className="border-l-4 border-l-red-500">
+        <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setMetasNaoAlcancadasExpanded(!metasNaoAlcancadasExpanded)}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
               <XCircle className="h-5 w-5 text-red-500" />
-              Metas Não Alcançadas
-              <Badge variant="secondary" className="ml-2">{metasNaoAlcancadas.length}</Badge>
-            </h2>
-            <ChevronDown className={`h-5 w-5 transition-transform duration-300 ${metasNaoAlcancadasExpanded ? 'rotate-180' : ''}`} />
-          </button>
-          {metasNaoAlcancadasExpanded && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {metasNaoAlcancadas.map((meta, index) => {
-              const Icon = TIPOS_META[meta.tipo].icon;
-              
-              return (
-                <Card 
-                  key={meta.id}
-                  className="relative overflow-hidden border-2 border-red-200 bg-red-50/30 dark:bg-red-900/10 animate-slide-up"
-                  style={{ animationDelay: `${index * 0.1}s` }}
-                >
-                  <CardHeader className="relative z-10">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-3">
-                        <div className={`p-2 rounded-lg bg-gradient-to-br ${TIPOS_META[meta.tipo].bgGradient} opacity-50`}>
-                          <Icon className={`h-6 w-6 ${TIPOS_META[meta.tipo].color}`} />
-                        </div>
-                        <div>
-                          <CardTitle className="text-lg">{meta.nome}</CardTitle>
-                          <CardDescription className="mt-1">
-                            {meta.status === 'expirada' ? 'Prazo expirado' : 'Cancelada'}
-                          </CardDescription>
-                        </div>
-                      </div>
-                      <XCircle className="h-5 w-5 text-red-500" />
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4 relative z-10">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Progresso final</span>
-                      <span className="font-medium">
-                        {meta.valorAtual} / {meta.valorAlvo} {meta.unidade}
-                      </span>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDelete(meta.id)}
-                      className="w-full hover:bg-destructive/10 hover:border-destructive hover:text-destructive transition-all duration-300"
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Excluir
-                    </Button>
-                  </CardContent>
-                </Card>
-              );
-            })}
+              <CardTitle>Metas Não Alcançadas ({metasNaoAlcancadas.length})</CardTitle>
+            </div>
+            <ChevronDown className={`h-5 w-5 transition-transform ${metasNaoAlcancadasExpanded ? 'rotate-180' : ''}`} />
           </div>
-          )}
-        </div>
-      )}
-
-      {/* Estado vazio */}
-      {metasExibir.length === 0 && (
-        <Card className="text-center py-12">
+        </CardHeader>
+        {metasNaoAlcancadasExpanded && (
           <CardContent>
-            <Target className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Nenhuma meta criada</h3>
-            <p className="text-muted-foreground mb-4">
-              Crie sua primeira meta para organizar seus estudos!
-            </p>
-            <Button onClick={() => handleOpenDialog()} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Criar Primeira Meta
-            </Button>
+            {metasNaoAlcancadas.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                Nenhuma meta perdida. Parabéns!
+              </div>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {metasNaoAlcancadas.map((meta) => {
+                  const TipoIcon = TIPOS_META[meta.tipo].icon;
+                  const progresso = Math.min(100, Math.round((meta.valorAtual / meta.valorAlvo) * 100));
+                  
+                  return (
+                    <Card key={meta.id} className="opacity-75 hover:opacity-100 transition-opacity border-red-200 dark:border-red-900/30">
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex justify-between items-start">
+                          <div className="flex items-center gap-2">
+                            <div className="p-2 rounded-full bg-red-100 text-red-600 dark:bg-red-900/30">
+                              <TipoIcon className="h-4 w-4" />
+                            </div>
+                            <div>
+                              <h3 className="font-semibold line-clamp-1">{meta.nome}</h3>
+                              <p className="text-xs text-muted-foreground capitalize">{meta.status}</p>
+                            </div>
+                          </div>
+                          {getStatusBadge(meta)}
+                        </div>
+                        
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-sm">
+                            <span>Progresso Final</span>
+                            <span className="font-medium">{progresso}%</span>
+                          </div>
+                          <Progress value={progresso} className="h-2" />
+                        </div>
+                        
+                        <div className="flex justify-end pt-2">
+                          <Button variant="ghost" size="sm" className="text-destructive h-8" onClick={() => handleDelete(meta.id)}>
+                            <Trash2 className="h-3 w-3 mr-2" />
+                            Remover
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
-        </Card>
-      )}
+        )}
+      </Card>
 
-      {/* Dialog de Criar/Editar Meta */}
+      {/* Dialog de Criação/Edição */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <div className="relative">
-            <div className="absolute -top-4 -right-4 w-32 h-32 bg-primary/10 rounded-full blur-3xl" />
-            <DialogHeader className="relative">
-              <DialogTitle className="text-2xl font-bold flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10">
-                  <Target className="h-6 w-6 text-primary" />
-                </div>
-                {isEditMode ? 'Editar Meta' : 'Nova Meta'}
-              </DialogTitle>
-              <DialogDescription className="text-base mt-2">
-                {isEditMode 
-                  ? 'Atualize as informações da sua meta' 
-                  : 'Defina um objetivo de estudo para acompanhar seu progresso'}
-              </DialogDescription>
-            </DialogHeader>
-          </div>
-
-          <div className="space-y-4 py-4">
-            {/* Tipo de Meta (apenas na criação) */}
-            {!isEditMode && (
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>{isEditMode ? "Editar Meta" : "Nova Meta"}</DialogTitle>
+            <DialogDescription>
+              Defina objetivos claros para manter o foco nos estudos.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="tipo">Tipo de Meta</Label>
-                <Select value={tipo} onValueChange={(value) => setTipo(value as TipoMeta)}>
+                <Select 
+                  value={tipo} 
+                  onValueChange={(value) => setTipo(value as TipoMeta)}
+                  disabled={isEditMode}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -762,148 +660,112 @@ export default function AlunoMetas() {
                     {Object.entries(TIPOS_META).map(([key, config]) => (
                       <SelectItem key={key} value={key}>
                         <div className="flex items-center gap-2">
-                          <config.icon className={`h-4 w-4 ${config.color}`} />
-                          {config.nome}
+                          <config.icon className="h-4 w-4" />
+                          <span>{config.nome}</span>
                         </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-sm text-muted-foreground">
-                  {TIPOS_META[tipo].descricao}
-                </p>
               </div>
-            )}
-
-            {/* Nome */}
-            <div className="space-y-2">
-              <Label htmlFor="nome">Nome da Meta *</Label>
-              <Input
-                id="nome"
-                value={nome}
-                onChange={(e) => setNome(e.target.value)}
-                placeholder="Ex: Estudar 20 horas esta semana"
-              />
-            </div>
-
-            {/* Descrição */}
-            <div className="space-y-2">
-              <Label htmlFor="descricao">Descrição (opcional)</Label>
-              <Textarea
-                id="descricao"
-                value={descricao}
-                onChange={(e) => setDescricao(e.target.value)}
-                placeholder="Adicione detalhes sobre sua meta..."
-                rows={3}
-              />
-            </div>
-
-            {/* Valor Alvo */}
-            <div className="space-y-2">
-              <Label htmlFor="valorAlvo">
-                Meta ({TIPOS_META[tipo].unidade}) *
-              </Label>
-              <Input
-                id="valorAlvo"
-                type="number"
-                value={valorAlvo}
-                onChange={(e) => setValorAlvo(e.target.value)}
-                placeholder="Ex: 20"
-                min="1"
-              />
-            </div>
-
-            {/* Matéria (para questões e desempenho) */}
-            {(tipo === 'questoes' || tipo === 'desempenho') && (
+              
               <div className="space-y-2">
-                <Label htmlFor="materia">Matéria (opcional)</Label>
-                <Select value={materia || undefined} onValueChange={(value) => setMateria(value)}>
+                <Label htmlFor="materia">Matéria (Opcional)</Label>
+                <Select value={materia} onValueChange={setMateria}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Todas as matérias" />
+                    <SelectValue placeholder="Todas" />
                   </SelectTrigger>
                   <SelectContent>
-                    {MATERIAS_ENEM.map((mat) => (
-                      <SelectItem key={mat} value={mat}>{mat}</SelectItem>
+                    <SelectItem value="todas">Todas</SelectItem>
+                    {MATERIAS_ENEM.map((m) => (
+                      <SelectItem key={m} value={m}>{m}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">
-                  Deixe em branco para considerar todas as matérias
-                </p>
               </div>
-            )}
-
-            {/* Repetir Diariamente (para horas, questões e tópicos) */}
-            {(tipo === 'horas' || tipo === 'questoes' || tipo === 'topicos') && (
-              <div className="flex items-center space-x-2 p-4 bg-muted/50 rounded-lg">
-                <Checkbox 
-                  id="repetirDiariamente" 
-                  checked={repetirDiariamente}
-                  onCheckedChange={(checked) => setRepetirDiariamente(checked as boolean)}
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="nome">Nome da Meta</Label>
+              <Input 
+                id="nome" 
+                placeholder="Ex: Estudar Matemática Básica" 
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="descricao">Descrição (Opcional)</Label>
+              <Textarea 
+                id="descricao" 
+                placeholder="Detalhes sobre como atingir esta meta..." 
+                value={descricao}
+                onChange={(e) => setDescricao(e.target.value)}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="alvo">
+                Meta de {TIPOS_META[tipo].unidade}
+              </Label>
+              <div className="flex items-center gap-2">
+                <Input 
+                  id="alvo" 
+                  type="number" 
+                  min="1"
+                  placeholder="0" 
+                  value={valorAlvo}
+                  onChange={(e) => setValorAlvo(e.target.value)}
                 />
-                <div className="space-y-1">
-                  <Label 
-                    htmlFor="repetirDiariamente" 
-                    className="text-sm font-medium cursor-pointer"
-                  >
-                    Repetir diariamente
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    {tipo === 'horas' && 'Ex: Estudar 2 horas por dia'}
-                    {tipo === 'questoes' && 'Ex: Resolver 10 questões por dia'}
-                    {tipo === 'topicos' && 'Ex: Concluir 3 tópicos por dia'}
-                  </p>
-                </div>
+                <span className="text-sm text-muted-foreground whitespace-nowrap">
+                  {TIPOS_META[tipo].unidade}
+                </span>
               </div>
-            )}
-
-            {/* Datas */}
+            </div>
+            
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="dataInicio">Data Início *</Label>
-                <Input
-                  id="dataInicio"
-                  type="date"
+                <Label htmlFor="inicio">Data Início</Label>
+                <Input 
+                  id="inicio" 
+                  type="date" 
                   value={dataInicio}
                   onChange={(e) => setDataInicio(e.target.value)}
                 />
               </div>
+              
               <div className="space-y-2">
-                <Label htmlFor="dataFim">Data Fim *</Label>
-                <Input
-                  id="dataFim"
-                  type="date"
+                <Label htmlFor="fim">Data Fim</Label>
+                <Input 
+                  id="fim" 
+                  type="date" 
                   value={dataFim}
                   onChange={(e) => setDataFim(e.target.value)}
                 />
               </div>
             </div>
-          </div>
 
-          <DialogFooter className="gap-2">
-            <Button 
-              variant="outline" 
-              onClick={() => setIsDialogOpen(false)}
-              className="hover:bg-muted transition-all duration-300"
-            >
-              <XCircle className="h-4 w-4 mr-2" />
+            {(tipo === 'horas' || tipo === 'questoes' || tipo === 'topicos') && (
+              <div className="flex items-center space-x-2 pt-2">
+                <Checkbox 
+                  id="repetir" 
+                  checked={repetirDiariamente}
+                  onCheckedChange={(checked) => setRepetirDiariamente(!!checked)}
+                />
+                <Label htmlFor="repetir" className="text-sm font-normal cursor-pointer">
+                  Repetir esta meta diariamente até a data fim
+                </Label>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
               Cancelar
             </Button>
-            <Button 
-              onClick={handleSubmit}
-              className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
-            >
-              {isEditMode ? (
-                <>
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Salvar Alterações
-                </>
-              ) : (
-                <>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Criar Meta
-                </>
-              )}
+            <Button onClick={handleSubmit}>
+              {isEditMode ? "Salvar Alterações" : "Criar Meta"}
             </Button>
           </DialogFooter>
         </DialogContent>

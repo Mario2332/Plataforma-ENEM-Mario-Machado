@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuthContext } from "@/contexts/AuthContext";
-import { alunoApi } from "@/lib/api";
+// Substituindo alunoApi por funções diretas
+import { getUserDirect, updateUserDirect } from "@/lib/firestore-direct-mentor"; // Usando do mentor pois tem as funções de user genéricas
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,7 +11,7 @@ import { toast } from "sonner";
 import { Settings, User, Lock, Loader2, Camera, Trash2, Upload, Zap, Sparkles } from "lucide-react";
 import { getAuth, updateEmail, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from "firebase/auth";
 import { httpsCallable } from "firebase/functions";
-import { functions } from "@/lib/firebase";
+import { functions, auth } from "@/lib/firebase";
 
 export default function AlunoConfiguracoes() {
   const { refreshUserData, userData } = useAuthContext();
@@ -39,7 +40,11 @@ export default function AlunoConfiguracoes() {
   const loadAluno = async () => {
     try {
       setIsLoading(true);
-      const data = await alunoApi.getMe();
+      const userId = auth.currentUser?.uid;
+      if (!userId) return;
+
+      // Usando getUserDirect para buscar dados do usuário na coleção users (raiz)
+      const data = await getUserDirect(userId);
       setAluno(data);
       setProfileData({
         nome: data.nome || "",
@@ -77,19 +82,29 @@ export default function AlunoConfiguracoes() {
     }
 
     try {
-      const auth = getAuth();
-      if (auth.currentUser && profileData.email !== aluno?.email) {
-        await updateEmail(auth.currentUser, profileData.email);
+      const authInstance = getAuth();
+      const userId = authInstance.currentUser?.uid;
+      
+      if (!userId) {
+        throw new Error("Usuário não autenticado");
       }
 
-      await alunoApi.updateProfile({ 
+      if (authInstance.currentUser && profileData.email !== aluno?.email) {
+        await updateEmail(authInstance.currentUser, profileData.email);
+      }
+
+      // Usando updateUserDirect para atualizar dados na coleção users (raiz)
+      await updateUserDirect(userId, { 
         nome: profileData.nome, 
         celular: profileData.celular,
         curso: profileData.curso,
-        faculdade: profileData.faculdade 
+        faculdade: profileData.faculdade,
+        email: profileData.email // Atualizando email no firestore também
       });
+      
       toast.success("Perfil atualizado com sucesso!");
       await loadAluno();
+      await refreshUserData(); // Atualizar contexto global
     } catch (error: any) {
       toast.error(error.message || "Erro ao atualizar perfil");
     } finally {
@@ -120,8 +135,8 @@ export default function AlunoConfiguracoes() {
     }
 
     try {
-      const auth = getAuth();
-      const user = auth.currentUser;
+      const authInstance = getAuth();
+      const user = authInstance.currentUser;
       if (!user || !user.email) {
         toast.error("Usuário não autenticado");
         setLoadingPassword(false);
@@ -175,6 +190,7 @@ export default function AlunoConfiguracoes() {
   const uploadPhoto = async (imageData: string) => {
     try {
       setLoadingPhoto(true);
+      // Cloud Function continua sendo a melhor opção para upload de imagem
       const uploadProfilePhoto = httpsCallable(functions, "uploadProfilePhoto");
       
       const result = await uploadProfilePhoto({ imageData });
@@ -201,6 +217,7 @@ export default function AlunoConfiguracoes() {
 
     try {
       setLoadingPhoto(true);
+      // Cloud Function para deletar foto
       const deleteProfilePhoto = httpsCallable(functions, "deleteProfilePhoto");
       const result = await deleteProfilePhoto();
       const data = result.data as any;
@@ -282,234 +299,190 @@ export default function AlunoConfiguracoes() {
                 <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full">
                   <div className="relative">
                     <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-white"></div>
-                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                      <Zap className="h-6 w-6 text-white animate-pulse" />
-                    </div>
                   </div>
                 </div>
               )}
             </div>
-
-            <div className="flex flex-col gap-3 flex-1">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handlePhotoSelect}
-                className="hidden"
-              />
-              
-              <Button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={loadingPhoto}
-                className="w-full md:w-auto bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 font-bold shadow-lg border-0"
-              >
-                <Upload className="mr-2 h-4 w-4" />
-                {photoPreview ? "Alterar Foto" : "Adicionar Foto"}
-              </Button>
-
-              {photoPreview && (
-                <Button
-                  onClick={handleDeletePhoto}
-                  disabled={loadingPhoto}
-                  variant="destructive"
-                  className="w-full md:w-auto font-bold shadow-lg"
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Remover Foto
-                </Button>
-              )}
-
-              <div className="p-4 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 rounded-xl border-2 border-blue-200/50">
-                <p className="text-sm font-bold text-blue-900 dark:text-blue-300 flex items-center gap-2">
-                  <Sparkles className="w-4 h-4" />
-                  Formatos aceitos: JPG, PNG, WebP (máx. 5MB)
-                </p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Separator className="my-8" />
-
-      <Card className="border-2 hover:shadow-2xl transition-shadow rounded-2xl animate-slide-up" style={{ animationDelay: '0.2s' }}>
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl shadow-lg">
-              <User className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <CardTitle className="text-2xl font-black">Informações do Perfil</CardTitle>
-              <CardDescription className="font-semibold">Atualize suas informações pessoais</CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleProfileSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="nome" className="font-bold text-base">Nome Completo *</Label>
-              <Input
-                id="nome"
-                value={profileData.nome}
-                onChange={(e) => setProfileData({ ...profileData, nome: e.target.value })}
-                placeholder="Seu nome completo"
-                className="border-2 font-semibold"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="email" className="font-bold text-base">Email *</Label>
-              <Input
-                id="email"
-                type="email"
-                value={profileData.email}
-                onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
-                placeholder="seu@email.com"
-                className="border-2 font-semibold"
-              />
-              <p className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
-                <Sparkles className="w-4 h-4" />
-                Alterar o email pode exigir reautenticação.
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="celular" className="font-bold text-base">Celular</Label>
-              <Input
-                id="celular"
-                value={profileData.celular}
-                onChange={(e) => setProfileData({ ...profileData, celular: e.target.value })}
-                placeholder="(00) 00000-0000"
-                className="border-2 font-semibold"
-              />
-            </div>
-
-            <Separator className="my-4" />
             
-            <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 rounded-xl border-2 border-purple-200/50">
-              <h3 className="text-lg font-black text-purple-900 dark:text-purple-300 mb-4 flex items-center gap-2">
-                🎯 Objetivo de Aprovação
-              </h3>
-              <p className="text-sm font-semibold text-purple-700 dark:text-purple-400 mb-4">
-                Informe o curso e a faculdade em que você deseja ser aprovado. Essas informações aparecerão no seu perfil.
-              </p>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="curso" className="font-bold text-base">Curso Desejado</Label>
-                  <Input
-                    id="curso"
-                    value={profileData.curso}
-                    onChange={(e) => setProfileData({ ...profileData, curso: e.target.value })}
-                    placeholder="Ex: Medicina, Direito, Engenharia..."
-                    className="border-2 font-semibold"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="faculdade" className="font-bold text-base">Faculdade/Universidade</Label>
-                  <Input
-                    id="faculdade"
-                    value={profileData.faculdade}
-                    onChange={(e) => setProfileData({ ...profileData, faculdade: e.target.value })}
-                    placeholder="Ex: USP, UNICAMP, UFG..."
-                    className="border-2 font-semibold"
-                  />
-                </div>
+            <div className="flex flex-col gap-4">
+              <div className="flex gap-4">
+                <Button 
+                  variant="outline" 
+                  className="gap-2 border-2 hover:border-blue-500 hover:text-blue-500 transition-colors"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={loadingPhoto}
+                >
+                  <Upload className="w-4 h-4" />
+                  Alterar Foto
+                </Button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
+                  accept="image/*"
+                  onChange={handlePhotoSelect}
+                />
+                {photoPreview && (
+                  <Button 
+                    variant="destructive" 
+                    className="gap-2"
+                    onClick={handleDeletePhoto}
+                    disabled={loadingPhoto}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Remover
+                  </Button>
+                )}
               </div>
-            </div>
-
-            <Button 
-              type="submit" 
-              disabled={loadingProfile}
-              className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 font-bold shadow-lg border-0"
-            >
-              {loadingProfile && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {loadingProfile ? "Salvando..." : "Salvar Alterações"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      <Separator className="my-8" />
-
-      <Card className="border-2 hover:shadow-2xl transition-shadow rounded-2xl animate-slide-up" style={{ animationDelay: '0.3s' }}>
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl shadow-lg">
-              <Lock className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <CardTitle className="text-2xl font-black">Alterar Senha</CardTitle>
-              <CardDescription className="font-semibold">Atualize sua senha de acesso</CardDescription>
+              <p className="text-sm text-muted-foreground">
+                Recomendado: Imagem quadrada, máx. 5MB (JPG, PNG)
+              </p>
             </div>
           </div>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handlePasswordSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="senhaAtual" className="font-bold text-base">Senha Atual *</Label>
-              <Input
-                id="senhaAtual"
-                type="password"
-                value={passwordData.senhaAtual}
-                onChange={(e) => setPasswordData({ ...passwordData, senhaAtual: e.target.value })}
-                placeholder="Digite sua senha atual"
-                className="border-2 font-semibold"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="novaSenha" className="font-bold text-base">Nova Senha *</Label>
-              <Input
-                id="novaSenha"
-                type="password"
-                value={passwordData.novaSenha}
-                onChange={(e) => setPasswordData({ ...passwordData, novaSenha: e.target.value })}
-                placeholder="Digite sua nova senha"
-                className="border-2 font-semibold"
-              />
-              <p className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
-                <Sparkles className="w-4 h-4" />
-                Mínimo de 6 caracteres
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="confirmarSenha" className="font-bold text-base">Confirmar Nova Senha *</Label>
-              <Input
-                id="confirmarSenha"
-                type="password"
-                value={passwordData.confirmarSenha}
-                onChange={(e) => setPasswordData({ ...passwordData, confirmarSenha: e.target.value })}
-                placeholder="Confirme sua nova senha"
-                className="border-2 font-semibold"
-              />
-            </div>
-
-            <Button 
-              type="submit" 
-              disabled={loadingPassword}
-              className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 font-bold shadow-lg border-0"
-            >
-              {loadingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {loadingPassword ? "Alterando..." : "Alterar Senha"}
-            </Button>
-          </form>
         </CardContent>
       </Card>
 
-      <style>{`
-        @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-20px); } }
-        @keyframes float-delayed { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-30px); } }
-        @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slide-up { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-float { animation: float 8s ease-in-out infinite; }
-        .animate-float-delayed { animation: float-delayed 10s ease-in-out infinite; }
-        .animate-fade-in { animation: fade-in 0.8s ease-out; }
-        .animate-slide-up { animation: slide-up 0.6s ease-out; }
-      `}</style>
+      <div className="grid gap-8 md:grid-cols-2">
+        <Card className="border-2 hover:shadow-2xl transition-shadow rounded-2xl animate-slide-up" style={{ animationDelay: '0.2s' }}>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl shadow-lg">
+                <User className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <CardTitle className="text-2xl font-black">Dados Pessoais</CardTitle>
+                <CardDescription className="font-semibold">Atualize suas informações de cadastro</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleProfileSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="nome">Nome Completo</Label>
+                <Input
+                  id="nome"
+                  value={profileData.nome}
+                  onChange={(e) => setProfileData({ ...profileData, nome: e.target.value })}
+                  placeholder="Seu nome completo"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={profileData.email}
+                  onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
+                  placeholder="seu@email.com"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="celular">Celular (WhatsApp)</Label>
+                <Input
+                  id="celular"
+                  value={profileData.celular}
+                  onChange={(e) => setProfileData({ ...profileData, celular: e.target.value })}
+                  placeholder="(00) 00000-0000"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="curso">Curso Desejado</Label>
+                <Input
+                  id="curso"
+                  value={profileData.curso}
+                  onChange={(e) => setProfileData({ ...profileData, curso: e.target.value })}
+                  placeholder="Ex: Medicina"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="faculdade">Faculdade dos Sonhos</Label>
+                <Input
+                  id="faculdade"
+                  value={profileData.faculdade}
+                  onChange={(e) => setProfileData({ ...profileData, faculdade: e.target.value })}
+                  placeholder="Ex: USP, UNICAMP..."
+                />
+              </div>
+
+              <Button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-bold py-6 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1" disabled={loadingProfile}>
+                {loadingProfile ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  "Salvar Alterações"
+                )}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        <Card className="border-2 hover:shadow-2xl transition-shadow rounded-2xl animate-slide-up" style={{ animationDelay: '0.3s' }}>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl shadow-lg">
+                <Lock className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <CardTitle className="text-2xl font-black">Segurança</CardTitle>
+                <CardDescription className="font-semibold">Altere sua senha de acesso</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handlePasswordSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="senhaAtual">Senha Atual</Label>
+                <Input
+                  id="senhaAtual"
+                  type="password"
+                  value={passwordData.senhaAtual}
+                  onChange={(e) => setPasswordData({ ...passwordData, senhaAtual: e.target.value })}
+                  placeholder="Sua senha atual"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="novaSenha">Nova Senha</Label>
+                <Input
+                  id="novaSenha"
+                  type="password"
+                  value={passwordData.novaSenha}
+                  onChange={(e) => setPasswordData({ ...passwordData, novaSenha: e.target.value })}
+                  placeholder="Mínimo 6 caracteres"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirmarSenha">Confirmar Nova Senha</Label>
+                <Input
+                  id="confirmarSenha"
+                  type="password"
+                  value={passwordData.confirmarSenha}
+                  onChange={(e) => setPasswordData({ ...passwordData, confirmarSenha: e.target.value })}
+                  placeholder="Repita a nova senha"
+                />
+              </div>
+
+              <Button type="submit" variant="outline" className="w-full border-2 hover:bg-blue-50 hover:text-blue-600 font-bold py-6 rounded-xl transition-all" disabled={loadingPassword}>
+                {loadingPassword ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Alterando...
+                  </>
+                ) : (
+                  "Alterar Senha"
+                )}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

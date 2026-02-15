@@ -5,7 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useAlunoApi } from "@/hooks/useAlunoApi";
+// Substituindo useAlunoApi por funções diretas atualizadas para multi-tenant
+import { 
+  getEstudosDirect, 
+  createEstudoDirect, 
+  updateEstudoDirect, 
+  deleteEstudoDirect 
+} from "@/lib/firestore-direct";
 import { BookOpen, Clock, Edit, Play, Plus, Trash2, Pause, RotateCcw, Save, ArrowUpDown, Zap, Timer, CheckCircle2, Target, Maximize2, X, AlertCircle } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
@@ -13,6 +19,10 @@ import { useTimer } from "@/contexts/TimerContext";
 import { DailySummary } from "@/components/aluno/DailySummary";
 import { StudyHistoryChart } from "@/components/aluno/StudyHistoryChart";
 import { useLocation } from "wouter";
+import { useDataService } from "@/hooks/useDataService";
+import { useAuthContext } from "@/contexts/AuthContext";
+import { useMentorViewContext } from "@/contexts/MentorViewContext";
+import { auth } from "@/lib/firebase";
 
 const CRONOMETRO_STORAGE_KEY = "aluno_cronometro_estado";
 
@@ -70,7 +80,17 @@ export const parseDataSegura = (data: any): Date => {
 };
 
 export default function AlunoEstudos() {
-  const api = useAlunoApi();
+  // USANDO DATA SERVICE para obter o contexto
+  const { mentoriaId } = useDataService();
+  const { userData } = useAuthContext();
+  const { alunoId: mentorViewAlunoId, isMentorView } = useMentorViewContext();
+
+  // Função para obter o ID do aluno efetivo
+  const getEffectiveUserId = () => {
+    if (isMentorView && mentorViewAlunoId) return mentorViewAlunoId;
+    return auth.currentUser?.uid || null;
+  };
+
   const { 
     ativo: cronometroAtivo, 
     tempoDecorrido, 
@@ -121,7 +141,11 @@ export default function AlunoEstudos() {
   const loadEstudos = async () => {
     try {
       setIsLoading(true);
-      const data = await api.getEstudos();
+      const userId = getEffectiveUserId();
+      if (!userId) return;
+
+      // Usando função direta com suporte a multi-tenant
+      const data = await getEstudosDirect(userId, mentoriaId);
       setEstudos(data as any[]);
     } catch (error: any) {
       toast.error(error.message || "Erro ao carregar estudos");
@@ -132,32 +156,40 @@ export default function AlunoEstudos() {
 
   useEffect(() => {
     loadEstudos();
-  }, []);
+  }, [mentoriaId]); // Recarregar se mentoriaId mudar
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       setIsSaving(true);
+      const userId = getEffectiveUserId();
+      if (!userId) throw new Error("Usuário não identificado");
       
       if (editandoId) {
         const [ano, mes, dia] = formData.data.split('-').map(Number);
         const dataLocal = new Date(ano, mes - 1, dia, 12, 0, 0);
         
         const { data: _, ...restFormData } = formData;
-        await api.updateEstudo(editandoId, {
+        
+        // Usando updateEstudoDirect com mentoriaId
+        await updateEstudoDirect(userId, editandoId, {
           ...restFormData,
           data: dataLocal,
-        } as any);
+        } as any, mentoriaId);
+        
         toast.success("Estudo atualizado com sucesso!");
       } else {
         const [ano, mes, dia] = formData.data.split('-').map(Number);
         const dataLocal = new Date(ano, mes - 1, dia, 12, 0, 0);
         
         const { data: _, ...restFormData } = formData;
-        await api.createEstudo({
+        
+        // Usando createEstudoDirect com mentoriaId
+        await createEstudoDirect(userId, {
           ...restFormData,
           data: dataLocal,
-        } as any);
+        } as any, mentoriaId);
+        
         toast.success("Estudo registrado com sucesso!");
       }
       
@@ -219,7 +251,12 @@ export default function AlunoEstudos() {
   const handleDelete = async (id: string) => {
     if (confirm("Tem certeza que deseja excluir este registro?")) {
       try {
-        await api.deleteEstudo(id);
+        const userId = getEffectiveUserId();
+        if (!userId) throw new Error("Usuário não identificado");
+
+        // Usando deleteEstudoDirect com mentoriaId
+        await deleteEstudoDirect(userId, id, mentoriaId);
+        
         toast.success("Estudo excluído com sucesso!");
         await loadEstudos();
       } catch (error: any) {
@@ -320,13 +357,14 @@ export default function AlunoEstudos() {
             const dataB = b.data?.seconds || b.data?._seconds ? new Date((b.data.seconds || b.data._seconds) * 1000) : new Date(b.data);
             valorA = dataA.getTime();
             valorB = dataB.getTime();
-          } catch {
-            return 0;
+          } catch (e) {
+            valorA = 0;
+            valorB = 0;
           }
           break;
         case "materia":
-          valorA = a.materia?.toLowerCase() || "";
-          valorB = b.materia?.toLowerCase() || "";
+          valorA = a.materia || "";
+          valorB = b.materia || "";
           break;
         case "tempo":
           valorA = a.tempoMinutos || 0;
@@ -344,192 +382,135 @@ export default function AlunoEstudos() {
           return 0;
       }
       
-      if (direcaoOrdenacao === "asc") {
-        return valorA > valorB ? 1 : -1;
-      } else {
-        return valorA < valorB ? 1 : -1;
-      }
+      if (valorA < valorB) return direcaoOrdenacao === "asc" ? -1 : 1;
+      if (valorA > valorB) return direcaoOrdenacao === "asc" ? 1 : -1;
+      return 0;
     });
   }, [estudos, colunaOrdenacao, direcaoOrdenacao]);
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="relative">
-          <div className="animate-spin rounded-full h-20 w-20 border-t-4 border-b-4 border-primary"></div>
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-            <Zap className="h-8 w-8 text-primary animate-pulse" />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-8 pb-8 animate-fade-in">
-      {/* Elementos decorativos */}
-      <div className="fixed top-20 right-10 w-72 h-72 bg-blue-500/5 rounded-full blur-3xl animate-float pointer-events-none" />
-      <div className="fixed bottom-20 left-10 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl animate-float-delayed pointer-events-none" />
-
-      {/* Header Premium */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-500/20 via-cyan-500/10 to-sky-500/10 p-8 border-2 border-white/20 dark:border-white/10 backdrop-blur-xl shadow-2xl animate-slide-up">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-blue-500/20 to-transparent rounded-full blur-3xl animate-pulse-slow" />
-        <div className="absolute bottom-0 left-0 w-72 h-72 bg-gradient-to-tr from-cyan-500/20 to-transparent rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '1s' }} />
+    <div className="space-y-6 animate-in fade-in duration-500">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Meus Estudos</h1>
+          <p className="text-muted-foreground mt-1">
+            Registre e acompanhe seu tempo de estudo e resolução de questões.
+          </p>
+        </div>
         
-        <div className="relative flex items-center justify-between">
-          <div className="space-y-3">
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-2xl blur-xl opacity-50 animate-pulse-slow" />
-                <div className="relative bg-gradient-to-br from-blue-500 via-cyan-500 to-sky-500 p-4 rounded-2xl shadow-2xl">
-                  <BookOpen className="h-10 w-10 text-white" />
-                </div>
-              </div>
-              <div>
-                <h1 className="text-5xl font-black tracking-tight bg-gradient-to-r from-blue-600 via-cyan-600 to-sky-600 bg-clip-text text-transparent animate-gradient">
-                  Estudos
-                </h1>
-              </div>
-            </div>
-            <p className="text-lg text-muted-foreground font-medium">
-              Registre e acompanhe suas sessões de estudo 📚
-            </p>
-          </div>
-          
+        <div className="flex gap-2">
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button 
-                size="lg"
-                className="relative overflow-hidden bg-gradient-to-r from-blue-500 via-cyan-500 to-sky-500 hover:from-blue-600 hover:via-cyan-600 hover:to-sky-600 shadow-xl hover:shadow-2xl transition-all duration-300 font-bold border-0"
-                onClick={() => {
-                  setEditandoId(null);
-                  setFormData({
-                    data: new Date().toISOString().split("T")[0],
-                    materia: "",
-                    conteudo: "",
-                    tempoMinutos: 0,
-                    questoesFeitas: 0,
-                    questoesAcertadas: 0,
-                    flashcardsRevisados: 0,
-                  });
-                }}
-              >
-                <Plus className="h-5 w-5 mr-2" />
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" />
                 Registrar Estudo
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto border-2">
+            <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
-                <DialogTitle className="text-2xl font-black">{editandoId ? "Editar Sessão de Estudo" : "Registrar Sessão de Estudo"}</DialogTitle>
-                <DialogDescription className="text-base">
-                  {editandoId ? "Atualize os detalhes da sua sessão de estudo" : "Preencha os detalhes da sua sessão de estudo"}
+                <DialogTitle>{editandoId ? "Editar Estudo" : "Registrar Novo Estudo"}</DialogTitle>
+                <DialogDescription>
+                  Preencha os detalhes do seu estudo para acompanhar seu progresso.
                 </DialogDescription>
               </DialogHeader>
-              <form onSubmit={handleSubmit}>
-                <div className="grid gap-6 py-6">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="data" className="text-sm font-semibold">Data</Label>
-                      <Input
-                        id="data"
-                        type="date"
-                        value={formData.data}
-                        onChange={(e) => setFormData({ ...formData, data: e.target.value })}
-                        required
-                        className="border-2"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="tempoMinutos" className="text-sm font-semibold">Tempo (minutos)</Label>
-                      <Input
-                        id="tempoMinutos"
-                        type="number"
-                        min="1"
-                        value={formData.tempoMinutos}
-                        onChange={(e) => setFormData({ ...formData, tempoMinutos: parseInt(e.target.value) || 0 })}
-                        required
-                        className="border-2"
-                      />
-                    </div>
-                  </div>
-
+              
+              <form onSubmit={handleSubmit} className="space-y-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="materia" className="text-sm font-semibold">Matéria/Atividade</Label>
-                    <Select
-                      value={formData.materia}
-                      onValueChange={(value) => setFormData({ ...formData, materia: value })}
-                      required
-                    >
-                      <SelectTrigger id="materia" className="border-2">
-                        <SelectValue placeholder="Selecione uma opção" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {MATERIAS_ENEM.map((materia) => (
-                          <SelectItem key={materia} value={materia}>
-                            {materia}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="conteudo" className="text-sm font-semibold">Conteúdo Estudado <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+                    <Label htmlFor="data">Data</Label>
                     <Input
-                      id="conteudo"
-                      value={formData.conteudo}
-                      onChange={(e) => setFormData({ ...formData, conteudo: e.target.value })}
-                      placeholder="Ex: Funções quadráticas, Análise sintática..."
-                      className="border-2"
+                      id="data"
+                      type="date"
+                      value={formData.data}
+                      onChange={(e) => setFormData({ ...formData, data: e.target.value })}
+                      required
                     />
                   </div>
-
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="questoesFeitas" className="text-sm font-semibold">Questões Feitas</Label>
-                      <Input
-                        id="questoesFeitas"
-                        type="number"
-                        min="0"
-                        value={formData.questoesFeitas}
-                        onChange={(e) => setFormData({ ...formData, questoesFeitas: parseInt(e.target.value) || 0 })}
-                        className="border-2"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="questoesAcertadas" className="text-sm font-semibold">Questões Acertadas</Label>
-                      <Input
-                        id="questoesAcertadas"
-                        type="number"
-                        min="0"
-                        value={formData.questoesAcertadas}
-                        onChange={(e) => setFormData({ ...formData, questoesAcertadas: parseInt(e.target.value) || 0 })}
-                        className="border-2"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="flashcardsRevisados" className="text-sm font-semibold">Flashcards Revisados</Label>
-                      <Input
-                        id="flashcardsRevisados"
-                        type="number"
-                        min="0"
-                        value={formData.flashcardsRevisados}
-                        onChange={(e) => setFormData({ ...formData, flashcardsRevisados: parseInt(e.target.value) || 0 })}
-                        className="border-2"
-                      />
-                    </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="tempo">Tempo (minutos)</Label>
+                    <Input
+                      id="tempo"
+                      type="number"
+                      min="0"
+                      value={formData.tempoMinutos}
+                      onChange={(e) => setFormData({ ...formData, tempoMinutos: parseInt(e.target.value) || 0 })}
+                      required
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="materia">Matéria / Atividade</Label>
+                  <Select
+                    value={formData.materia}
+                    onValueChange={(value) => setFormData({ ...formData, materia: value })}
+                    required
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a matéria" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MATERIAS_ENEM.map((materia) => (
+                        <SelectItem key={materia} value={materia}>
+                          {materia}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="conteudo">Conteúdo Estudado</Label>
+                  <Input
+                    id="conteudo"
+                    placeholder="Ex: Logaritmos, Revolução Francesa..."
+                    value={formData.conteudo}
+                    onChange={(e) => setFormData({ ...formData, conteudo: e.target.value })}
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="questoes">Questões Feitas</Label>
+                    <Input
+                      id="questoes"
+                      type="number"
+                      min="0"
+                      value={formData.questoesFeitas}
+                      onChange={(e) => setFormData({ ...formData, questoesFeitas: parseInt(e.target.value) || 0 })}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="acertos">Acertos</Label>
+                    <Input
+                      id="acertos"
+                      type="number"
+                      min="0"
+                      max={formData.questoesFeitas}
+                      value={formData.questoesAcertadas}
+                      onChange={(e) => setFormData({ ...formData, questoesAcertadas: parseInt(e.target.value) || 0 })}
+                    />
                   </div>
                 </div>
 
-                <DialogFooter className="gap-2">
-                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} className="border-2">
+                <div className="space-y-2">
+                  <Label htmlFor="flashcards">Flashcards Revisados (Opcional)</Label>
+                  <Input
+                    id="flashcards"
+                    type="number"
+                    min="0"
+                    value={formData.flashcardsRevisados}
+                    onChange={(e) => setFormData({ ...formData, flashcardsRevisados: parseInt(e.target.value) || 0 })}
+                  />
+                </div>
+                
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                     Cancelar
                   </Button>
-                  <Button 
-                    type="submit" 
-                    disabled={isSaving}
-                    className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 font-bold"
-                  >
+                  <Button type="submit" disabled={isSaving}>
                     {isSaving ? "Salvando..." : "Salvar"}
                   </Button>
                 </DialogFooter>
@@ -539,316 +520,217 @@ export default function AlunoEstudos() {
         </div>
       </div>
 
-      {/* Cronômetro e Resumo */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-slide-up" style={{ animationDelay: '0.1s' }}>
-        {/* Cronômetro (ocupa 2 colunas) */}
-        <div className="lg:col-span-2">
-          <Card className={`relative overflow-hidden transition-all duration-500 ${modoFocoGlobal ? 'fixed inset-0 z-50 rounded-none bg-slate-950 border-0' : 'bg-white dark:bg-gray-900 border-2 hover:shadow-xl h-full'}`}>
-            {/* Efeitos de fundo do card (apenas no modo foco ou sutis no modo normal) */}
-            {modoFocoGlobal ? (
-              <>
-                <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl" />
-                <div className="absolute bottom-0 left-0 w-64 h-64 bg-cyan-500/5 rounded-full blur-3xl" />
-              </>
-            ) : (
-              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl" />
-            )}
-
-            <CardHeader className={modoFocoGlobal ? 'hidden' : 'relative z-10'}>
-              <CardTitle className="flex items-center gap-3 text-2xl font-bold text-gray-800 dark:text-gray-100">
-                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl text-blue-600 dark:text-blue-400">
-                  <Timer className="h-6 w-6" />
-                </div>
-                Cronômetro
+      {/* Cronômetro */}
+      <Card className={`border-2 transition-all duration-300 ${cronometroAtivo ? 'border-primary shadow-lg shadow-primary/10' : ''} ${modoFocoGlobal ? 'fixed inset-0 z-50 rounded-none flex flex-col justify-center items-center bg-background/95 backdrop-blur-sm border-0' : ''}`}>
+        <CardHeader className={modoFocoGlobal ? 'text-center' : ''}>
+          <div className="flex items-center justify-between">
+            <div className={modoFocoGlobal ? 'w-full flex flex-col items-center' : ''}>
+              <CardTitle className={`flex items-center gap-2 ${modoFocoGlobal ? 'text-4xl mb-4' : ''}`}>
+                <Timer className={modoFocoGlobal ? 'h-10 w-10 text-primary' : 'h-5 w-5 text-primary'} />
+                Cronômetro de Estudos
               </CardTitle>
-              <CardDescription className="text-muted-foreground">
-                Foque nos estudos e registre seu tempo automaticamente
+              <CardDescription className={modoFocoGlobal ? 'text-xl' : ''}>
+                {cronometroAtivo ? "Sessão em andamento..." : "Inicie uma sessão de estudos"}
               </CardDescription>
-            </CardHeader>
-            <CardContent className={`relative z-10 flex flex-col items-center justify-center ${modoFocoGlobal ? 'h-screen p-10' : 'py-12'}`}>
-              
-              {modoFocoGlobal && (
-                <div className="absolute top-8 right-8">
-                  <Button variant="ghost" size="icon" onClick={desativarModoFoco} className="h-12 w-12 rounded-full hover:bg-white/10 text-white">
-                    <X className="h-6 w-6" />
-                  </Button>
-                </div>
-              )}
-
-              {/* Display do Cronômetro */}
-              <div className="relative mb-12 group">
-                <div className={`absolute inset-0 bg-blue-500/20 blur-3xl rounded-full transition-all duration-1000 ${cronometroAtivo ? 'opacity-100 scale-110' : 'opacity-0 scale-90'}`} />
-                <div className={`font-mono font-bold tabular-nums tracking-wider transition-all duration-500 ${modoFocoGlobal ? 'text-[12rem] text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-400' : 'text-8xl text-gray-900 dark:text-white'} drop-shadow-2xl`}>
-                  {formatarTempo(tempoDecorrido)}
-                </div>
+            </div>
+            
+            {!modoFocoGlobal && (
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setDialogTempoOpen(true)} className="gap-1">
+                  <Target className="h-3 w-3" />
+                  {tempoMetaGlobal ? "Editar Meta" : "Definir Meta"}
+                </Button>
+                <Button variant="ghost" size="icon" onClick={ativarModoFoco} title="Modo Foco">
+                  <Maximize2 className="h-4 w-4" />
+                </Button>
               </div>
-              
-              {tempoMetaGlobal && (
-                <div className="mb-10 w-full max-w-md space-y-3">
-                  <div className="flex justify-between text-sm font-medium text-muted-foreground">
-                    <span>Progresso da Meta</span>
-                    <span className={modoFocoGlobal ? "text-white" : "text-gray-900 dark:text-white"}>{Math.round(progressoPercentual)}%</span>
-                  </div>
-                  <div className={`h-2 w-full rounded-full overflow-hidden ${modoFocoGlobal ? 'bg-slate-800' : 'bg-gray-100 dark:bg-gray-800'}`}>
-                    <div 
-                      className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 shadow-[0_0_10px_rgba(59,130,246,0.5)] transition-all duration-1000 ease-out"
-                      style={{ width: `${progressoPercentual}%` }}
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className={`flex flex-col items-center justify-center space-y-6 ${modoFocoGlobal ? 'scale-125' : ''}`}>
+            <div className="relative">
+              {/* Círculo de progresso (visual) */}
+              <div className="w-64 h-64 rounded-full border-8 border-muted flex items-center justify-center relative">
+                {tempoMetaGlobal && (
+                  <svg className="absolute inset-0 w-full h-full -rotate-90 transform" viewBox="0 0 100 100">
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="46"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="8"
+                      className="text-primary transition-all duration-1000 ease-linear"
+                      strokeDasharray="289.02652413026095"
+                      strokeDashoffset={289.02652413026095 - (progressoPercentual / 100) * 289.02652413026095}
                     />
+                  </svg>
+                )}
+                
+                <div className="text-center z-10">
+                  <div className="text-6xl font-bold tabular-nums tracking-tight">
+                    {formatarTempo(tempoDecorrido)}
                   </div>
-                  <p className="text-center text-sm text-muted-foreground mt-2">
-                    Faltam <span className={`font-medium ${modoFocoGlobal ? "text-white" : "text-gray-900 dark:text-white"}`}>{formatarTempo(tempoRestante)}</span> para sua meta
-                  </p>
+                  {tempoMetaGlobal && (
+                    <div className="text-sm text-muted-foreground mt-2 font-medium">
+                      Meta: {formatarTempo(tempoMetaGlobal)}
+                    </div>
+                  )}
                 </div>
-              )}
-
-              <div className="flex flex-wrap gap-4 justify-center items-center">
-                {!cronometroAtivo ? (
-                  <Button 
-                    size="lg" 
-                    className={`bg-blue-600 hover:bg-blue-500 text-white shadow-lg hover:shadow-blue-500/25 transition-all duration-300 font-bold rounded-full ${modoFocoGlobal ? 'h-20 px-12 text-2xl' : 'h-14 px-10 text-lg'}`}
-                    onClick={iniciarCronometro}
-                  >
-                    <Play className={`${modoFocoGlobal ? 'h-8 w-8' : 'h-6 w-6'} mr-2 fill-current`} />
-                    Iniciar
-                  </Button>
-                ) : (
-                  <Button 
-                    size="lg" 
-                    className={`bg-amber-500 hover:bg-amber-400 text-white shadow-lg hover:shadow-amber-500/25 transition-all duration-300 font-bold rounded-full ${modoFocoGlobal ? 'h-20 px-12 text-2xl' : 'h-14 px-10 text-lg'}`}
-                    onClick={pausarCronometro}
-                  >
-                    <Pause className={`${modoFocoGlobal ? 'h-8 w-8' : 'h-6 w-6'} mr-2 fill-current`} />
-                    Pausar
-                  </Button>
-                )}
-                
-                <Button 
-                  size="lg" 
-                  variant="outline"
-                  className={`transition-all font-medium rounded-full ${modoFocoGlobal ? 'border-white/10 hover:bg-white/5 text-slate-300 hover:text-white h-20 px-10 text-xl' : 'border-2 hover:bg-gray-50 dark:hover:bg-gray-800 h-14 px-8'}`}
-                  onClick={resetarCronometro}
-                  disabled={tempoDecorrido === 0 && !cronometroAtivo}
-                >
-                  <RotateCcw className={`${modoFocoGlobal ? 'h-8 w-8' : 'h-5 w-5'} mr-2`} />
-                  Resetar
-                </Button>
-                
-                <Button 
-                  size="lg" 
-                  className={`transition-all font-medium rounded-full ${modoFocoGlobal ? 'bg-slate-800 hover:bg-slate-700 text-white border border-white/5 h-20 px-10 text-xl' : 'bg-gray-900 hover:bg-gray-800 text-white dark:bg-gray-700 dark:hover:bg-gray-600 h-14 px-8'}`}
-                  onClick={salvarCronometro}
-                  disabled={tempoDecorrido === 0}
-                >
-                  <Save className={`${modoFocoGlobal ? 'h-6 w-6' : 'h-4 w-4'} mr-2`} />
-                  Salvar Sessão
-                </Button>
-
-                {!modoFocoGlobal && (
-                  <Dialog open={dialogTempoOpen} onOpenChange={setDialogTempoOpen}>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" size="lg" className="border-2 font-bold h-12 px-6">
-                        <Target className="h-4 w-4 mr-2" />
-                        Definir Tempo
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Definir Meta de Tempo</DialogTitle>
-                        <DialogDescription>
-                          Estabeleça um tempo alvo para sua sessão de estudos.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="flex items-center justify-center gap-4 py-6">
-                        <div className="flex flex-col items-center gap-2">
-                          <Label>Horas</Label>
-                          <Input 
-                            type="number" 
-                            min="0" 
-                            max="23" 
-                            value={horasMeta} 
-                            onChange={(e) => setHorasMeta(e.target.value)}
-                            className="w-20 text-center text-2xl font-bold h-14"
-                          />
-                        </div>
-                        <span className="text-2xl font-bold mt-6">:</span>
-                        <div className="flex flex-col items-center gap-2">
-                          <Label>Minutos</Label>
-                          <Input 
-                            type="number" 
-                            min="0" 
-                            max="59" 
-                            value={minutosMeta} 
-                            onChange={(e) => setMinutosMeta(e.target.value)}
-                            className="w-20 text-center text-2xl font-bold h-14"
-                          />
-                        </div>
-                      </div>
-                      <DialogFooter className="sm:justify-between">
-                        <Button type="button" variant="ghost" onClick={removerTempoMeta} className="text-red-500 hover:text-red-600 hover:bg-red-50">
-                          Remover Meta
-                        </Button>
-                        <Button type="button" onClick={definirTempoMeta} className="bg-blue-600 hover:bg-blue-700">
-                          Definir Meta
-                        </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                )}
               </div>
-
-              {!modoFocoGlobal && (
-                <div className="mt-8">
-                  <Button variant="outline" className="gap-2 text-muted-foreground hover:text-primary" onClick={ativarModoFoco}>
-                    <Maximize2 className="h-4 w-4" />
-                    Modo Foco
-                  </Button>
+              
+              {/* Indicador de status pulsante */}
+              {cronometroAtivo && (
+                <div className="absolute top-0 right-0">
+                  <span className="relative flex h-4 w-4">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-4 w-4 bg-green-500"></span>
+                  </span>
                 </div>
               )}
-            </CardContent>
-          </Card>
-        </div>
+            </div>
 
-        {/* Resumo do Dia (ocupa 1 coluna) */}
-        <div className="lg:col-span-1 h-full">
-          <DailySummary estudos={estudos} tempoDecorridoAtual={cronometroAtivo ? tempoDecorrido : 0} />
-        </div>
-      </div>
+            <div className="flex gap-4">
+              {!cronometroAtivo ? (
+                <Button size="lg" className="w-32 gap-2 text-lg h-12" onClick={iniciarCronometro}>
+                  <Play className="h-5 w-5" /> Iniciar
+                </Button>
+              ) : (
+                <Button size="lg" variant="outline" className="w-32 gap-2 text-lg h-12 border-primary/20 hover:bg-primary/5" onClick={pausarCronometro}>
+                  <Pause className="h-5 w-5" /> Pausar
+                </Button>
+              )}
+              
+              <Button 
+                size="lg" 
+                variant={cronometroAtivo ? "default" : "secondary"} 
+                className="w-32 gap-2 text-lg h-12" 
+                onClick={salvarCronometro}
+                disabled={tempoDecorrido === 0}
+              >
+                <Save className="h-5 w-5" /> Salvar
+              </Button>
+              
+              <Button size="lg" variant="ghost" className="w-12 h-12 p-0 rounded-full" onClick={resetarCronometro} title="Resetar">
+                <RotateCcw className="h-5 w-5 text-muted-foreground" />
+              </Button>
+            </div>
+            
+            {modoFocoGlobal && (
+              <Button variant="ghost" className="mt-8 text-muted-foreground hover:text-foreground" onClick={desativarModoFoco}>
+                <X className="h-4 w-4 mr-2" /> Sair do Modo Foco
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Gráfico de Histórico */}
-      <div className="animate-slide-up" style={{ animationDelay: '0.2s' }}>
+      {/* Resumo Diário e Gráfico */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <DailySummary estudos={estudos} />
         <StudyHistoryChart estudos={estudos} />
       </div>
 
-      {/* Tabela de Registros */}
-      <Card className="border-2 shadow-lg animate-slide-up" style={{ animationDelay: '0.3s' }}>
+      {/* Histórico de Estudos */}
+      <Card>
         <CardHeader>
-          <CardTitle className="text-xl font-bold">Registros Recentes</CardTitle>
-          <CardDescription>Histórico detalhado das suas sessões de estudo</CardDescription>
+          <CardTitle className="flex items-center gap-2">
+            <BookOpen className="h-5 w-5" />
+            Histórico de Estudos
+          </CardTitle>
+          <CardDescription>
+            Seus registros mais recentes.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          {estudos.length === 0 ? (
-            <div className="text-center py-16">
-              <div className="relative mx-auto w-24 h-24 mb-6">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-full blur-xl opacity-30" />
-                <div className="relative p-6 bg-gradient-to-br from-blue-500/10 to-indigo-500/10 rounded-full flex items-center justify-center border-2 border-blue-200 dark:border-blue-800">
-                  <BookOpen className="h-12 w-12 text-blue-500" />
-                </div>
-              </div>
-              <p className="text-lg font-semibold mb-2">Nenhum estudo registrado ainda</p>
-              <p className="text-sm text-muted-foreground">Comece registrando sua primeira sessão de estudo!</p>
+          {isLoading ? (
+            <div className="text-center py-8 text-muted-foreground">Carregando histórico...</div>
+          ) : estudos.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Nenhum estudo registrado ainda. Comece agora!
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="rounded-md border">
               <Table>
                 <TableHeader>
-                  <TableRow className="hover:bg-transparent border-b-2">
-                    <TableHead>
-                      <Button variant="ghost" size="sm" onClick={() => handleOrdenar("data")} className="-ml-3 h-8 font-bold">
+                  <TableRow>
+                    <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleOrdenar("data")}>
+                      <div className="flex items-center gap-1">
                         Data
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                      </Button>
+                        {colunaOrdenacao === "data" && <ArrowUpDown className="h-3 w-3" />}
+                      </div>
                     </TableHead>
-                    <TableHead>
-                      <Button variant="ghost" size="sm" onClick={() => handleOrdenar("materia")} className="-ml-3 h-8 font-bold">
+                    <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleOrdenar("materia")}>
+                      <div className="flex items-center gap-1">
                         Matéria
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                      </Button>
+                        {colunaOrdenacao === "materia" && <ArrowUpDown className="h-3 w-3" />}
+                      </div>
                     </TableHead>
-                    <TableHead className="font-bold">Conteúdo</TableHead>
-                    <TableHead>
-                      <Button variant="ghost" size="sm" onClick={() => handleOrdenar("tempo")} className="-ml-3 h-8 font-bold">
+                    <TableHead>Conteúdo</TableHead>
+                    <TableHead className="text-right cursor-pointer hover:bg-muted/50" onClick={() => handleOrdenar("tempo")}>
+                      <div className="flex items-center justify-end gap-1">
                         Tempo
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                      </Button>
+                        {colunaOrdenacao === "tempo" && <ArrowUpDown className="h-3 w-3" />}
+                      </div>
                     </TableHead>
-                    <TableHead>
-                      <Button variant="ghost" size="sm" onClick={() => handleOrdenar("questoes")} className="-ml-3 h-8 font-bold">
+                    <TableHead className="text-center cursor-pointer hover:bg-muted/50" onClick={() => handleOrdenar("questoes")}>
+                      <div className="flex items-center justify-center gap-1">
                         Questões
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                      </Button>
+                        {colunaOrdenacao === "questoes" && <ArrowUpDown className="h-3 w-3" />}
+                      </div>
                     </TableHead>
-                    <TableHead>
-                      <Button variant="ghost" size="sm" onClick={() => handleOrdenar("acertos")} className="-ml-3 h-8 font-bold">
+                    <TableHead className="text-center cursor-pointer hover:bg-muted/50" onClick={() => handleOrdenar("acertos")}>
+                      <div className="flex items-center justify-center gap-1">
                         Acertos
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                      </Button>
+                        {colunaOrdenacao === "acertos" && <ArrowUpDown className="h-3 w-3" />}
+                      </div>
                     </TableHead>
-                    <TableHead className="font-bold">Flashcards</TableHead>
-                    <TableHead className="text-right font-bold">Ações</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {estudosOrdenados.map((estudo) => {
-                    let dataFormatada = "Data inválida";
-                    
+                    let dataFormatada = "";
                     try {
-                      if (estudo.data?.seconds || estudo.data?._seconds) {
-                        const seconds = estudo.data.seconds || estudo.data._seconds;
-                        const date = new Date(seconds * 1000);
-                        if (!isNaN(date.getTime())) {
-                          dataFormatada = date.toLocaleDateString("pt-BR");
-                        }
-                      } else if (estudo.data?.toDate && typeof estudo.data.toDate === 'function') {
-                        const date = estudo.data.toDate();
-                        if (!isNaN(date.getTime())) {
-                          dataFormatada = date.toLocaleDateString("pt-BR");
-                        }
-                      } else if (estudo.data) {
-                        const date = new Date(estudo.data);
-                        if (!isNaN(date.getTime())) {
-                          dataFormatada = date.toLocaleDateString("pt-BR");
-                        }
-                      }
-                    } catch (error) {
-                      console.error("Erro ao formatar data:", error);
+                      const data = parseDataSegura(estudo.data);
+                      dataFormatada = data.toLocaleDateString();
+                    } catch (e) {
+                      dataFormatada = "-";
                     }
-                    
+
                     return (
-                    <TableRow key={estudo.id} className="hover:bg-gradient-to-r hover:from-primary/5 hover:to-transparent transition-all">
-                      <TableCell className="font-medium">{dataFormatada}</TableCell>
-                      <TableCell>
-                        <span className="px-3 py-1 bg-gradient-to-r from-blue-500/20 to-indigo-500/20 rounded-full text-sm font-semibold border border-blue-500/30">
-                          {estudo.materia}
-                        </span>
-                      </TableCell>
-                      <TableCell className="max-w-xs truncate">{estudo.conteudo || "-"}</TableCell>
-                      <TableCell>
-                        <span className="flex items-center gap-1.5 font-semibold">
-                          <Clock className="h-4 w-4 text-blue-500" />
-                          {estudo.tempoMinutos} min
-                        </span>
-                      </TableCell>
-                      <TableCell className="font-semibold">{estudo.questoesFeitas || 0}</TableCell>
-                      <TableCell>
-                        <span className="flex items-center gap-1.5 font-semibold text-cyan-600 dark:text-cyan-400">
-                          <CheckCircle2 className="h-4 w-4" />
-                          {estudo.questoesAcertadas || 0}
-                        </span>
-                      </TableCell>
-                      <TableCell className="font-semibold">{estudo.flashcardsRevisados || 0}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEdit(estudo)}
-                            title="Editar"
-                            className="hover:bg-blue-500/20 hover:text-blue-600 transition-colors"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(estudo.id)}
-                            title="Excluir"
-                            className="hover:bg-blue-500/20 hover:text-blue-600 transition-colors"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
+                      <TableRow key={estudo.id}>
+                        <TableCell>{dataFormatada}</TableCell>
+                        <TableCell className="font-medium">{estudo.materia}</TableCell>
+                        <TableCell className="max-w-[200px] truncate" title={estudo.conteudo}>
+                          {estudo.conteudo || "-"}
+                        </TableCell>
+                        <TableCell className="text-right">{estudo.tempoMinutos} min</TableCell>
+                        <TableCell className="text-center">{estudo.questoesFeitas || 0}</TableCell>
+                        <TableCell className="text-center">
+                          {estudo.questoesFeitas > 0 ? (
+                            <div className="flex flex-col items-center">
+                              <span>{estudo.questoesAcertadas || 0}</span>
+                              <span className="text-xs text-muted-foreground">
+                                ({Math.round(((estudo.questoesAcertadas || 0) / estudo.questoesFeitas) * 100)}%)
+                              </span>
+                            </div>
+                          ) : (
+                            "-"
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button variant="ghost" size="icon" onClick={() => handleEdit(estudo)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(estudo.id)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
                     );
                   })}
                 </TableBody>
@@ -857,34 +739,31 @@ export default function AlunoEstudos() {
           )}
         </CardContent>
       </Card>
-
-      {/* Dialog para definir tempo meta */}
+      
+      {/* Dialog de Meta de Tempo */}
       <Dialog open={dialogTempoOpen} onOpenChange={setDialogTempoOpen}>
-        <DialogContent className="border-2">
+        <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-black flex items-center gap-2">
-              <Target className="h-6 w-6 text-blue-500" />
-              Definir Tempo de Estudos
-            </DialogTitle>
-            <DialogDescription className="text-base">
-              Defina quanto tempo você pretende estudar nesta sessão
+            <DialogTitle>Definir Meta de Tempo</DialogTitle>
+            <DialogDescription>
+              Estabeleça um objetivo de tempo para esta sessão de estudos.
             </DialogDescription>
           </DialogHeader>
+          
           <div className="grid grid-cols-2 gap-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="horas" className="font-bold">Horas</Label>
+              <Label htmlFor="horas">Horas</Label>
               <Input
                 id="horas"
                 type="number"
                 min="0"
-                max="23"
+                max="24"
                 value={horasMeta}
                 onChange={(e) => setHorasMeta(e.target.value)}
-                className="border-2 font-semibold text-lg"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="minutos" className="font-bold">Minutos</Label>
+              <Label htmlFor="minutos">Minutos</Label>
               <Input
                 id="minutos"
                 type="number"
@@ -892,185 +771,25 @@ export default function AlunoEstudos() {
                 max="59"
                 value={minutosMeta}
                 onChange={(e) => setMinutosMeta(e.target.value)}
-                className="border-2 font-semibold text-lg"
               />
             </div>
           </div>
-          <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
-            <AlertCircle className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
-            <p className="text-sm text-blue-700 dark:text-blue-300 font-medium">
-              O cronômetro irá contar até o tempo definido e você será notificado quando terminar.
-            </p>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogTempoOpen(false)}>
+          
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            {tempoMetaGlobal && (
+              <Button type="button" variant="destructive" onClick={removerTempoMeta} className="sm:mr-auto">
+                Remover Meta
+              </Button>
+            )}
+            <Button type="button" variant="outline" onClick={() => setDialogTempoOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={definirTempoMeta} className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 font-bold">
+            <Button type="button" onClick={definirTempoMeta}>
               Definir Meta
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      
-      {/* Modo Foco - Tela Cheia */}
-      {modoFocoGlobal && (
-        <div className="fixed inset-0 z-[9999] bg-gradient-to-br from-blue-950 via-indigo-950 to-cyan-950 flex items-center justify-center">
-          {/* Elementos decorativos */}
-          <div className="absolute top-20 right-20 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-float" />
-          <div className="absolute bottom-20 left-20 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-float-delayed" />
-          
-          <div className="relative z-10 flex flex-col items-center gap-12 p-8">
-            {/* Botão fechar */}
-            <Button
-              onClick={desativarModoFoco}
-              size="lg"
-              variant="ghost"
-              className="absolute top-8 right-8 text-white hover:bg-white/10 rounded-full h-14 w-14 p-0"
-            >
-              <X className="h-8 w-8" />
-            </Button>
-            
-            {/* Título */}
-            <div className="text-center space-y-2">
-              <h2 className="text-4xl font-black text-white">Modo Foco</h2>
-              <p className="text-xl text-blue-200 font-medium">Concentre-se nos seus estudos</p>
-            </div>
-            
-            {/* Cronômetro gigante */}
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/30 via-cyan-500/30 to-blue-500/30 rounded-[4rem] blur-3xl animate-pulse-slow" />
-              <div className="relative px-20 py-16 bg-gradient-to-br from-blue-900/50 to-cyan-900/50 rounded-[4rem] border-4 border-blue-400/30 backdrop-blur-xl">
-                <div className="text-[10rem] font-mono font-black tabular-nums text-white drop-shadow-2xl">
-                  {formatarTempo(tempoDecorrido)}
-                </div>
-              </div>
-            </div>
-            
-            {/* Indicador de meta (se definido) */}
-            {tempoMetaGlobal && (
-              <div className="w-full max-w-2xl space-y-4">
-                <div className="flex items-center justify-between text-white text-xl font-bold">
-                  <span>Meta: {formatarTempo(tempoMetaGlobal)}</span>
-                  <span className="text-cyan-300">Restante: {formatarTempo(tempoRestante)}</span>
-                </div>
-                <div className="relative h-6 bg-white/10 rounded-full overflow-hidden backdrop-blur-sm">
-                  <div 
-                    className="absolute h-full bg-gradient-to-r from-blue-400 to-cyan-400 transition-all duration-300 rounded-full shadow-lg shadow-cyan-500/50"
-                    style={{ width: `${progressoPercentual}%` }}
-                  />
-                </div>
-              </div>
-            )}
-            
-            {/* Botões de controle */}
-            <div className="flex gap-6">
-              {!cronometroAtivo ? (
-                <Button 
-                  onClick={iniciarCronometro} 
-                  size="lg"
-                  className="bg-gradient-to-r from-cyan-500 to-sky-500 hover:from-cyan-400 hover:to-sky-400 text-white shadow-2xl shadow-cyan-500/50 font-bold px-12 py-8 text-2xl rounded-2xl"
-                >
-                  <Play className="h-10 w-10 mr-3" />
-                  Iniciar
-                </Button>
-              ) : (
-                <Button 
-                  onClick={pausarCronometro} 
-                  size="lg"
-                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-2xl shadow-blue-500/50 font-bold px-12 py-8 text-2xl rounded-2xl"
-                >
-                  <Pause className="h-10 w-10 mr-3" />
-                  Pausar
-                </Button>
-              )}
-              
-              <Button 
-                onClick={resetarCronometro} 
-                size="lg"
-                variant="outline"
-                className="border-4 border-white/30 hover:bg-white/10 text-white font-bold px-12 py-8 text-2xl rounded-2xl backdrop-blur-sm"
-              >
-                <RotateCcw className="h-10 w-10 mr-3" />
-                Resetar
-              </Button>
-            </div>
-            
-            {/* Indicador de cronômetro ativo */}
-            {cronometroAtivo && (
-              <div className="flex items-center gap-3 px-8 py-4 bg-cyan-500/20 rounded-full border-2 border-cyan-400/30 backdrop-blur-sm animate-pulse-slow">
-                <div className="w-4 h-4 bg-cyan-400 rounded-full animate-ping" />
-                <p className="text-lg font-bold text-cyan-100">
-                  Cronômetro ativo - Continue estudando!
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-      
-      <style>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-20px); }
-        }
-        
-        @keyframes float-delayed {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-30px); }
-        }
-        
-        @keyframes gradient {
-          0%, 100% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-        }
-        
-        @keyframes pulse-slow {
-          0%, 100% { opacity: 0.5; }
-          50% { opacity: 0.8; }
-        }
-        
-        @keyframes fade-in {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        
-        @keyframes slide-up {
-          from {
-            opacity: 0;
-            transform: translateY(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        
-        .animate-float {
-          animation: float 8s ease-in-out infinite;
-        }
-        
-        .animate-float-delayed {
-          animation: float-delayed 10s ease-in-out infinite;
-        }
-        
-        .animate-gradient {
-          background-size: 200% 200%;
-          animation: gradient 3s ease infinite;
-        }
-        
-        .animate-pulse-slow {
-          animation: pulse-slow 3s ease-in-out infinite;
-        }
-        
-        .animate-fade-in {
-          animation: fade-in 0.8s ease-out;
-        }
-        
-        .animate-slide-up {
-          animation: slide-up 0.6s ease-out;
-        }
-      `}</style>
     </div>
   );
 }

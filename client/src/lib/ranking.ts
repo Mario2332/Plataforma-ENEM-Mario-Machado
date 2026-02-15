@@ -10,6 +10,10 @@
  * - Acertos em simulados: 4 pts cada
  * - Redação enviada: 100 pts base + 10 pts a cada 100 pts da nota
  * - Diário de bordo: 50 pts (máx. 50 pts/dia)
+ * 
+ * REFATORADO PARA MULTI-TENANT (FASE 3)
+ * Agora todas as funções aceitam um parâmetro opcional mentoriaId
+ * para resolver o caminho correto dos dados.
  */
 
 import { 
@@ -25,6 +29,7 @@ import {
   Timestamp
 } from "firebase/firestore";
 import { db, auth } from "./firebase";
+import { getCollectionPath, getAlunoSubcollectionPath, getRankingPath } from "./data-service";
 
 // Constantes de pontuação
 export const PONTOS = {
@@ -185,7 +190,7 @@ function calcularPontosDiario(diarios: any[]): number {
 /**
  * Calcular pontuação semanal total do aluno
  */
-export async function calcularPontuacaoSemanal(): Promise<{
+export async function calcularPontuacaoSemanal(mentoriaId?: string | null): Promise<{
   total: number;
   detalhes: {
     tempoEstudo: number;
@@ -204,10 +209,10 @@ export async function calcularPontuacaoSemanal(): Promise<{
   
   // Buscar dados da semana
   const [estudos, simulados, redacoes, diarios] = await Promise.all([
-    buscarDadosSemana(userId, "estudos", inicioTimestamp, fimTimestamp),
-    buscarDadosSemana(userId, "simulados", inicioTimestamp, fimTimestamp),
-    buscarDadosSemana(userId, "redacoes", inicioTimestamp, fimTimestamp),
-    buscarDadosSemana(userId, "diario_emocional", inicioTimestamp, fimTimestamp),
+    buscarDadosSemana(userId, "estudos", inicioTimestamp, fimTimestamp, mentoriaId),
+    buscarDadosSemana(userId, "simulados", inicioTimestamp, fimTimestamp, mentoriaId),
+    buscarDadosSemana(userId, "redacoes", inicioTimestamp, fimTimestamp, mentoriaId),
+    buscarDadosSemana(userId, "diario_emocional", inicioTimestamp, fimTimestamp, mentoriaId),
   ]);
   
   // Calcular pontos por categoria
@@ -238,10 +243,11 @@ async function buscarDadosSemana(
   userId: string, 
   colecao: string, 
   inicio: Timestamp, 
-  fim: Timestamp
+  fim: Timestamp,
+  mentoriaId?: string | null
 ): Promise<any[]> {
   try {
-    const ref = collection(db, "alunos", userId, colecao);
+    const ref = collection(db, getAlunoSubcollectionPath(userId, colecao, mentoriaId));
     const snapshot = await getDocs(ref);
     
     return snapshot.docs
@@ -261,13 +267,13 @@ async function buscarDadosSemana(
 /**
  * Atualizar pontuação do aluno no ranking
  */
-export async function atualizarPontuacaoRanking(): Promise<void> {
+export async function atualizarPontuacaoRanking(mentoriaId?: string | null): Promise<void> {
   const userId = auth.currentUser?.uid;
   if (!userId) throw new Error("Usuário não autenticado");
   
-  const { total } = await calcularPontuacaoSemanal();
+  const { total } = await calcularPontuacaoSemanal(mentoriaId);
   
-  const rankingRef = doc(db, "ranking", userId);
+  const rankingRef = doc(db, getRankingPath(mentoriaId), userId);
   const rankingSnap = await getDoc(rankingRef);
   
   if (rankingSnap.exists()) {
@@ -289,7 +295,7 @@ export async function atualizarPontuacaoRanking(): Promise<void> {
 /**
  * Obter dados do ranking do aluno atual
  */
-export async function getRankingAluno(): Promise<{
+export async function getRankingAluno(mentoriaId?: string | null): Promise<{
   nivel: number;
   pontosSemanais: number;
   posicao: number;
@@ -299,7 +305,7 @@ export async function getRankingAluno(): Promise<{
   if (!userId) return null;
   
   try {
-    const rankingRef = doc(db, "ranking", userId);
+    const rankingRef = doc(db, getRankingPath(mentoriaId), userId);
     const rankingSnap = await getDoc(rankingRef);
     
     if (!rankingSnap.exists()) {
@@ -324,7 +330,7 @@ export async function getRankingAluno(): Promise<{
     const pontosSemanais = data.pontosSemanais || 0;
     
     // Calcular posição no nível
-    const rankingCollectionRef = collection(db, "ranking");
+    const rankingCollectionRef = collection(db, getRankingPath(mentoriaId));
     const q = query(rankingCollectionRef, orderBy("pontosSemanais", "desc"));
     const snapshot = await getDocs(q);
     
@@ -356,7 +362,7 @@ export async function getRankingAluno(): Promise<{
 /**
  * Obter ranking completo de um nível
  */
-export async function getRankingNivel(nivel: number): Promise<Array<{
+export async function getRankingNivel(nivel: number, mentoriaId?: string | null): Promise<Array<{
   id: string;
   nome: string;
   photoURL?: string;
@@ -364,7 +370,7 @@ export async function getRankingNivel(nivel: number): Promise<Array<{
   posicao: number;
 }>> {
   try {
-    const rankingRef = collection(db, "ranking");
+    const rankingRef = collection(db, getRankingPath(mentoriaId));
     const q = query(rankingRef, orderBy("pontosSemanais", "desc"));
     const snapshot = await getDocs(q);
     
@@ -380,7 +386,8 @@ export async function getRankingNivel(nivel: number): Promise<Array<{
       const data = docSnap.data();
       if (data.nivel === nivel) {
         // Buscar dados do aluno
-        const alunoRef = doc(db, "alunos", docSnap.id);
+        // Aqui usamos getCollectionPath para buscar na coleção correta (raiz ou mentoria)
+        const alunoRef = doc(db, getCollectionPath("alunos", mentoriaId), docSnap.id);
         const alunoSnap = await getDoc(alunoRef);
         const alunoData = alunoSnap.data();
         

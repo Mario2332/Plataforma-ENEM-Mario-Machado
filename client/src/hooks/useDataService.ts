@@ -1,4 +1,4 @@
-import { useAuthContext } from './useAuth';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { 
   getCollectionPath, 
   getAlunoSubcollectionPath, 

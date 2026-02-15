@@ -32,6 +32,7 @@ import { DiagnosticoPerfil, PerfilResumo, PERFIS_PADRAO } from "@/components/Dia
 import { db, auth } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { useMentorViewContext } from "@/contexts/MentorViewContext";
+import { useDataService } from "@/hooks/useDataService";
 
 // Função auxiliar para formatar data no fuso horário brasileiro (GMT-3)
 const formatarDataBrasil = (date: Date): string => {
@@ -60,6 +61,7 @@ export default function AlunoHome() {
   const [, setLocation] = useLocation();
   const { userData } = useAuthContext();
   const { alunoId: mentorViewAlunoId, isMentorView } = useMentorViewContext();
+  const { alunoSubdoc, mentoriaId } = useDataService();
   
   // Função para obter o ID do aluno efetivo
   const getEffectiveUserId = () => {
@@ -79,10 +81,11 @@ export default function AlunoHome() {
       setIsLoading(true);
       const effectiveUserId = getEffectiveUserId();
       // Acesso direto ao Firestore (elimina cold start)
+      // Passando mentoriaId para as funções diretas
       const [estudosData, simuladosData, metasData] = await Promise.all([
-        getEstudosDirect(effectiveUserId),
-        getSimuladosDirect(effectiveUserId),
-        getMetasDirect(effectiveUserId),
+        getEstudosDirect(effectiveUserId, mentoriaId),
+        getSimuladosDirect(effectiveUserId, mentoriaId),
+        getMetasDirect(effectiveUserId, mentoriaId),
       ]);
       setEstudos(estudosData as any[]);
       setSimulados(simuladosData as any[]);
@@ -96,7 +99,7 @@ export default function AlunoHome() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [mentoriaId]); // Recarregar se mentoriaId mudar
 
   // Carregar perfil do aluno
   useEffect(() => {
@@ -105,7 +108,8 @@ export default function AlunoHome() {
       if (!userId) return;
       
       try {
-        const perfilRef = doc(db, "alunos", userId, "diagnostico", "perfil");
+        // USANDO DATA SERVICE
+        const perfilRef = alunoSubdoc(userId, "diagnostico", "perfil");
         const perfilSnap = await getDoc(perfilRef);
         
         if (perfilSnap.exists()) {
@@ -117,7 +121,7 @@ export default function AlunoHome() {
     };
 
     loadPerfil();
-  }, []);
+  }, [mentoriaId]); // Recarregar se mentoriaId mudar
 
   if (isLoading) {
     return (
@@ -320,7 +324,7 @@ export default function AlunoHome() {
             stroke="currentColor"
             strokeWidth="8"
             fill="transparent"
-            className="text-gray-200 dark:text-gray-700"
+            className="text-muted/20"
           />
           <circle
             cx="48"
@@ -332,415 +336,223 @@ export default function AlunoHome() {
             strokeDasharray={circumference}
             strokeDashoffset={offset}
             strokeLinecap="round"
-            className="transition-all duration-500"
+            className="transition-all duration-1000 ease-out"
           />
         </svg>
-        <div className="absolute inset-0 flex items-center justify-center text-xl font-bold" style={{ color }}>
-          {Math.round(percentage)}%
+        <div className="absolute inset-0 flex items-center justify-center flex-col">
+          <span className="text-xl font-bold">{value}</span>
+          <span className="text-xs text-muted-foreground">de {max}</span>
         </div>
       </div>
     );
   };
 
   return (
-    <div className="space-y-8 pb-8 animate-fade-in relative">
-      {/* Elementos decorativos flutuantes */}
-      <div className="fixed top-20 right-10 w-72 h-72 bg-primary/5 rounded-full blur-3xl animate-float pointer-events-none" />
-      <div className="fixed bottom-20 left-10 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl animate-float-delayed pointer-events-none" />
-      
-      {/* Header Premium com Glassmorphism */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/20 via-purple-500/10 to-blue-500/10 p-10 border-2 border-white/20 dark:border-white/10 backdrop-blur-xl shadow-2xl animate-slide-up">
-        {/* Efeitos de luz */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-primary/20 to-transparent rounded-full blur-3xl animate-pulse-slow" />
-        <div className="absolute bottom-0 left-0 w-72 h-72 bg-gradient-to-tr from-purple-500/20 to-transparent rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '1s' }} />
-        
-        {/* Partículas decorativas */}
-        <div className="absolute top-10 right-20 w-2 h-2 bg-primary rounded-full animate-ping" />
-        <div className="absolute top-20 right-40 w-1.5 h-1.5 bg-purple-500 rounded-full animate-ping" style={{ animationDelay: '0.5s' }} />
-        <div className="absolute bottom-10 left-20 w-2 h-2 bg-blue-500 rounded-full animate-ping" style={{ animationDelay: '1s' }} />
-        
-        <div className="relative space-y-4">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-primary to-purple-500 rounded-2xl blur-xl opacity-50 animate-pulse-slow" />
-                <div className="relative bg-gradient-to-br from-primary via-purple-500 to-blue-500 p-4 rounded-2xl shadow-2xl">
-                  <Trophy className="h-10 w-10 text-white" />
-                </div>
-              </div>
-              <div>
-                <h1 className="text-5xl font-black tracking-tight bg-gradient-to-r from-primary via-purple-600 to-blue-600 bg-clip-text text-transparent">
-                  Olá, {userData?.name?.split(' ')[0] || "Aluno"}!
-                </h1>
-                <div className="flex items-center gap-2 mt-2">
-                  <span className="text-6xl animate-wave inline-block">👋</span>
-                  {streak > 0 && (
-                    <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500/20 to-red-500/20 rounded-full border border-orange-500/30 backdrop-blur-sm animate-bounce-subtle">
-                      <Flame className="h-5 w-5 text-orange-500" />
-                      <span className="text-sm font-bold text-orange-600 dark:text-orange-400">{streak} dias de foco!</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-            <div className="hidden md:flex gap-3">
-              <PerfilResumo onClick={() => setDiagnosticoModalOpen(true)} overrideUserId={isMentorView ? mentorViewAlunoId : null} />
-              <RankingResumo onClick={() => setRankingModalOpen(true)} overrideUserId={isMentorView ? mentorViewAlunoId : null} />
-            </div>
-          </div>
-          <p className="text-xl text-muted-foreground font-medium">
-            Continue sua jornada rumo à aprovação no ENEM 🎯
+    <div className="space-y-6 animate-in fade-in duration-500">
+      {/* Cabeçalho com Saudação e Resumo */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">
+            Olá, {userData?.nome?.split(' ')[0] || 'Estudante'}! 👋
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Aqui está o resumo do seu progresso hoje.
           </p>
-          <div className="flex items-center justify-between flex-wrap gap-3 mt-4">
-            <div className="flex items-center gap-4 flex-wrap">
-              {/* 📓 Lembrete do Diário de Bordo */}
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-pink-600 dark:text-pink-400 font-medium">Lembre de preencher o diário de bordo!</span>
-                <button 
-                  onClick={() => setLocation('/aluno/diario')}
-                  className="group flex items-center gap-2 px-3 py-1.5 bg-pink-500/10 hover:bg-pink-500/20 border border-pink-500/30 hover:border-pink-500/50 rounded-full transition-all duration-300 hover:shadow-lg hover:shadow-pink-500/20"
-                >
-                  <ArrowRight className="h-4 w-4 text-pink-500 group-hover:translate-x-1 transition-transform" />
-                  <span className="text-sm font-semibold text-pink-600 dark:text-pink-400">Preencher</span>
-                </button>
-              </div>
-            </div>
-            
-            {/* Botão de ranking e perfil para mobile */}
-            <div className="md:hidden flex flex-wrap gap-2">
-              <PerfilResumo onClick={() => setDiagnosticoModalOpen(true)} overrideUserId={isMentorView ? mentorViewAlunoId : null} />
-              <RankingResumo onClick={() => setRankingModalOpen(true)} overrideUserId={isMentorView ? mentorViewAlunoId : null} />
-            </div>
-          </div>
+        </div>
+        
+        <div className="flex gap-2">
+          <Button onClick={() => setLocation("/app/estudos/novo")} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Registrar Estudo
+          </Button>
         </div>
       </div>
 
-      {/* Cards de Métricas com Progresso Circular */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {/* Card Sequência Premium */}
-        <Card className="relative overflow-hidden transition-all duration-500 hover:shadow-2xl hover:shadow-orange-500/20 group animate-slide-up border border-gray-200 dark:border-gray-700" style={{ animationDelay: '0.1s' }}>
-          <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-          <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-orange-500/20 to-transparent rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700" />
-          
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-semibold">Sequência de Estudos</CardTitle>
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl blur-md opacity-50 animate-pulse-slow" />
-              <div className="relative p-3 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl shadow-xl">
-                <Flame className="h-6 w-6 text-white" />
-              </div>
-            </div>
+      {/* Cards de Métricas Principais */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Tempo Total</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="flex items-baseline gap-2">
-              <div className="text-4xl font-black bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 bg-clip-text text-transparent">
-                {streak}
-              </div>
-              <span className="text-lg font-bold text-muted-foreground">dias</span>
-            </div>
+            <div className="text-2xl font-bold">{Math.floor(tempoTotal / 60)}h {tempoTotal % 60}m</div>
+            <p className="text-xs text-muted-foreground">
+              de estudo registrado
+            </p>
           </CardContent>
         </Card>
-
-        {/* Card Tempo de Estudo */}
-        <Card className="relative overflow-hidden transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/20 group animate-slide-up border border-gray-200 dark:border-gray-700" style={{ animationDelay: '0.2s' }}>
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-          <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-blue-500/20 to-transparent rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700" />
-          
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-semibold">Tempo de Estudo</CardTitle>
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl blur-md opacity-50 animate-pulse-slow" />
-              <div className="relative p-3 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl shadow-xl">
-                <Clock className="h-6 w-6 text-white" />
-              </div>
-            </div>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Questões</CardTitle>
+            <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="flex items-baseline gap-2">
-              <div className="text-4xl font-black bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 bg-clip-text text-transparent">
-                {Math.floor(tempoTotal / 60)}
-              </div>
-              <span className="text-lg font-bold text-muted-foreground mr-2">h</span>
-              <div className="text-4xl font-black bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 bg-clip-text text-transparent">
-                {tempoTotal % 60}
-              </div>
-              <span className="text-lg font-bold text-muted-foreground">min</span>
-            </div>
+            <div className="text-2xl font-bold">{questoesTotal}</div>
+            <p className="text-xs text-muted-foreground">
+              resolvidas no total
+            </p>
           </CardContent>
         </Card>
-
-        {/* Card Questões Resolvidas */}
-        <Card className="relative overflow-hidden transition-all duration-500 hover:shadow-2xl hover:shadow-emerald-500/20 group animate-slide-up border border-gray-200 dark:border-gray-700" style={{ animationDelay: '0.3s' }}>
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-          <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-emerald-500/20 to-transparent rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700" />
-          
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-semibold">Questões Resolvidas</CardTitle>
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 to-green-500 rounded-xl blur-md opacity-50 animate-pulse-slow" />
-              <div className="relative p-3 bg-gradient-to-br from-emerald-500 to-green-500 rounded-xl shadow-xl">
-                <CheckCircle2 className="h-6 w-6 text-white" />
-              </div>
-            </div>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Taxa de Acerto</CardTitle>
+            <TrendingUp className={`h-4 w-4 ${percentualAcerto >= 80 ? 'text-green-500' : percentualAcerto >= 60 ? 'text-yellow-500' : 'text-red-500'}`} />
           </CardHeader>
           <CardContent>
-            <div className="flex items-baseline gap-2">
-              <div className="text-4xl font-black bg-gradient-to-r from-emerald-600 via-emerald-500 to-green-500 bg-clip-text text-transparent">
-                {questoesTotal}
-              </div>
-              <span className="text-lg font-bold text-muted-foreground">resolvidas</span>
-            </div>
+            <div className="text-2xl font-bold">{percentualAcerto}%</div>
+            <p className="text-xs text-muted-foreground">
+              média geral
+            </p>
           </CardContent>
         </Card>
-
-        {/* Card Simulado */}
-        <Card className="relative overflow-hidden transition-all duration-500 hover:shadow-2xl hover:shadow-purple-500/20 group animate-slide-up border border-gray-200 dark:border-gray-700" style={{ animationDelay: '0.4s' }}>
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-          <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-purple-500/20 to-transparent rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700" />
-          
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-semibold">Último Simulado</CardTitle>
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl blur-md opacity-50 animate-pulse-slow" />
-              <div className="relative p-3 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl shadow-xl">
-                <FileText className="h-6 w-6 text-white" />
-              </div>
-            </div>
+        
+        <Card className="bg-gradient-to-br from-orange-500/10 to-red-500/10 border-orange-200 dark:border-orange-900">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-orange-700 dark:text-orange-400">Ofensiva</CardTitle>
+            <Flame className="h-4 w-4 text-orange-500 fill-orange-500 animate-pulse" />
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-baseline gap-2">
-              <div className="text-4xl font-black bg-gradient-to-r from-purple-600 via-purple-500 to-pink-500 bg-clip-text text-transparent">
-                {acertosUltimoSimulado}
-              </div>
-              <span className="text-2xl font-bold text-muted-foreground">/180</span>
-            </div>
-            <p className="text-xs text-muted-foreground font-medium">
-              {ultimoSimulado ? (() => {
-                try {
-                  let data: Date;
-                  if (ultimoSimulado.data?.seconds || ultimoSimulado.data?._seconds) {
-                    const seconds = ultimoSimulado.data.seconds || ultimoSimulado.data._seconds;
-                    data = new Date(seconds * 1000);
-                  } else if (ultimoSimulado.data?.toDate) {
-                    data = ultimoSimulado.data.toDate();
-                  } else {
-                    data = new Date(ultimoSimulado.data);
-                  }
-                  return !isNaN(data.getTime()) ? data.toLocaleDateString('pt-BR') : 'Data inválida';
-                } catch {
-                  return 'Data inválida';
-                }
-              })() : "Nenhum simulado realizado"}
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-700 dark:text-orange-400">{streak} dias</div>
+            <p className="text-xs text-orange-600/80 dark:text-orange-400/80">
+              consecutivos estudando
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Ações Rápidas Premium */}
-      <div className="grid gap-5 md:grid-cols-3 animate-slide-up" style={{ animationDelay: '0.5s' }}>
-        <Card 
-          className="relative overflow-hidden border border-gray-200 dark:border-gray-700 hover:border-blue-500 transition-all duration-500 cursor-pointer group hover:shadow-2xl hover:shadow-blue-500/30 hover:-translate-y-2 bg-gradient-to-br from-blue-50/50 to-transparent dark:from-blue-950/20" 
-          onClick={() => setLocation("/aluno/estudos")}
-        >
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 via-blue-500/5 to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/20 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700" />
-          
-          <CardHeader className="pb-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="relative">
-                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl blur-lg opacity-50 group-hover:opacity-75 transition-opacity" />
-                  <div className="relative p-4 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl shadow-xl group-hover:scale-110 transition-transform duration-300">
-                    <PlayCircle className="h-8 w-8 text-white" />
-                  </div>
-                </div>
-                <div>
-                  <CardTitle className="text-xl font-black">Iniciar Cronômetro</CardTitle>
-                  <CardDescription className="text-sm mt-1">Registre seu tempo de estudo</CardDescription>
-                </div>
-              </div>
-              <ArrowRight className="h-6 w-6 text-muted-foreground group-hover:text-blue-500 group-hover:translate-x-2 transition-all duration-300" />
-            </div>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
+        {/* Gráfico de Atividade (Mapa de Calor) */}
+        <Card className="col-span-4">
+          <CardHeader>
+            <CardTitle>Consistência</CardTitle>
+            <CardDescription>
+              Seu histórico de estudos nos últimos 5 meses
+            </CardDescription>
           </CardHeader>
-        </Card>
-
-        <Card 
-          className="relative overflow-hidden border border-gray-200 dark:border-gray-700 hover:border-emerald-500 transition-all duration-500 cursor-pointer group hover:shadow-2xl hover:shadow-emerald-500/30 hover:-translate-y-2 bg-gradient-to-br from-emerald-50/50 to-transparent dark:from-emerald-950/20" 
-          onClick={() => setLocation("/aluno/estudos")}
-        >
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/0 via-emerald-500/5 to-emerald-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/20 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700" />
-          
-          <CardHeader className="pb-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="relative">
-                  <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 to-green-500 rounded-2xl blur-lg opacity-50 group-hover:opacity-75 transition-opacity" />
-                  <div className="relative p-4 bg-gradient-to-br from-emerald-500 to-green-500 rounded-2xl shadow-xl group-hover:scale-110 transition-transform duration-300">
-                    <Plus className="h-8 w-8 text-white" />
-                  </div>
-                </div>
-                <div>
-                  <CardTitle className="text-xl font-black">Registrar Estudo</CardTitle>
-                  <CardDescription className="text-sm mt-1">Adicione manualmente</CardDescription>
-                </div>
-              </div>
-              <ArrowRight className="h-6 w-6 text-muted-foreground group-hover:text-emerald-500 group-hover:translate-x-2 transition-all duration-300" />
-            </div>
-          </CardHeader>
-        </Card>
-
-        <Card 
-          className="relative overflow-hidden border border-gray-200 dark:border-gray-700 hover:border-purple-500 transition-all duration-500 cursor-pointer group hover:shadow-2xl hover:shadow-purple-500/30 hover:-translate-y-2 bg-gradient-to-br from-purple-50/50 to-transparent dark:from-purple-950/20" 
-          onClick={() => setLocation("/aluno/simulados")}
-        >
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-500/0 via-purple-500/5 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-          <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/20 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700" />
-          
-          <CardHeader className="pb-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="relative">
-                  <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl blur-lg opacity-50 group-hover:opacity-75 transition-opacity" />
-                  <div className="relative p-4 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl shadow-xl group-hover:scale-110 transition-transform duration-300">
-                    <FileText className="h-8 w-8 text-white" />
-                  </div>
-                </div>
-                <div>
-                  <CardTitle className="text-xl font-black">Novo Simulado</CardTitle>
-                  <CardDescription className="text-sm mt-1">Registre seus resultados</CardDescription>
-                </div>
-              </div>
-              <ArrowRight className="h-6 w-6 text-muted-foreground group-hover:text-purple-500 group-hover:translate-x-2 transition-all duration-300" />
-            </div>
-          </CardHeader>
-        </Card>
-      </div>
-
-      {/* Mapa de Calor Premium */}
-      <Card className="hover:shadow-2xl transition-all duration-500 animate-slide-up border border-gray-200 dark:border-gray-700" style={{ animationDelay: '0.6s' }}>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-3 text-2xl font-black">
-                <div className="relative">
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary to-purple-500 rounded-xl blur-md opacity-50" />
-                  <div className="relative p-3 bg-gradient-to-br from-primary to-purple-500 rounded-xl shadow-xl">
-                    <Calendar className="h-6 w-6 text-white" />
-                  </div>
-                </div>
-                Atividade de Estudos
-              </CardTitle>
-              <CardDescription className="mt-3 text-base">
-                Últimos 150 dias - Quanto mais escuro, mais sessões registradas
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <div className="grid grid-cols-30 gap-2 min-w-[800px]">
-              {mapaCalor.map((dia, index) => (
+          <CardContent>
+            <div className="flex flex-wrap gap-1 justify-center sm:justify-start">
+              {mapaCalor.map((dia, i) => (
                 <div
-                  key={index}
-                  className={`w-3.5 h-3.5 rounded-md ${getCorIntensidade(dia.count)} hover:ring-2 hover:ring-primary hover:scale-150 transition-all duration-300 cursor-pointer shadow-sm`}
-                  title={`${dia.data.toLocaleDateString('pt-BR')}: ${dia.count} sessões`}
+                  key={i}
+                  className={`w-3 h-3 rounded-sm ${getCorIntensidade(dia.count)}`}
+                  title={`${dia.data.toLocaleDateString()}: ${dia.count} registros`}
                 />
               ))}
             </div>
-            <div className="flex items-center gap-5 mt-8 text-sm font-medium text-muted-foreground">
+            <div className="flex items-center gap-2 mt-4 text-xs text-muted-foreground">
               <span>Menos</span>
-              <div className="flex gap-2">
-                <div className="w-5 h-5 rounded-md bg-gray-100 dark:bg-gray-800 border-2 shadow-sm" />
-                <div className="w-5 h-5 rounded-md bg-emerald-200 dark:bg-emerald-900 shadow-sm" />
-                <div className="w-5 h-5 rounded-md bg-emerald-400 dark:bg-emerald-700 shadow-sm" />
-                <div className="w-5 h-5 rounded-md bg-emerald-600 dark:bg-emerald-500 shadow-sm" />
-              </div>
+              <div className="w-3 h-3 rounded-sm bg-gray-100 dark:bg-gray-800" />
+              <div className="w-3 h-3 rounded-sm bg-emerald-200 dark:bg-emerald-900" />
+              <div className="w-3 h-3 rounded-sm bg-emerald-400 dark:bg-emerald-700" />
+              <div className="w-3 h-3 rounded-sm bg-emerald-600 dark:bg-emerald-500" />
               <span>Mais</span>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      {/* Análise de Desempenho Premium */}
-      <Card className="hover:shadow-2xl transition-all duration-500 animate-slide-up border border-gray-200 dark:border-gray-700" style={{ animationDelay: '0.7s' }}>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-3 text-2xl font-black">
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-red-500 to-orange-500 rounded-xl blur-md opacity-50" />
-              <div className="relative p-3 bg-gradient-to-br from-red-500 to-orange-500 rounded-xl shadow-xl">
-                <BarChart3 className="h-6 w-6 text-white" />
+        {/* Atalhos Rápidos e Próximas Metas */}
+        <div className="col-span-3 space-y-6">
+          {/* Card de Ranking */}
+          <Card className="bg-gradient-to-br from-indigo-500/5 to-purple-500/5 border-indigo-100 dark:border-indigo-900/50">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Trophy className="h-5 w-5 text-indigo-500" />
+                  Ranking
+                </CardTitle>
+                <Button variant="ghost" size="sm" onClick={() => setRankingModalOpen(true)}>
+                  Ver completo
+                </Button>
               </div>
-            </div>
-            Análise de Desempenho
-          </CardTitle>
-          <CardDescription className="mt-3 text-base">
-            Seus pontos fortes e a melhorar, com base nos últimos estudos.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid md:grid-cols-2 gap-8">
-            {/* Pontos Fortes */}
-            <div>
-              <h3 className="text-lg font-bold flex items-center gap-2 mb-4 text-emerald-600 dark:text-emerald-400">
-                <TrendingUp className="h-6 w-6" />
-                Pontos Fortes
-              </h3>
-              {analisePorMateria.pontosFortes.length > 0 ? (
-                <ul className="space-y-4">
-                  {analisePorMateria.pontosFortes.map((item, index) => (
-                    <li key={index} className="flex items-center gap-4 p-3 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg border-l-4 border-emerald-500">
-                      <div className="flex-shrink-0">
-                        <CircularProgress value={item.percentual} max={100} color="#10b981" />
-                      </div>
-                      <div className="flex-grow">
-                        <p className="font-bold text-lg text-emerald-700 dark:text-emerald-300">{item.materia}</p>
-                        <p className="text-sm text-muted-foreground">{item.acertos} de {item.questoes} questões</p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+            </CardHeader>
+            <CardContent>
+              <RankingResumo />
+            </CardContent>
+          </Card>
+
+          {/* Card de Perfil de Estudante */}
+          <Card className="bg-gradient-to-br from-blue-500/5 to-cyan-500/5 border-blue-100 dark:border-blue-900/50">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Award className="h-5 w-5 text-blue-500" />
+                  Perfil de Estudante
+                </CardTitle>
+                <Button variant="ghost" size="sm" onClick={() => setDiagnosticoModalOpen(true)}>
+                  {perfilEstudante ? "Ver análise" : "Descobrir perfil"}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {perfilEstudante ? (
+                <PerfilResumo perfilId={perfilEstudante} />
               ) : (
-                <div className="text-center py-8 px-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                  <Trophy className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-                  <p className="font-semibold text-lg">Nenhum ponto forte identificado.</p>
-                  <p className="text-sm text-muted-foreground mt-1">Continue estudando para encontrarmos seus pontos fortes!</p>
+                <div className="text-center py-4">
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Descubra seus pontos fortes e fracos com nossa análise baseada em IA.
+                  </p>
+                  <Button size="sm" onClick={() => setDiagnosticoModalOpen(true)}>
+                    Fazer Diagnóstico
+                  </Button>
                 </div>
               )}
-            </div>
+            </CardContent>
+          </Card>
 
-            {/* Pontos a Melhorar */}
-            <div>
-              <h3 className="text-lg font-bold flex items-center gap-2 mb-4 text-red-600 dark:text-red-400">
-                <TrendingDown className="h-6 w-6" />
-                Pontos a Melhorar
-              </h3>
-              {analisePorMateria.pontosFracos.length > 0 ? (
-                <ul className="space-y-4">
-                  {analisePorMateria.pontosFracos.map((item, index) => (
-                    <li key={index} className="flex items-center gap-4 p-3 bg-red-50 dark:bg-red-900/30 rounded-lg border-l-4 border-red-500">
-                      <div className="flex-shrink-0">
-                        <CircularProgress value={item.percentual} max={100} color="#ef4444" />
+          {/* Card de Pontos Fortes e Fracos */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Análise de Desempenho</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {analisePorMateria.pontosFortes.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium mb-2 flex items-center gap-2 text-green-600 dark:text-green-400">
+                    <TrendingUp className="h-4 w-4" />
+                    Pontos Fortes (&gt;80%)
+                  </h4>
+                  <div className="space-y-2">
+                    {analisePorMateria.pontosFortes.slice(0, 3).map((item, idx) => (
+                      <div key={idx} className="flex justify-between items-center text-sm">
+                        <span>{item.materia}</span>
+                        <span className="font-bold">{item.percentual}%</span>
                       </div>
-                      <div className="flex-grow">
-                        <p className="font-bold text-lg text-red-700 dark:text-red-300">{item.materia}</p>
-                        <p className="text-sm text-muted-foreground">{item.acertos} de {item.questoes} questões</p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <div className="text-center py-8 px-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                  <Star className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-                  <p className="font-semibold text-lg">Nenhum ponto a melhorar!</p>
-                  <p className="text-sm text-muted-foreground mt-1">Parabéns! Continue com o ótimo trabalho.</p>
+                    ))}
+                  </div>
                 </div>
               )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
+              {analisePorMateria.pontosFracos.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium mb-2 flex items-center gap-2 text-red-600 dark:text-red-400">
+                    <TrendingDown className="h-4 w-4" />
+                    Atenção Necessária (&lt;60%)
+                  </h4>
+                  <div className="space-y-2">
+                    {analisePorMateria.pontosFracos.slice(0, 3).map((item, idx) => (
+                      <div key={idx} className="flex justify-between items-center text-sm">
+                        <span>{item.materia}</span>
+                        <span className="font-bold">{item.percentual}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {analisePorMateria.pontosFortes.length === 0 && analisePorMateria.pontosFracos.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-2">
+                  Registre mais questões para ver sua análise de desempenho.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Modais */}
       <RankingModal open={rankingModalOpen} onOpenChange={setRankingModalOpen} />
       <DiagnosticoPerfil open={diagnosticoModalOpen} onOpenChange={setDiagnosticoModalOpen} />
     </div>

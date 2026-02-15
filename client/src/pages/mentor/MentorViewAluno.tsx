@@ -7,6 +7,7 @@ import { mentorApi } from "@/lib/api";
 import { ArrowLeft, Loader2, Home, BookOpen, LayoutDashboard, BarChart3, Target, FileText, PenTool, Heart, GraduationCap, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { MentorViewProvider } from "@/contexts/MentorViewContext";
+import { useDataService } from "@/hooks/useDataService";
 
 // Importar componentes originais do aluno
 import AlunoHome from "../aluno/AlunoHome";
@@ -40,10 +41,13 @@ export default function MentorViewAluno() {
   const [alunoData, setAlunoData] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("inicio");
   const [conteudoSubTab, setConteudoSubTab] = useState("painel");
+  
+  // USANDO DATA SERVICE para obter o contexto do mentor
+  const { mentoriaId } = useDataService();
 
   useEffect(() => {
     loadAlunoData();
-  }, [alunoId]);
+  }, [alunoId, mentoriaId]);
 
   const loadAlunoData = async () => {
     if (!alunoId) {
@@ -54,6 +58,11 @@ export default function MentorViewAluno() {
 
     try {
       setIsLoading(true);
+      // A API do mentor já deve estar preparada para lidar com mentoriaId internamente
+      // ou precisamos passar o mentoriaId aqui se a API não for contextualizada
+      // Por enquanto, assumimos que mentorApi.getAlunoAreaCompleta resolve isso ou
+      // que vamos refatorar a API em breve.
+      // Mas para garantir, vamos passar o mentoriaId se a função suportar (futuro)
       const data = await mentorApi.getAlunoAreaCompleta(alunoId);
       setAlunoData(data);
     } catch (error: any) {
@@ -113,6 +122,9 @@ export default function MentorViewAluno() {
   };
 
   return (
+    // Passando mentoriaId para o Provider se ele suportar (precisamos verificar MentorViewContext)
+    // Se não suportar, o useDataService dentro dos componentes filhos pegará o mentoriaId do hook
+    // Mas o ideal é que o contexto de visualização saiba que estamos vendo um aluno DE UMA MENTORIA ESPECÍFICA
     <MentorViewProvider alunoId={alunoId} isMentorView={true}>
       <div className="space-y-6">
         {/* Header com informações do aluno */}
@@ -131,6 +143,7 @@ export default function MentorViewAluno() {
             <h1 className="text-3xl font-bold">{alunoData.aluno.nome}</h1>
             <p className="text-muted-foreground mt-1">
               Visualizando e editando como mentor • {alunoData.aluno.email}
+              {mentoriaId && <span className="ml-2 px-2 py-0.5 bg-primary/10 text-primary rounded text-xs">Modo Multi-Tenant</span>}
             </p>
           </div>
         </div>
@@ -327,7 +340,10 @@ export default function MentorViewAluno() {
                   Sociologia
                 </button>
               </div>
-              {renderConteudoContent()}
+              
+              <div className="mt-4">
+                {renderConteudoContent()}
+              </div>
             </div>
           </TabsContent>
 

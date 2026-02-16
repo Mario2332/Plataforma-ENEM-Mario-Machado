@@ -20,6 +20,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { APP_LOGO, APP_TITLE, getLoginUrl } from "@/const";
+import { useBranding } from "@/contexts/BrandingContext";
 import { useIsMobile } from "@/hooks/useMobile";
 import { BarChart3, BookOpen, Brain, Building2, ChevronDown, FileText, GraduationCap, Heart, Home, LayoutDashboard, LogOut, Moon, PanelLeft, PenTool, Settings, Sun, Users, Sparkles, Target } from "lucide-react";
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
@@ -119,6 +120,7 @@ export default function DashboardLayout({
     return saved || "light";
   });
   const { loading, user, userData } = useAuthContext();
+  const { branding } = useBranding();
   
   console.log('[DashboardLayout] Estado atual:', {
     loading,
@@ -158,14 +160,14 @@ export default function DashboardLayout({
               <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-2xl blur-xl opacity-50 group-hover:opacity-75 transition-opacity"></div>
               <div className="relative">
                 <img
-                  src={APP_LOGO}
-                  alt={APP_TITLE}
+                  src={branding.logoUrl}
+                  alt={branding.name}
                   className="h-24 w-24 rounded-2xl object-cover shadow-2xl border-4 border-white dark:border-gray-800"
                 />
               </div>
             </div>
             <div className="text-center space-y-2">
-              <h1 className="text-3xl font-black tracking-tight bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">{APP_TITLE}</h1>
+              <h1 className="text-3xl font-black tracking-tight bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">{branding.name}</h1>
               <p className="text-sm font-semibold text-muted-foreground">
                 Faça login para continuar
               </p>
@@ -218,6 +220,7 @@ function DashboardLayoutContent({
   toggleTheme,
 }: DashboardLayoutContentProps) {
   const { user, userData, signOut } = useAuthContext();
+  const { branding } = useBranding();
   const [location, setLocation] = useLocation();
   const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
@@ -288,7 +291,7 @@ function DashboardLayoutContent({
                 <div className="relative h-10 w-10 shrink-0 group">
                   <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl blur-md opacity-50 group-hover:opacity-75 transition-opacity"></div>
                   <img
-                    src={APP_LOGO}
+                    src={branding.logoUrl}
                     className="relative h-10 w-10 rounded-xl object-contain ring-2 ring-blue-200 dark:ring-blue-800 shadow-lg"
                     alt="Logo"
                   />
@@ -305,13 +308,13 @@ function DashboardLayoutContent({
                     <div className="relative">
                       <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl blur-md opacity-50"></div>
                       <img
-                        src={APP_LOGO}
+                        src={branding.logoUrl}
                         className="relative h-10 w-10 rounded-xl object-contain ring-2 ring-blue-200 dark:ring-blue-800 shrink-0 shadow-lg"
                         alt="Logo"
                       />
                     </div>
                     <span className="font-black text-lg tracking-tight truncate bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
-                      {APP_TITLE}
+                      {branding.name}
                     </span>
                   </div>
                   <button

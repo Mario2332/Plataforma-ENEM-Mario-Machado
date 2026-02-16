@@ -33,6 +33,7 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { BrandingProvider } from "./contexts/BrandingContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import { TimerProvider } from "./contexts/TimerContext";
 import Home from "./pages/Home";
@@ -447,6 +448,7 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider>
+      <BrandingProvider>
         <AuthProvider>
           <TimerProvider>
             <TooltipProvider>
@@ -456,7 +458,8 @@ function App() {
             </TooltipProvider>
           </TimerProvider>
         </AuthProvider>
-      </ThemeProvider>
+      </BrandingProvider>
+    </ThemeProvider>
     </ErrorBoundary>
   );
 }

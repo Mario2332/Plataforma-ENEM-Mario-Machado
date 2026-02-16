@@ -623,6 +623,7 @@ export default function MentorAlunos() {
               variant={filtroInteligente === "todos" ? "default" : "outline"}
               size="sm"
               onClick={() => setFiltroInteligente("todos")}
+              className={filtroInteligente === "todos" ? "bg-slate-800 text-white hover:bg-slate-900" : "border-slate-300 text-slate-700 hover:bg-slate-100"}
             >
               Todos ({alunos.length})
             </Button>
@@ -630,7 +631,7 @@ export default function MentorAlunos() {
               variant={filtroInteligente === "urgente" ? "default" : "outline"}
               size="sm"
               onClick={() => setFiltroInteligente("urgente")}
-              className={filtroInteligente === "urgente" ? "" : "border-red-500 text-red-600 hover:bg-red-50"}
+              className={filtroInteligente === "urgente" ? "bg-red-600 text-white hover:bg-red-700" : "border-red-200 text-red-700 hover:bg-red-50"}
             >
               🔴 Atenção Urgente ({contadoresClassificacao.urgente})
             </Button>
@@ -638,7 +639,7 @@ export default function MentorAlunos() {
               variant={filtroInteligente === "atencao" ? "default" : "outline"}
               size="sm"
               onClick={() => setFiltroInteligente("atencao")}
-              className={filtroInteligente === "atencao" ? "" : "border-yellow-500 text-yellow-600 hover:bg-yellow-50"}
+              className={filtroInteligente === "atencao" ? "bg-yellow-500 text-white hover:bg-yellow-600" : "border-yellow-200 text-yellow-700 hover:bg-yellow-50"}
             >
               🟡 Precisa Acompanhamento ({contadoresClassificacao.atencao})
             </Button>
@@ -646,7 +647,7 @@ export default function MentorAlunos() {
               variant={filtroInteligente === "bem" ? "default" : "outline"}
               size="sm"
               onClick={() => setFiltroInteligente("bem")}
-              className={filtroInteligente === "bem" ? "" : "border-green-500 text-green-600 hover:bg-green-50"}
+              className={filtroInteligente === "bem" ? "bg-green-600 text-white hover:bg-green-700" : "border-green-200 text-green-700 hover:bg-green-50"}
             >
               ✅ Indo Bem ({contadoresClassificacao.bem})
             </Button>
@@ -654,7 +655,7 @@ export default function MentorAlunos() {
               variant={filtroInteligente === "destaque" ? "default" : "outline"}
               size="sm"
               onClick={() => setFiltroInteligente("destaque")}
-              className={filtroInteligente === "destaque" ? "" : "border-blue-500 text-blue-600 hover:bg-blue-50"}
+              className={filtroInteligente === "destaque" ? "bg-blue-600 text-white hover:bg-blue-700" : "border-blue-200 text-blue-700 hover:bg-blue-50"}
             >
               ⭐ Destaque ({contadoresClassificacao.destaque})
             </Button>
@@ -662,7 +663,7 @@ export default function MentorAlunos() {
               variant={filtroInteligente === "inativo" ? "default" : "outline"}
               size="sm"
               onClick={() => setFiltroInteligente("inativo")}
-              className={filtroInteligente === "inativo" ? "" : "border-gray-500 text-gray-600 hover:bg-gray-50"}
+              className={filtroInteligente === "inativo" ? "bg-gray-600 text-white hover:bg-gray-700" : "border-gray-200 text-gray-700 hover:bg-gray-50"}
             >
               💤 Inativos ({contadoresClassificacao.inativo})
             </Button>

@@ -365,6 +365,7 @@ export const ConfigurarCriteriosClassificacao: React.FC<ConfigurarCriteriosClass
               </Button>
               <Button
                 onClick={handleSalvar}
+                className="bg-blue-600 text-white hover:bg-blue-700"
               >
                 Salvar Critérios
               </Button>

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Settings2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Settings2, CheckCircle2, Circle } from "lucide-react";
 import { mentorApi } from "@/lib/api";
 import { toast } from "sonner";
 import { collection, getDocs, query, where, doc, getDoc } from "firebase/firestore";
@@ -74,22 +74,53 @@ export default function MentorCronogramaConsolidado() {
       const agendaRef = collection(db, `alunos/${userId}/agenda`);
       const q = query(
         agendaRef,
-        where("data", ">=", dataInicio.toISOString().split('T')[0]),
-        where("data", "<=", dataFim.toISOString().split('T')[0])
+        where("data", ">=", formatarDataISO(dataInicio)),
+        where("data", "<=", formatarDataISO(dataFim))
       );
       const snapshot = await getDocs(q);
       return snapshot.docs.map(doc => {
         const data = doc.data();
-        const dataAtividade = new Date(data.data);
+        // Corrigir fuso horário: adicionar T12:00:00 para garantir que caia no dia correto independente do fuso
+        // Se data.data for YYYY-MM-DD, new Date(data.data) é UTC. new Date(data.data + 'T12:00:00') é local meio-dia.
+        const dataString = data.data.includes('T') ? data.data.split('T')[0] : data.data;
+        const dataAtividade = new Date(dataString + 'T12:00:00');
+        
+        console.log("DEBUG AGENDA:", {
+          original: data.data,
+          interpretada: dataAtividade.toString(),
+          diaSemana: dataAtividade.getDay(),
+          titulo: data.titulo,
+          atividade: data.atividade,
+          descricao: data.descricao,
+          details: data.details,
+          observacao: data.observacao,
+          nomeAtividade: data.nomeAtividade,
+          nome: data.nome,
+          atividadePersonalizada: data.atividadePersonalizada
+        });
+
+        // Lógica robusta para encontrar a descrição
+        let atividadeNome = data.titulo || data.atividade || "Sem título";
+        
+        if (atividadeNome === "Outra atividade") {
+          // Tenta encontrar uma descrição em vários campos possíveis, priorizando nomes específicos
+          if (data.atividadePersonalizada && data.atividadePersonalizada.trim() !== "") atividadeNome = data.atividadePersonalizada;
+          else if (data.nomeAtividade && data.nomeAtividade.trim() !== "") atividadeNome = data.nomeAtividade;
+          else if (data.nome && data.nome.trim() !== "") atividadeNome = data.nome;
+          else if (data.descricao && data.descricao.trim() !== "") atividadeNome = data.descricao;
+          else if (data.details && data.details.trim() !== "") atividadeNome = data.details;
+          else if (data.observacao && data.observacao.trim() !== "") atividadeNome = data.observacao;
+          else atividadeNome = "Outra atividade (Sem descrição)";
+        }
+
         return {
           ...data,
           id: doc.id,
           dia: diasDaSemanaMap[dataAtividade.getDay()],
-          atividade: data.titulo === "Outra atividade" && data.descricao 
-            ? data.descricao 
-            : (data.titulo || data.atividade || "Sem título"),
+          atividade: atividadeNome,
           horaInicio: data.horaInicio || "",
           horaFim: data.horaFim || "",
+          concluido: data.concluido || false,
         };
       });
     } else {
@@ -106,20 +137,55 @@ export default function MentorCronogramaConsolidado() {
       
       const atividades: any[] = [];
       schedule.forEach((day: any) => {
-        const dataAtividade = new Date(day.date);
-        // Verificar se a data está dentro da semana selecionada
-        if (dataAtividade >= dataInicio && dataAtividade <= dataFim) {
+        // Corrigir fuso horário: adicionar T12:00:00 para garantir que caia no dia correto independente do fuso
+        const dataString = day.date.includes('T') ? day.date.split('T')[0] : day.date;
+        const dataAtividade = new Date(dataString + 'T12:00:00');
+        
+        const dataAtividadeStr = dataString;
+        const dataInicioStr = formatarDataISO(dataInicio);
+        const dataFimStr = formatarDataISO(dataFim);
+
+        // Verificar se a data está dentro da semana selecionada (comparação de strings YYYY-MM-DD funciona bem)
+        if (dataAtividadeStr >= dataInicioStr && dataAtividadeStr <= dataFimStr) {
           // Cada dia pode ter múltiplas tarefas
           (day.tasks || []).forEach((task: any) => {
+            console.log("DEBUG DINAMICO:", {
+              original: day.date,
+              interpretada: dataAtividade.toString(),
+              diaSemana: dataAtividade.getDay(),
+              name: task.name,
+              subject: task.subject,
+              details: task.details,
+              description: task.description,
+              nomeAtividade: task.nomeAtividade,
+              nome: task.nome,
+              atividadePersonalizada: task.atividadePersonalizada
+            });
+
+            // Lógica robusta para encontrar a descrição
+            let atividadeNome = task.name || task.subject || "Sem título";
+            
+            if (atividadeNome === "Outra atividade") {
+              // Tenta encontrar uma descrição em vários campos possíveis, priorizando nomes específicos
+              if (task.atividadePersonalizada && task.atividadePersonalizada.trim() !== "") atividadeNome = task.atividadePersonalizada;
+              else if (task.nomeAtividade && task.nomeAtividade.trim() !== "") atividadeNome = task.nomeAtividade;
+              else if (task.nome && task.nome.trim() !== "") atividadeNome = task.nome;
+              else if (task.details && task.details.trim() !== "") atividadeNome = task.details;
+              else if (task.description && task.description.trim() !== "") atividadeNome = task.description;
+              else if (task.observacao && task.observacao.trim() !== "") atividadeNome = task.observacao;
+              else atividadeNome = "Outra atividade (Sem descrição)";
+            }
+
             atividades.push({
               id: `${day.date}_${task.name}`,
               dia: diasDaSemanaMap[dataAtividade.getDay()],
-              atividade: task.name || "Sem título",
+              atividade: atividadeNome,
               materia: task.subject || "",
               duracao: task.duration || 0,
               tipo: task.type || "",
               horaInicio: "",
               horaFim: "",
+              concluido: task.concluido || false,
             });
           });
         }
@@ -144,11 +210,26 @@ export default function MentorCronogramaConsolidado() {
     });
   };
 
+  // Função auxiliar para formatar data localmente para YYYY-MM-DD
+  const formatarDataISO = (data: Date) => {
+    const ano = data.getFullYear();
+    const mes = String(data.getMonth() + 1).padStart(2, '0');
+    const dia = String(data.getDate()).padStart(2, '0');
+    return `${ano}-${mes}-${dia}`;
+  };
+
   const datas = getDatasDaSemana();
 
   const getAtividadesParaDia = (alunoId: string, diaSemana: string) => {
     const atividades = atividadesPorAluno[alunoId] || [];
-    return atividades.filter(ativ => ativ.dia === diaSemana);
+    const atividadesDoDia = atividades.filter(ativ => ativ.dia === diaSemana);
+    
+    // Ordenar por horário de início
+    return atividadesDoDia.sort((a, b) => {
+      if (!a.horaInicio) return 1; // Sem horário vai para o final
+      if (!b.horaInicio) return -1;
+      return a.horaInicio.localeCompare(b.horaInicio);
+    });
   };
 
   const formatarData = (data: Date) => {
@@ -301,17 +382,35 @@ export default function MentorCronogramaConsolidado() {
                             atividades.map((ativ, idx) => (
                               <div
                                 key={idx}
-                                className="text-xs p-2 rounded bg-blue-50 border border-blue-200"
+                                className={`text-xs p-2 rounded border transition-all ${
+                                  ativ.concluido 
+                                    ? "bg-emerald-50 border-emerald-200 opacity-75" 
+                                    : "bg-blue-50 border-blue-200"
+                                }`}
                               >
-                                <div className="font-medium truncate" title={ativ.atividade}>
-                                  {ativ.atividade}
-                                </div>
-                                {ativ.horaInicio && (
-                                  <div className="text-muted-foreground">
-                                    {ativ.horaInicio}
-                                    {ativ.horaFim && ` - ${ativ.horaFim}`}
+                                <div className="flex items-start gap-1.5">
+                                  <div className="mt-0.5 flex-shrink-0">
+                                    {ativ.concluido ? (
+                                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                                    ) : (
+                                      <Circle className="h-3.5 w-3.5 text-blue-300" />
+                                    )}
                                   </div>
-                                )}
+                                  <div className="flex-1 min-w-0">
+                                    <div 
+                                      className={`font-medium truncate ${ativ.concluido ? "line-through text-muted-foreground" : ""}`} 
+                                      title={ativ.atividade}
+                                    >
+                                      {ativ.atividade}
+                                    </div>
+                                    {ativ.horaInicio && (
+                                      <div className={`text-[10px] ${ativ.concluido ? "text-muted-foreground/70" : "text-muted-foreground"}`}>
+                                        {ativ.horaInicio}
+                                        {ativ.horaFim && ` - ${ativ.horaFim}`}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
                             ))
                           )}

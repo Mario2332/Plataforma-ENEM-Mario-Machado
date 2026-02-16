@@ -405,25 +405,37 @@ export default function AlunoMetas() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      {/* Header */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-8 mb-6 border-2 border-primary/20 animate-slide-up">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
+      {/* Elementos decorativos */}
+      <div className="fixed top-20 right-10 w-72 h-72 bg-blue-500/5 rounded-full blur-3xl animate-float pointer-events-none" />
+      <div className="fixed bottom-20 left-10 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl animate-float-delayed pointer-events-none" />
+
+      {/* Header Premium */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-500/20 via-cyan-500/10 to-sky-500/10 p-8 border-2 border-white/20 dark:border-white/10 backdrop-blur-xl shadow-2xl animate-slide-up mb-8">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-blue-500/20 to-transparent rounded-full blur-3xl animate-pulse-slow" />
+        <div className="absolute bottom-0 left-0 w-72 h-72 bg-gradient-to-tr from-cyan-500/20 to-transparent rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '1s' }} />
         <div className="relative flex justify-between items-center">
           <div>
-            <h1 className="text-4xl font-bold flex items-center gap-3">
-              <Target className="h-10 w-10 text-primary" />
-              Minhas Metas
-            </h1>
-            <p className="text-muted-foreground mt-2 text-lg">
-              Defina e acompanhe seus objetivos de estudo
+            <div className="flex items-center gap-4 mb-4">
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-2xl blur-xl opacity-50 animate-pulse-slow" />
+                <div className="relative bg-gradient-to-br from-blue-500 via-cyan-500 to-sky-500 p-4 rounded-2xl shadow-2xl">
+                  <Target className="h-10 w-10 text-white" />
+                </div>
+              </div>
+              <h1 className="text-5xl font-black tracking-tight bg-gradient-to-r from-blue-600 via-cyan-600 to-sky-600 bg-clip-text text-transparent animate-gradient">
+                Minhas Metas
+              </h1>
+            </div>
+            <p className="text-lg text-muted-foreground font-medium">
+              Defina e acompanhe seus objetivos de estudo 🎯
             </p>
           </div>
           <Button 
             onClick={() => handleOpenDialog()} 
-            className="gap-2 bg-gradient-to-r from-primary via-primary to-blue-600 hover:from-primary/90 hover:via-primary/90 hover:to-blue-600/90 shadow-lg hover:shadow-2xl hover:shadow-primary/30 transition-all duration-300 hover:scale-105 text-white font-semibold"
+            className="gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 hover:-translate-y-1"
             size="lg"
           >
-            <Plus className="h-5 w-5" />
+            <Plus className="h-6 w-6" />
             Nova Meta
           </Button>
         </div>
@@ -721,7 +733,10 @@ export default function AlunoMetas() {
             <p className="text-muted-foreground mb-4">
               Crie sua primeira meta para organizar seus estudos!
             </p>
-            <Button onClick={() => handleOpenDialog()} className="gap-2">
+            <Button 
+              onClick={() => handleOpenDialog()} 
+              className="gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+            >
               <Plus className="h-4 w-4" />
               Criar Primeira Meta
             </Button>
@@ -891,7 +906,7 @@ export default function AlunoMetas() {
             </Button>
             <Button 
               onClick={handleSubmit}
-              className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+              className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
             >
               {isEditMode ? (
                 <>

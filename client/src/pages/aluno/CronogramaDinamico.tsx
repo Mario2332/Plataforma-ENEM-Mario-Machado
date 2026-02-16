@@ -3193,15 +3193,80 @@ export default function CronogramaDinamico() {
 
   // Função para alternar check de uma tarefa
   const handleToggleCheck = (taskId: string) => {
+    // Atualizar estado local imediatamente para feedback visual
     setCheckedItems(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(taskId)) {
-        newSet.delete(taskId);
-      } else {
+      const isChecking = !newSet.has(taskId);
+      
+      if (isChecking) {
         newSet.add(taskId);
+      } else {
+        newSet.delete(taskId);
       }
+      
+      // Salvar no Firestore de forma assíncrona (fora do callback puro)
+      saveCheckStatus(taskId, isChecking, newSet);
+      
       return newSet;
     });
+  };
+
+  const saveCheckStatus = async (taskId: string, isChecking: boolean, newCheckedItems: Set<string>) => {
+    try {
+      const alunoId = getAlunoId();
+      if (!alunoId) return;
+
+      // Tentar extrair data e índice do ID da tarefa
+      // Formato esperado: "YYYY-MM-DDTHH:mm:ss.sssZ-index"
+      const parts = taskId.split('-');
+      const taskIndexStr = parts.pop(); // Última parte é o índice
+      const dateStr = parts.join('-'); // O resto é a data ISO
+      
+      if (!taskIndexStr || !dateStr) {
+        console.error("Formato de ID de tarefa inválido:", taskId);
+        return;
+      }
+
+      const taskIndex = parseInt(taskIndexStr);
+      
+      // Atualizar o schedule local para refletir a mudança no campo 'concluido'
+      // Precisamos usar o estado atual (state.schedule)
+      const updatedSchedule = state.schedule.map(day => {
+        if (day.date.toISOString() === dateStr) {
+          const newTasks = [...day.tasks];
+          if (newTasks[taskIndex]) {
+            newTasks[taskIndex] = {
+              ...newTasks[taskIndex],
+              concluido: isChecking
+            };
+          }
+          return { ...day, tasks: newTasks };
+        }
+        return day;
+      });
+
+      // Atualizar estado local do schedule
+      setState(prev => ({ ...prev, schedule: updatedSchedule }));
+
+      // Preparar dados para salvar no Firestore
+      const scheduleToSave = updatedSchedule.map(day => ({
+        ...day,
+        date: day.date.toISOString()
+      }));
+
+      const dataToSave = {
+        schedule: scheduleToSave,
+        checkedItems: Array.from(newCheckedItems),
+        updatedAt: new Date().toISOString()
+      };
+
+      const scheduleRef = doc(db, "alunos", alunoId, "cronograma", "dinamico");
+      await setDoc(scheduleRef, dataToSave, { merge: true });
+      
+    } catch (error) {
+      console.error('Erro ao salvar status da tarefa:', error);
+      toast.error("Erro ao salvar status");
+    }
   };
 
   useEffect(() => {

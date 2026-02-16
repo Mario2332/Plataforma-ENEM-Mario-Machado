@@ -219,6 +219,7 @@ export const AnotacoesAluno: React.FC<AnotacoesAlunoProps> = ({
                   <Button
                     onClick={handleSalvar}
                     disabled={salvando || !conteudoEditor.trim()}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
                   >
                     {salvando ? "Salvando..." : "Salvar Anotação"}
                   </Button>
@@ -231,7 +232,7 @@ export const AnotacoesAluno: React.FC<AnotacoesAlunoProps> = ({
                   <h3 className="text-lg font-semibold">
                     Anotações ({anotacoes.length})
                   </h3>
-                  <Button onClick={abrirModoNova} size="sm">
+                  <Button onClick={abrirModoNova} size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
                     + Nova Anotação
                   </Button>
                 </div>

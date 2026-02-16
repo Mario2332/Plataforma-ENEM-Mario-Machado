@@ -72,7 +72,7 @@ export default function LoginMentor() {
           
           <h2 className="text-3xl font-bold text-gray-800 flex items-center gap-2 justify-center md:justify-start">
             <Sparkles className="w-8 h-8 text-blue-500" />
-            Área do Professor
+            Área do Mentor
           </h2>
           
           <p className="text-gray-600 text-lg font-semibold">
@@ -117,7 +117,7 @@ export default function LoginMentor() {
           <CardHeader className="bg-gradient-to-r from-blue-50 to-cyan-50 border-b-2 border-blue-200">
             <CardTitle className="text-3xl font-black bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent flex items-center gap-2">
               <Zap className="w-8 h-8 text-blue-500" />
-              Login Professor
+              Login Mentor
             </CardTitle>
             <CardDescription className="text-base font-semibold text-gray-600">
               Entre com suas credenciais para acessar o painel
@@ -170,7 +170,7 @@ export default function LoginMentor() {
             </form>
 
             <div className="mt-6 text-center text-sm text-gray-600 font-semibold">
-              <p>Apenas professores autorizados podem acessar esta área.</p>
+              <p>Apenas mentores autorizados podem acessar esta área.</p>
               <p className="mt-1">Entre em contato com o gestor para obter acesso.</p>
             </div>
           </CardContent>

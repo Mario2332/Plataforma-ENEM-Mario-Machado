@@ -55,6 +55,7 @@ interface AtividadeAgenda {
   atividadePersonalizada?: string;
   cor: string;
   isManual: boolean;
+  concluido?: boolean;
   createdAt?: Date;
 }
 
@@ -265,6 +266,32 @@ export default function CronogramaAgenda() {
     } catch (error: any) {
       console.error("Erro ao salvar configuração:", error);
       throw error;
+    }
+  };
+
+  const toggleConcluido = async (atividade: AtividadeAgenda) => {
+    try {
+      const userId = effectiveUserId || auth.currentUser?.uid;
+      if (!userId || !atividade.id) return;
+
+      const novoStatus = !atividade.concluido;
+      
+      // Atualização otimista na UI
+      setAtividades(prev => prev.map(a => 
+        a.id === atividade.id ? { ...a, concluido: novoStatus } : a
+      ));
+
+      const atividadeRef = doc(db, "alunos", userId, "agenda", atividade.id);
+      await setDoc(atividadeRef, { concluido: novoStatus }, { merge: true });
+      
+      toast.success(novoStatus ? "Atividade concluída!" : "Atividade reaberta");
+    } catch (error) {
+      console.error("Erro ao atualizar status:", error);
+      toast.error("Erro ao atualizar status");
+      // Reverter em caso de erro
+      setAtividades(prev => prev.map(a => 
+        a.id === atividade.id ? { ...a, concluido: !atividade.concluido } : a
+      ));
     }
   };
 
@@ -1000,10 +1027,28 @@ export default function CronogramaAgenda() {
                     {atividadesDoDia.slice(0, 3).map(atividade => (
                       <div
                         key={atividade.id}
-                        className="group relative flex items-center gap-1 px-1.5 py-0.5 rounded text-xs cursor-pointer hover:opacity-80"
-                        style={{ backgroundColor: `${atividade.cor}20`, borderLeft: `3px solid ${atividade.cor}` }}
+                        className={`group relative flex items-center gap-1 px-1.5 py-0.5 rounded text-xs cursor-pointer hover:opacity-80 ${atividade.concluido ? 'opacity-60' : ''}`}
+                        style={{ 
+                          backgroundColor: `${atividade.cor}20`, 
+                          borderLeft: `3px solid ${atividade.cor}`,
+                          textDecoration: atividade.concluido ? 'line-through' : 'none'
+                        }}
                         onClick={() => handleEditAtividade(atividade)}
                       >
+                        <div 
+                          className="flex-shrink-0 cursor-pointer mr-1"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleConcluido(atividade);
+                          }}
+                        >
+                          {atividade.concluido ? (
+                            <CheckCircle className="h-3 w-3 text-emerald-600" />
+                          ) : (
+                            <div className="h-3 w-3 rounded-full border border-gray-400 hover:border-emerald-500" />
+                          )}
+                        </div>
+
                         {atividade.isManual ? (
                           <Star className="h-2.5 w-2.5 text-amber-500 flex-shrink-0" />
                         ) : (
@@ -1337,10 +1382,27 @@ export default function CronogramaAgenda() {
             {selectedDayForDetail && getAtividadesDoDia(selectedDayForDetail).map(atividade => (
               <div
                 key={atividade.id}
-                className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                style={{ borderLeft: `4px solid ${atividade.cor}` }}
+                className={`flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${atividade.concluido ? 'opacity-60' : ''}`}
+                style={{ 
+                  borderLeft: `4px solid ${atividade.cor}`,
+                  textDecoration: atividade.concluido ? 'line-through' : 'none'
+                }}
               >
                 <div className="flex items-center gap-3">
+                  <div 
+                    className="flex-shrink-0 cursor-pointer mr-2"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleConcluido(atividade);
+                    }}
+                  >
+                    {atividade.concluido ? (
+                      <CheckCircle className="h-5 w-5 text-emerald-600" />
+                    ) : (
+                      <div className="h-5 w-5 rounded-full border border-gray-400 hover:border-emerald-500" />
+                    )}
+                  </div>
+
                   {atividade.isManual ? (
                     <Star className="h-4 w-4 text-amber-500 flex-shrink-0" />
                   ) : (

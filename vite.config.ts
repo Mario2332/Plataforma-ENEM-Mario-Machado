@@ -32,7 +32,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           // Separar React e bibliotecas principais (juntos para evitar circular)
-          'vendor-react': ['react', 'react-dom', 'react/jsx-runtime', 'scheduler'],
+          'vendor-react': ['react', 'react-dom', 'react/jsx-runtime'],
           // Separar Firebase (tudo junto para evitar circular)
           'vendor-firebase': [
             'firebase/app',
